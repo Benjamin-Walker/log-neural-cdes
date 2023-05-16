@@ -9,6 +9,7 @@ Applying the Log-ODE method to improve the training and performance of Neural CD
 - jaxlib 0.4.7
 - jax 0.4.9
 - tqdm 4.65.0
+- equinox 0.10.3
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
