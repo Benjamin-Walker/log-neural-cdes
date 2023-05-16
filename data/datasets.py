@@ -3,6 +3,7 @@ import pickle
 from dataclasses import dataclass
 from typing import Any, Dict
 
+import jax.numpy as jnp
 import jax.random as jr
 
 from data.dataloaders import InMemoryDataloader
@@ -19,7 +20,6 @@ class Dataset:
 
 
 def dataset_generator(name, data, labels, idxs=None, *, key):
-
     path_data = calc_paths(data)
 
     if idxs is None:
@@ -72,10 +72,12 @@ def create_uea_dataset(name, use_idxs, *, key):
         data = pickle.load(f)
     with open(f"data/processed/UEA/{name}/labels.pkl", "rb") as f:
         labels = pickle.load(f)
+    onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
+    onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     if use_idxs:
         with open(f"data/processed/UEA/{name}/original_idxs.pkl", "rb") as f:
             idxs = pickle.load(f)
     else:
         idxs = None
 
-    return dataset_generator(name, data, labels, idxs, key=key)
+    return dataset_generator(name, data, onehot_labels, idxs, key=key)
