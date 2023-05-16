@@ -129,6 +129,6 @@ def create_rnn_model(
     else:
         raise ValueError(f"Unknown cell name: {cell_name}")
 
-    output_layer = eqx.nn.Linear(hidden_dim, label_dim, key=outputkey)
+    output_layer = eqx.nn.Linear(hidden_dim, label_dim, use_bias=False, key=outputkey)
 
     return RNN(cell, output_layer, classification)
