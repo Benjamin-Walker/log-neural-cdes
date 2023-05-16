@@ -3,9 +3,11 @@ import pickle
 from dataclasses import dataclass
 from typing import Any, Dict
 
+import jax.numpy as jnp
 import jax.random as jr
-from dataloaders import InMemoryDataloader
-from generate_paths import calc_paths
+
+from data.dataloaders import InMemoryDataloader
+from data.generate_paths import calc_paths
 
 
 @dataclass
@@ -18,7 +20,6 @@ class Dataset:
 
 
 def dataset_generator(name, data, labels, idxs=None, *, key):
-
     path_data = calc_paths(data)
 
     if idxs is None:
@@ -63,18 +64,20 @@ def dataset_generator(name, data, labels, idxs=None, *, key):
 
 
 def create_uea_dataset(name, use_idxs, *, key):
-    subfolders = [f.name for f in os.scandir("processed/UEA") if f.is_dir()]
+    subfolders = [f.name for f in os.scandir("data/processed/UEA") if f.is_dir()]
     if name not in subfolders:
         raise ValueError(f"Dataset {name} not found in UEA folder")
 
-    with open(f"processed/UEA/{name}/data.pkl", "rb") as f:
+    with open(f"data/processed/UEA/{name}/data.pkl", "rb") as f:
         data = pickle.load(f)
-    with open(f"processed/UEA/{name}/labels.pkl", "rb") as f:
+    with open(f"data/processed/UEA/{name}/labels.pkl", "rb") as f:
         labels = pickle.load(f)
+    onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
+    onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     if use_idxs:
-        with open(f"processed/UEA/{name}/original_idxs.pkl", "rb") as f:
+        with open(f"data/processed/UEA/{name}/original_idxs.pkl", "rb") as f:
             idxs = pickle.load(f)
     else:
         idxs = None
 
-    return dataset_generator(name, data, labels, idxs, key=key)
+    return dataset_generator(name, data, onehot_labels, idxs, key=key)
