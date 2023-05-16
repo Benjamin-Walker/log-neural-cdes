@@ -1,20 +1,12 @@
-from dataclasses import dataclass
-from typing import Any, Dict
-
 import jax.numpy as jnp
 import jax.random as jr
 
 
-@dataclass
-class Dataset:
-    name: str
-    raw_dataloaders: Dict[str, Any]
-    sig_dataloaders: Dict[str, Any]
-    data_dim: int
-    label_dim: int
-
-
 class InMemoryDataloader:
+
+    data: jnp.ndarray
+    labels: jnp.ndarray
+
     def __init__(self, data, labels):
         self.data = data
         self.labels = labels
@@ -23,6 +15,12 @@ class InMemoryDataloader:
         RuntimeError("Use .loop(batch_size) instead of __iter__")
 
     def loop(self, batch_size, *, key):
+
+        if self.data is None or jnp.isnan(self.data).all():
+            raise ValueError("This dataloader is empty")
+
+        if self.data.shape[0] != self.labels.shape[0]:
+            raise ValueError("Data and labels must have same length")
 
         if not isinstance(batch_size, int) & (batch_size > 0):
             raise ValueError("Batch size must be a positive integer")
@@ -43,6 +41,6 @@ class InMemoryDataloader:
                 end = batch_size
                 while end < dataset_size:
                     batch_perm = perm[start:end]
-                    yield self.data[batch_perm], self.data[batch_perm]
+                    yield self.data[batch_perm], self.labels[batch_perm]
                     start = end
                     end = start + batch_size
