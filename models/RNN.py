@@ -96,7 +96,7 @@ class RNN(eqx.Module):
         all_states = all_states[0] if isinstance(self.cell, LSTMCell) else all_states
 
         if self.classification:
-            return self.output_layer(final_state)
+            return jax.nn.softmax(self.output_layer(final_state), axis=0)
         else:
             return jax.vmap(self.output_layer)(all_states)
 
