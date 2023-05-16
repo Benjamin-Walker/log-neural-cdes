@@ -1,6 +1,21 @@
 # Log-Neural-CDEs
 Applying the Log-ODE method to improve the training and performance of Neural CDEs.
 
+## Data
+
+The data folder contains the scripts for downloading data, preprocessing the data, 
+generating path objects and creating dataloaders and datasets. Raw data should be 
+downloaded into the data/raw folder. Processed data should be saved into the data/processed
+in the following format: 
+```
+processed/{dataset_name}/data.pkl, 
+processed/{dataset_name}/labels.pkl,
+processed/{dataset_name}/original_idxs.pkl (if the dataset has original data splits)
+```
+where data.pkl and labels.pkl are jnp.arrays with shape (n_samples, n_timesteps, n_features) 
+and (n_samples, n_classes) respectively. If the dataset had original_idxs then those should
+be saved as a list of jnp.arrays with shape [(n_train,), (n_val,), (n_test,)].
+
 ## Requirements
 
 - python 3.10
