@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 import jax.random as jr
-from dataloaders import InMemoryDataloader
-from generate_paths import calc_paths
+
+from data.dataloaders import InMemoryDataloader
+from data.generate_paths import calc_paths
 
 
 @dataclass
