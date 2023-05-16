@@ -1,3 +1,5 @@
+import os
+import pickle
 from dataclasses import dataclass
 from typing import Any, Dict
 
@@ -15,18 +17,11 @@ class Dataset:
     label_dim: int
 
 
-def dataset_generator(name, data, labels, idxs=None, use_idxs=False, *, key):
+def dataset_generator(name, data, labels, idxs=None, *, key):
 
     path_data = calc_paths(data)
 
-    if use_idxs:
-        train_data, train_labels = data[idxs[0]], labels[idxs[0]]
-        train_path_data = path_data[idxs[0]]
-        val_data, val_labels = data[idxs[1]], labels[idxs[1]]
-        val_path_data = path_data[idxs[1]]
-        test_data, test_labels = None, None
-        test_path_data = None
-    else:
+    if idxs is None:
         permkey, key = jr.split(key)
         N = len(data)
         bound1 = int(N * 0.7)
@@ -38,6 +33,13 @@ def dataset_generator(name, data, labels, idxs=None, use_idxs=False, *, key):
         val_path_data = path_data[idxs[bound1:bound2]]
         test_data, test_labels = data[idxs[bound2:]], labels[idxs[bound2:]]
         test_path_data = path_data[idxs[bound2:]]
+    else:
+        train_data, train_labels = data[idxs[0]], labels[idxs[0]]
+        train_path_data = path_data[idxs[0]]
+        val_data, val_labels = data[idxs[1]], labels[idxs[1]]
+        val_path_data = path_data[idxs[1]]
+        test_data, test_labels = None, None
+        test_path_data = None
 
     data_dim = train_data.shape[-1]
     if len(labels.shape) == 1:
@@ -58,3 +60,21 @@ def dataset_generator(name, data, labels, idxs=None, use_idxs=False, *, key):
     }
 
     return Dataset(name, raw_dataloaders, path_dataloaders, data_dim, label_dim)
+
+
+def create_uea_dataset(name, use_idxs, *, key):
+    subfolders = [f.name for f in os.scandir("processed/UEA") if f.is_dir()]
+    if name not in subfolders:
+        raise ValueError(f"Dataset {name} not found in UEA folder")
+
+    with open(f"processed/UEA/{name}/data.pkl", "rb") as f:
+        data = pickle.load(f)
+    with open(f"processed/UEA/{name}/labels.pkl", "rb") as f:
+        labels = pickle.load(f)
+    if use_idxs:
+        with open(f"processed/UEA/{name}/original_idxs.pkl", "rb") as f:
+            idxs = pickle.load(f)
+    else:
+        idxs = None
+
+    return dataset_generator(name, data, labels, idxs, key=key)
