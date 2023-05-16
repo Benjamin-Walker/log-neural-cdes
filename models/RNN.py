@@ -24,7 +24,7 @@ class _AbstractRNNCell(eqx.Module):
 
 class LinearCell(_AbstractRNNCell):
     cell: eqx.nn.Linear
-    hidden_size = int
+    hidden_size: int
 
     def __init__(self, data_dim, hidden_dim, *, key):
         self.cell = eqx.nn.Linear(data_dim + hidden_dim, hidden_dim, key=key)
@@ -36,7 +36,7 @@ class LinearCell(_AbstractRNNCell):
 
 class GRUCell(_AbstractRNNCell):
     cell: eqx.nn.GRUCell
-    hidden_size = int
+    hidden_size: int
 
     def __init__(self, data_dim, hidden_dim, *, key):
         self.cell = eqx.nn.GRUCell(data_dim, hidden_dim, key=key)
@@ -48,7 +48,7 @@ class GRUCell(_AbstractRNNCell):
 
 class LSTMCell(_AbstractRNNCell):
     cell: eqx.nn.LSTMCell
-    hidden_size = int
+    hidden_size: int
 
     def __init__(self, data_dim, hidden_dim, *, key):
         self.cell = eqx.nn.LSTMCell(data_dim, hidden_dim, key=key)
@@ -60,7 +60,7 @@ class LSTMCell(_AbstractRNNCell):
 
 class MLPCell(_AbstractRNNCell):
     cell: eqx.nn.MLP
-    hidden_size = int
+    hidden_size: int
 
     def __init__(self, data_dim, hidden_dim, depth, width, *, key):
         self.cell = eqx.nn.MLP(data_dim + hidden_dim, hidden_dim, width, depth, key=key)
