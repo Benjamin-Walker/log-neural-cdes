@@ -99,3 +99,36 @@ class RNN(eqx.Module):
             return self.output_layer(final_state)
         else:
             return jax.vmap(self.output_layer)(all_states)
+
+
+def create_rnn_model(
+    cell_name,
+    data_dim,
+    hidden_dim,
+    label_dim,
+    depth=None,
+    width=None,
+    classification=True,
+    *,
+    key,
+):
+    """Create RNN model."""
+
+    cellkey, outputkey = jax.random.split(key, 2)
+
+    if cell_name == "linear":
+        cell = LinearCell(data_dim, hidden_dim, key=cellkey)
+    elif cell_name == "gru":
+        cell = GRUCell(data_dim, hidden_dim, key=cellkey)
+    elif cell_name == "lstm":
+        cell = LSTMCell(data_dim, hidden_dim, key=cellkey)
+    elif cell_name == "mlp":
+        if width is None or depth is None:
+            raise ValueError("Must specify width and depth for MLP cell.")
+        cell = MLPCell(data_dim, hidden_dim, depth, width, key=cellkey)
+    else:
+        raise ValueError(f"Unknown cell name: {cell_name}")
+
+    output_layer = eqx.nn.Linear(hidden_dim, label_dim, key=outputkey)
+
+    return RNN(cell, output_layer, classification)
