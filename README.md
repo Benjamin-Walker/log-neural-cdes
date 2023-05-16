@@ -24,6 +24,7 @@ be saved as a list of jnp.arrays with shape [(n_train,), (n_val,), (n_test,)].
 - jaxlib 0.4.7
 - jax 0.4.9
 - tqdm 4.65.0
+- equinox 0.10.3
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
