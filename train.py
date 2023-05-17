@@ -53,3 +53,16 @@ for step, data in zip(
     if (step + 1) % 100 == 0:
         print(f" Step: {step+1}, Loss: {running_loss/100}")
         running_loss = 0.0
+
+        for step, data in zip(
+            range(1),
+            dataset.raw_dataloaders["test"].loop(
+                dataset.raw_dataloaders["test"].size, key=None
+            ),
+        ):
+            X, y = data
+            prediction = calc_output(model, X)
+            val_accuracy = jnp.mean(
+                jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+            )
+            print(f"Step: {step+1}, Validation accuracy: {val_accuracy}")
