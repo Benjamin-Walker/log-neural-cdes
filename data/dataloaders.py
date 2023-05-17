@@ -6,10 +6,12 @@ class InMemoryDataloader:
 
     data: jnp.ndarray
     labels: jnp.ndarray
+    size: int
 
     def __init__(self, data, labels):
         self.data = data
         self.labels = labels
+        self.size = len(data)
 
     def __iter__(self):
         RuntimeError("Use .loop(batch_size) instead of __iter__")
@@ -25,21 +27,19 @@ class InMemoryDataloader:
         if not isinstance(batch_size, int) & (batch_size > 0):
             raise ValueError("Batch size must be a positive integer")
 
-        dataset_size = len(self.data)
-
-        if batch_size > dataset_size:
+        if batch_size > self.size:
             raise ValueError("Batch size larger than dataset size")
-        elif batch_size == dataset_size:
+        elif batch_size == self.size:
             while True:
-                yield self.data, self.label
+                yield self.data, self.labels
         else:
-            indices = jnp.arange(dataset_size)
+            indices = jnp.arange(self.size)
             while True:
                 subkey, key = jr.split(key)
                 perm = jr.permutation(subkey, indices)
                 start = 0
                 end = batch_size
-                while end < dataset_size:
+                while end < self.size:
                     batch_perm = perm[start:end]
                     yield self.data[batch_perm], self.labels[batch_perm]
                     start = end
