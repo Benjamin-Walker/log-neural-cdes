@@ -11,7 +11,10 @@ class InMemoryDataloader:
     def __init__(self, data, labels):
         self.data = data
         self.labels = labels
-        self.size = len(data)
+        if self.data is None or jnp.isnan(self.data).all():
+            self.size = 0
+        else:
+            self.size = len(data)
 
     def __iter__(self):
         RuntimeError("Use .loop(batch_size) instead of __iter__")
