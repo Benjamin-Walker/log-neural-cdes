@@ -29,14 +29,14 @@ def make_step(model, X, y, opt, opt_state):
 
 
 key = jr.PRNGKey(1234)
-datasetkey, batchkey, key = jr.split(key, 3)
+datasetkey, modelkey, batchkey, key = jr.split(key, 4)
 num_steps = 1000
 hidden_dim = 100
 batch_size = 32
 
 dataset = create_uea_dataset("LSST", use_idxs=False, key=datasetkey)
 model = create_rnn_model(
-    "linear", dataset.data_dim, hidden_dim, dataset.label_dim, key=key
+    "linear", dataset.data_dim, hidden_dim, dataset.label_dim, key=modelkey
 )
 
 opt = optax.adam(learning_rate=3e-4)
