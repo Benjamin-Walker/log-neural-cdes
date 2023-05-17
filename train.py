@@ -107,3 +107,5 @@ for _, data in zip(
     prediction = calc_output(model, X)
     test_accuracy = jnp.mean(jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1))
     print(f"Test accuracy: {test_accuracy}")
+
+jnp.save(output_parent_dir + "/" + output_dir + "/test_acc.npy", test_accuracy)
