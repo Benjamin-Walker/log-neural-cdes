@@ -104,8 +104,8 @@ class RNN(eqx.Module):
 def create_rnn_model(
     cell_name,
     data_dim,
-    hidden_dim,
     label_dim,
+    hidden_dim,
     depth=None,
     width=None,
     classification=True,
