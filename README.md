@@ -26,6 +26,7 @@ be saved as a list of jnp.arrays with shape [(n_train,), (n_val,), (n_test,)].
 - tqdm 4.65.0
 - equinox 0.10.3
 - optax 0.1.5
+- diffrax 0.3.1
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
