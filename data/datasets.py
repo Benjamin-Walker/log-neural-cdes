@@ -18,11 +18,16 @@ class Dataset:
     coeff_dataloaders: Dict[str, InMemoryDataloader]
     path_dataloaders: Dict[str, InMemoryDataloader]
     data_dim: int
+    logsig_dim: int
+    intervals: jnp.ndarray
     label_dim: int
 
 
-def dataset_generator(name, data, labels, idxs=None, *, key):
-    path_data = calc_paths(data)
+def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
+    path_data = calc_paths(data, stepsize, depth)
+    intervals = jnp.arange(0, data.shape[1], stepsize)
+    intervals = jnp.concatenate((intervals, jnp.array([data.shape[1]])))
+
     coeff_data = calc_coeffs(data)
 
     if idxs is None:
@@ -32,21 +37,33 @@ def dataset_generator(name, data, labels, idxs=None, *, key):
         bound2 = int(N * 0.85)
         idxs = jr.permutation(permkey, N)
         train_data, train_labels = data[idxs[:bound1]], labels[idxs[:bound1]]
-        train_path_data = path_data[idxs[:bound1]]
+        train_path_data = (
+            data[idxs[:bound1], :, 0],
+            path_data[idxs[:bound1]],
+            data[idxs[:bound1], 0, :],
+        )
         train_coeff_data = (
             data[idxs[:bound1], :, 0],
             tuple(data[idxs[:bound1]] for data in coeff_data),
             data[idxs[:bound1], 0, :],
         )
         val_data, val_labels = data[idxs[bound1:bound2]], labels[idxs[bound1:bound2]]
-        val_path_data = path_data[idxs[bound1:bound2]]
+        val_path_data = (
+            data[idxs[bound1:bound2], :, 0],
+            path_data[idxs[bound1:bound2]],
+            data[idxs[bound1:bound2], 0, :],
+        )
         val_coeff_data = (
             data[idxs[bound1:bound2], :, 0],
             tuple(data[idxs[bound1:bound2]] for data in coeff_data),
             data[idxs[bound1:bound2], 0, :],
         )
         test_data, test_labels = data[idxs[bound2:]], labels[idxs[bound2:]]
-        test_path_data = path_data[idxs[bound2:]]
+        test_path_data = (
+            data[idxs[bound2:], :, 0],
+            path_data[idxs[bound2:]],
+            data[idxs[bound2:], 0, :],
+        )
         test_coeff_data = (
             data[idxs[bound2:], :, 0],
             tuple(data[idxs[bound2:]] for data in coeff_data),
@@ -54,14 +71,22 @@ def dataset_generator(name, data, labels, idxs=None, *, key):
         )
     else:
         train_data, train_labels = data[idxs[0]], labels[idxs[0]]
-        train_path_data = path_data[idxs[0]]
+        train_path_data = (
+            data[idxs[0], :, 0],
+            path_data[idxs[0]],
+            data[idxs[0], 0, :],
+        )
         train_coeff_data = (
             data[idxs[0], :, 0],
             tuple(data[idxs[0]] for data in coeff_data),
             data[idxs[0], 0, :],
         )
         val_data, val_labels = data[idxs[1]], labels[idxs[1]]
-        val_path_data = path_data[idxs[1]]
+        val_path_data = (
+            data[idxs[1], :, 0],
+            path_data[idxs[1]],
+            data[idxs[1], 0, :],
+        )
         val_coeff_data = (
             data[idxs[1], :, 0],
             tuple(data[idxs[1]] for data in coeff_data),
@@ -76,6 +101,7 @@ def dataset_generator(name, data, labels, idxs=None, *, key):
         label_dim = 1
     else:
         label_dim = labels.shape[-1]
+    logsig_dim = path_data.shape[-1]
 
     raw_dataloaders = {
         "train": InMemoryDataloader(train_data, train_labels),
@@ -96,11 +122,18 @@ def dataset_generator(name, data, labels, idxs=None, *, key):
     }
 
     return Dataset(
-        name, raw_dataloaders, coeff_dataloaders, path_dataloaders, data_dim, label_dim
+        name,
+        raw_dataloaders,
+        coeff_dataloaders,
+        path_dataloaders,
+        data_dim,
+        logsig_dim,
+        intervals,
+        label_dim,
     )
 
 
-def create_uea_dataset(name, use_idxs, *, key):
+def create_uea_dataset(name, use_idxs, stepsize, depth, *, key):
     subfolders = [f.name for f in os.scandir("data/processed/UEA") if f.is_dir()]
     if name not in subfolders:
         raise ValueError(f"Dataset {name} not found in UEA folder")
@@ -120,4 +153,4 @@ def create_uea_dataset(name, use_idxs, *, key):
     ts = jnp.repeat(jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0)
     data = jnp.concatenate([ts[:, :, None], data], axis=2)
 
-    return dataset_generator(name, data, onehot_labels, idxs, key=key)
+    return dataset_generator(name, data, onehot_labels, stepsize, depth, idxs, key=key)

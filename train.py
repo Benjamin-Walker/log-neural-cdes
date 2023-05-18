@@ -111,7 +111,9 @@ if __name__ == "__main__":
     lr = 1e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_name = "Libras"
-    model_name = "rnn_gru"
+    stepsize = 4
+    depth = 3
+    model_name = "rnn_lstm"
 
     model_args = {"hidden_dim": 20, "depth": 3, "width": 8}
 
@@ -125,16 +127,31 @@ if __name__ == "__main__":
 
     datasetkey, modelkey, key = jr.split(key, 3)
 
-    dataset = create_uea_dataset(dataset_name, use_idxs=False, key=datasetkey)
-    model = create_model(
-        model_name, dataset.data_dim, dataset.label_dim, **model_args, key=modelkey
+    dataset = create_uea_dataset(
+        dataset_name, stepsize=stepsize, depth=depth, use_idxs=False, key=datasetkey
     )
+    model = create_model(
+        model_name,
+        dataset.data_dim,
+        dataset.logsig_dim,
+        dataset.intervals,
+        dataset.label_dim,
+        **model_args,
+        key=modelkey,
+    )
+
+    if model_name == "nrde":
+        dataloaders = dataset.path_dataloaders
+    elif model_name == "ncde":
+        dataloaders = dataset.coeff_dataloaders
+    else:
+        dataloaders = dataset.raw_dataloaders
 
     train_model(
         model,
-        dataset.raw_dataloaders["train"],
-        dataset.raw_dataloaders["val"],
-        dataset.raw_dataloaders["test"],
+        dataloaders["train"],
+        dataloaders["val"],
+        dataloaders["test"],
         num_steps,
         print_steps,
         lr,

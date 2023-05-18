@@ -1,12 +1,14 @@
 import jax.random as jr
 
-from models.NeuralCDEs import NeuralCDE
+from models.NeuralCDEs import NeuralCDE, NeuralRDE
 from models.RNN import GRUCell, LinearCell, LSTMCell, MLPCell, RNN
 
 
 def create_model(
     model_name,
     data_dim,
+    logsig_dim,
+    intervals,
     label_dim,
     hidden_dim,
     depth=None,
@@ -24,6 +26,20 @@ def create_model(
             raise ValueError("Must specify vf width and depth for a NCDE.")
         return NeuralCDE(
             width, depth, hidden_dim, data_dim, label_dim, classification, key=key
+        )
+    elif model_name == "nrde":
+        if width is None or depth is None:
+            raise ValueError("Must specify vf width and depth for a NCDE.")
+        return NeuralRDE(
+            width,
+            depth,
+            hidden_dim,
+            data_dim,
+            logsig_dim,
+            label_dim,
+            classification,
+            intervals,
+            key=key,
         )
     elif model_name == "rnn_linear":
         cell = LinearCell(data_dim, hidden_dim, key=cellkey)
