@@ -67,7 +67,6 @@ def train_model(
 
     running_loss = 0.0
     all_val_acc = [0.0]
-
     for step, data in zip(
         range(num_steps),
         dataset.raw_dataloaders["train"].loop(batch_size, key=batchkey),
@@ -126,7 +125,8 @@ if __name__ == "__main__":
     print_steps = 1000
     batch_size = 32
     lr = 1e-4
-    dataset_name = "ArticularyWordRecognition"
+    # Spoken Arabic Digits has nan values in training data
+    dataset_name = "HandMovementDirection"
     model_name = "gru"
 
     model_args = {"hidden_dim": 20}
