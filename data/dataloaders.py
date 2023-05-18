@@ -6,26 +6,33 @@ class InMemoryDataloader:
 
     data: jnp.ndarray
     labels: jnp.ndarray
+    data_is_tuple: bool
     size: int
 
     def __init__(self, data, labels):
         self.data = data
         self.labels = labels
-        if self.data is None or jnp.isnan(self.data).all():
-            self.size = 0
-        else:
-            self.size = len(data)
+        self.data_is_tuple = type(self.data) == tuple
+        if not self.data_is_tuple:
+            if self.data is None or jnp.isnan(self.data).all():
+                self.size = 0
+            else:
+                self.size = len(data)
 
     def __iter__(self):
         RuntimeError("Use .loop(batch_size) instead of __iter__")
 
     def loop(self, batch_size, *, key):
 
-        if self.data is None or jnp.isnan(self.data).all():
-            raise ValueError("This dataloader is empty")
+        if not self.data_is_tuple:
+            if self.data is None or jnp.isnan(self.data).all():
+                raise ValueError("This dataloader is empty")
 
-        if self.data.shape[0] != self.labels.shape[0]:
-            raise ValueError("Data and labels must have same length")
+            if self.data.shape[0] != self.labels.shape[0]:
+                raise ValueError("Data and labels must have same length")
+        else:
+            if self.data[0].shape[0] != self.labels.shape[0]:
+                raise ValueError("Data and labels must have same length")
 
         if not isinstance(batch_size, int) & (batch_size > 0):
             raise ValueError("Batch size must be a positive integer")
@@ -44,6 +51,11 @@ class InMemoryDataloader:
                 end = batch_size
                 while end < self.size:
                     batch_perm = perm[start:end]
-                    yield self.data[batch_perm], self.labels[batch_perm]
+                    if self.data_is_tuple:
+                        yield tuple(
+                            data[batch_perm] for data in self.data
+                        ), self.labels[batch_perm]
+                    else:
+                        yield self.data[batch_perm], self.labels[batch_perm]
                     start = end
                     end = start + batch_size
