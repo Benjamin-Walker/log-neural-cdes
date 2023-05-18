@@ -76,9 +76,11 @@ class RNN(eqx.Module):
     hidden_dim: int
     classification: bool
 
-    def __init__(self, cell, output_layer, classification=True):
+    def __init__(self, cell, hidden_dim, label_dim, classification=True, *, key):
         self.cell = cell
-        self.output_layer = output_layer
+        self.output_layer = eqx.nn.Linear(
+            hidden_dim, label_dim, use_bias=False, key=key
+        )
         self.hidden_dim = self.cell.hidden_size
         self.classification = classification
 
@@ -99,36 +101,3 @@ class RNN(eqx.Module):
             return jax.nn.softmax(self.output_layer(final_state), axis=0)
         else:
             return jax.vmap(self.output_layer)(all_states)
-
-
-def create_rnn_model(
-    cell_name,
-    data_dim,
-    label_dim,
-    hidden_dim,
-    depth=None,
-    width=None,
-    classification=True,
-    *,
-    key,
-):
-    """Create RNN model."""
-
-    cellkey, outputkey = jax.random.split(key, 2)
-
-    if cell_name == "linear":
-        cell = LinearCell(data_dim, hidden_dim, key=cellkey)
-    elif cell_name == "gru":
-        cell = GRUCell(data_dim, hidden_dim, key=cellkey)
-    elif cell_name == "lstm":
-        cell = LSTMCell(data_dim, hidden_dim, key=cellkey)
-    elif cell_name == "mlp":
-        if width is None or depth is None:
-            raise ValueError("Must specify width and depth for MLP cell.")
-        cell = MLPCell(data_dim, hidden_dim, depth, width, key=cellkey)
-    else:
-        raise ValueError(f"Unknown cell name: {cell_name}")
-
-    output_layer = eqx.nn.Linear(hidden_dim, label_dim, use_bias=False, key=outputkey)
-
-    return RNN(cell, output_layer, classification)

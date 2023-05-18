@@ -30,7 +30,7 @@ class NeuralCDE(eqx.Module):
     hidden_dim: int
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
-    cont_output: bool
+    classification: bool
 
     def __init__(
         self,
@@ -39,7 +39,7 @@ class NeuralCDE(eqx.Module):
         hidden_dim,
         data_dim,
         label_dim,
-        cont_output,
+        classification,
         *,
         key,
         **kwargs
@@ -51,33 +51,35 @@ class NeuralCDE(eqx.Module):
         )
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
-        self.cont_output = cont_output
+        self.classification = classification
         self.hidden_dim = hidden_dim
         self.data_dim = data_dim
 
-    def __call__(self, ts, coeffs, x0):
+    def __call__(self, X):
+        ts, coeffs, x0 = X
         func = lambda t, y, args: jnp.reshape(
             self.vf(y), (self.hidden_dim, self.data_dim)
         )
         control = diffrax.CubicInterpolation(ts, coeffs)
         y0 = self.linear1(x0)
-        if self.cont_output:
-            saveat = diffrax.SaveAt(ts=ts)
-        else:
+        if self.classification:
             saveat = diffrax.SaveAt(t1=True)
+        else:
+            saveat = diffrax.SaveAt(ts=ts)
         solution = diffrax.diffeqsolve(
-            diffrax.ControlTerm(func, control).to_ode(),
-            diffrax.Tsit5(),
+            terms=diffrax.ControlTerm(func, control).to_ode(),
+            solver=diffrax.Tsit5(),
             t0=ts[0],
             t1=ts[-1],
             dt0=None,
             y0=y0,
             saveat=saveat,
+            stepsize_controller=diffrax.PIDController(rtol=1e-3, atol=1e-6),
         )
-        if self.cont_output:
-            return jax.vmap(self.linear2)(solution.ys)
-        else:
+        if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
+        else:
+            return jax.vmap(self.linear2)(solution.ys)
 
 
 class NeuralRDE(eqx.Module):

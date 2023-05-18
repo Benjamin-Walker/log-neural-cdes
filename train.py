@@ -7,7 +7,7 @@ import jax.random as jr
 import optax
 
 from data.datasets import create_uea_dataset
-from models.RNN import create_rnn_model
+from models.generate_model import create_model
 
 
 @eqx.filter_jit
@@ -31,36 +31,24 @@ def make_step(model, X, y, opt, opt_state):
 
 
 def train_model(
-    model_name,
-    dataset_name,
+    model,
+    train_dataloader,
+    val_dataloader,
+    test_dataloader,
     num_steps,
     print_steps,
     lr,
     batch_size,
-    seed,
-    **model_kwargs,
+    key,
+    output_dir,
 ):
-
-    output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"nsteps_{num_steps}_lr_{lr}"
-    for k, v in model_kwargs.items():
-        output_dir += f"_{k}_{v}"
-    output_dir += f"_seed_{seed}"
-
-    os.makedirs(output_parent_dir, exist_ok=True)
-    if os.path.isdir(output_parent_dir + "/" + output_dir):
+    if os.path.isdir(output_dir):
         raise ValueError(f"Output directory {output_dir} already exists")
     else:
-        os.makedirs(output_parent_dir + "/" + output_dir)
-    model_file = output_parent_dir + "/" + output_dir + "/model.checkpoint.npz"
+        os.makedirs(output_dir)
+    model_file = output_dir + "/model.checkpoint.npz"
 
-    key = jr.PRNGKey(seed)
-    datasetkey, modelkey, batchkey, key = jr.split(key, 4)
-
-    dataset = create_uea_dataset(dataset_name, use_idxs=False, key=datasetkey)
-    model = create_rnn_model(
-        model_name, dataset.data_dim, dataset.label_dim, key=modelkey, **model_kwargs
-    )
+    batchkey, key = jr.split(key, 2)
 
     opt = optax.adam(learning_rate=lr)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
@@ -69,7 +57,7 @@ def train_model(
     all_val_acc = [0.0]
     for step, data in zip(
         range(num_steps),
-        dataset.raw_dataloaders["train"].loop(batch_size, key=batchkey),
+        train_dataloader.loop(batch_size, key=batchkey),
     ):
         X, y = data
         model, value = make_step(model, X, y, opt, opt_state)
@@ -78,9 +66,7 @@ def train_model(
 
             for _, data in zip(
                 range(1),
-                dataset.raw_dataloaders["val"].loop(
-                    dataset.raw_dataloaders["val"].size, key=None
-                ),
+                val_dataloader.loop(val_dataloader.size, key=None),
             ):
                 X, y = data
                 prediction = calc_output(model, X)
@@ -99,15 +85,13 @@ def train_model(
 
     steps = jnp.arange(0, num_steps + 1, print_steps)
     all_val_acc = jnp.array(all_val_acc)
-    jnp.save(output_parent_dir + "/" + output_dir + "/steps.npy", steps)
-    jnp.save(output_parent_dir + "/" + output_dir + "/all_val_acc.npy", all_val_acc)
+    jnp.save(output_dir + "/steps.npy", steps)
+    jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
 
     best_model = eqx.tree_deserialise_leaves(model_file, model)
     for _, data in zip(
         range(1),
-        dataset.raw_dataloaders["test"].loop(
-            dataset.raw_dataloaders["test"].size, key=None
-        ),
+        test_dataloader.loop(test_dataloader.size, key=None),
     ):
         X, y = data
         prediction = calc_output(best_model, X)
@@ -116,7 +100,7 @@ def train_model(
         )
         print(f"Test accuracy: {test_accuracy}")
 
-    jnp.save(output_parent_dir + "/" + output_dir + "/test_acc.npy", test_accuracy)
+    jnp.save(output_dir + "/test_acc.npy", test_accuracy)
 
 
 if __name__ == "__main__":
@@ -126,18 +110,35 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 1e-4
     # Spoken Arabic Digits has nan values in training data
-    dataset_name = "HandMovementDirection"
-    model_name = "gru"
+    dataset_name = "Libras"
+    model_name = "rnn_gru"
 
-    model_args = {"hidden_dim": 20}
+    model_args = {"hidden_dim": 20, "depth": 3, "width": 8}
+
+    output_parent_dir = "outputs/" + model_name + "/" + dataset_name
+    output_dir = f"nsteps_{num_steps}_lr_{lr}"
+    for k, v in model_args.items():
+        output_dir += f"_{k}_{v}"
+    output_dir += f"_seed_{seed}"
+
+    key = jr.PRNGKey(seed)
+
+    datasetkey, modelkey, key = jr.split(key, 3)
+
+    dataset = create_uea_dataset(dataset_name, use_idxs=False, key=datasetkey)
+    model = create_model(
+        model_name, dataset.data_dim, dataset.label_dim, **model_args, key=modelkey
+    )
 
     train_model(
-        model_name,
-        dataset_name,
+        model,
+        dataset.raw_dataloaders["train"],
+        dataset.raw_dataloaders["val"],
+        dataset.raw_dataloaders["test"],
         num_steps,
         print_steps,
         lr,
         batch_size,
-        seed,
-        **model_args,
+        key,
+        output_parent_dir + "/" + output_dir,
     )

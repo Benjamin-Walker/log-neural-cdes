@@ -33,20 +33,40 @@ def dataset_generator(name, data, labels, idxs=None, *, key):
         idxs = jr.permutation(permkey, N)
         train_data, train_labels = data[idxs[:bound1]], labels[idxs[:bound1]]
         train_path_data = path_data[idxs[:bound1]]
-        train_coeff_data = tuple(data[idxs[:bound1]] for data in coeff_data)
+        train_coeff_data = (
+            data[idxs[:bound1], :, 0],
+            tuple(data[idxs[:bound1]] for data in coeff_data),
+            data[idxs[:bound1], 0, :],
+        )
         val_data, val_labels = data[idxs[bound1:bound2]], labels[idxs[bound1:bound2]]
         val_path_data = path_data[idxs[bound1:bound2]]
-        val_coeff_data = tuple(data[idxs[bound1:bound2]] for data in coeff_data)
+        val_coeff_data = (
+            data[idxs[bound1:bound2], :, 0],
+            tuple(data[idxs[bound1:bound2]] for data in coeff_data),
+            data[idxs[bound1:bound2], 0, :],
+        )
         test_data, test_labels = data[idxs[bound2:]], labels[idxs[bound2:]]
         test_path_data = path_data[idxs[bound2:]]
-        test_coeff_data = tuple(data[idxs[bound2:]] for data in coeff_data)
+        test_coeff_data = (
+            data[idxs[bound2:], :, 0],
+            tuple(data[idxs[bound2:]] for data in coeff_data),
+            data[idxs[bound2:], 0, :],
+        )
     else:
         train_data, train_labels = data[idxs[0]], labels[idxs[0]]
         train_path_data = path_data[idxs[0]]
-        train_coeff_data = tuple(data[idxs[0]] for data in coeff_data)
+        train_coeff_data = (
+            data[idxs[0], :, 0],
+            tuple(data[idxs[0]] for data in coeff_data),
+            data[idxs[0], 0, :],
+        )
         val_data, val_labels = data[idxs[1]], labels[idxs[1]]
         val_path_data = path_data[idxs[1]]
-        val_coeff_data = tuple(data[idxs[1]] for data in coeff_data)
+        val_coeff_data = (
+            data[idxs[1], :, 0],
+            tuple(data[idxs[1]] for data in coeff_data),
+            data[idxs[1], 0, :],
+        )
         test_data, test_labels = None, None
         test_path_data = None
         test_coeff_data = None
