@@ -110,13 +110,15 @@ if __name__ == "__main__":
     # Spoken Arabic Digits has nan values in training data
     dataset_name = "Libras"
     stepsize = 4
-    depth = 3
-    model_name = "rnn_lstm"
+    logsig_depth = 2
+    model_name = "log_ncde"
 
-    model_args = {"hidden_dim": 20, "depth": 3, "width": 8}
+    model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
 
     output_parent_dir = "outputs/" + model_name + "/" + dataset_name
     output_dir = f"nsteps_{num_steps}_lr_{lr}"
+    if model_name == "log_ncde" or model_name == "nrde":
+        output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
     for k, v in model_args.items():
         output_dir += f"_{k}_{v}"
     output_dir += f"_seed_{seed}"
@@ -126,19 +128,24 @@ if __name__ == "__main__":
     datasetkey, modelkey, key = jr.split(key, 3)
 
     dataset = create_uea_dataset(
-        dataset_name, stepsize=stepsize, depth=depth, use_idxs=False, key=datasetkey
+        dataset_name,
+        stepsize=stepsize,
+        depth=logsig_depth,
+        use_idxs=False,
+        key=datasetkey,
     )
     model = create_model(
         model_name,
         dataset.data_dim,
         dataset.logsig_dim,
+        logsig_depth,
         dataset.intervals,
         dataset.label_dim,
         **model_args,
         key=modelkey,
     )
 
-    if model_name == "nrde":
+    if model_name == "nrde" or model_name == "log_ncde":
         dataloaders = dataset.path_dataloaders
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders
