@@ -16,6 +16,31 @@ where data.pkl and labels.pkl are jnp.arrays with shape (n_samples, n_timesteps,
 and (n_samples, n_classes) respectively. If the dataset had original_idxs then those should
 be saved as a list of jnp.arrays with shape [(n_train,), (n_val,), (n_test,)].
 
+## Models
+
+The scrips in the models folder are used to define the various deep learning
+models used in the experiments. In order to be integrated into the training, 
+the `__call__` function of the model should only take one argument as input. In 
+order to handle this, the dataloaders return the model's inputs as a list, 
+which is unpacked within the model `__call__`. 
+
+Currently, the models folder contains the following models:
+- `RNN`: A simple recurrent neural network which can use any cell. Currently,
+the available cells are `Linear`, `GRU`, `LSTM`, and `MLP`.
+- `NeuralCDE`: A Neural CDE model, which uses a Hermite cubic spline 
+with backward differences and Tsit5 solver.
+- `NeuralRDE`: A Neural RDE model, which takes the log-signature intervals as
+an argument.
+
+## Training
+
+`train.py` is the main script for training the models. It defines a run_fn 
+which takes the model, dataloaders, num_steps, print_steps, learning rate, 
+batch size, random key, and output dir as arguments. 
+
+The best model, alongside statistics about the training process, are saved in
+output dir.
+
 ## Requirements
 
 - python 3.10
