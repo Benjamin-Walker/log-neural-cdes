@@ -24,19 +24,26 @@ def calc_paths(data, stepsize, depth=2):
     hs = HallSet(data.shape[-1], depth)
     t2l = hs.t2l_matrix(depth)
 
-    final_data = data[:, -(data.shape[1] % stepsize) - 1 :, ...]
-    data = data[:, : -(data.shape[1] % stepsize), ...].reshape(
-        data.shape[0], -1, stepsize, data.shape[-1]
-    )
+    if data.shape[1] % stepsize != 0:
+        final_data = data[:, -(data.shape[1] % stepsize) - 1 :, ...]
+        data = data[:, : -(data.shape[1] % stepsize), ...].reshape(
+            data.shape[0], -1, stepsize, data.shape[-1]
+        )
+    else:
+        data = data.reshape(data.shape[0], -1, stepsize, data.shape[-1])
+        final_data = None
 
     vmap_calc_logsig = jax.vmap(hall_basis_logsig, in_axes=(0, None, None))
-    final_logsigs = vmap_calc_logsig(final_data, depth, t2l)[:, None, :]
-    logsigs = jnp.concatenate(
-        (
-            jax.vmap(vmap_calc_logsig, in_axes=(0, None, None))(data, depth, t2l),
-            final_logsigs,
-        ),
-        axis=1,
-    )
+    logsigs = jax.vmap(vmap_calc_logsig, in_axes=(0, None, None))(data, depth, t2l)
+
+    if final_data is not None:
+        final_logsigs = vmap_calc_logsig(final_data, depth, t2l)[:, None, :]
+        logsigs = jnp.concatenate(
+            (
+                logsigs,
+                final_logsigs,
+            ),
+            axis=1,
+        )
 
     return logsigs
