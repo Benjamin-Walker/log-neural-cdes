@@ -89,7 +89,7 @@ class NeuralRDE(eqx.Module):
     hidden_dim: int
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
-    cont_output: bool
+    classification: bool
     intervals: jnp.ndarray
 
     def __init__(
@@ -100,29 +100,32 @@ class NeuralRDE(eqx.Module):
         data_dim,
         logsig_dim,
         label_dim,
-        cont_output,
+        classification,
         intervals,
         *,
         key,
         **kwargs
     ):
         vf_key, l1key, l2key = jr.split(key, 3)
+        # Exclude first element as always zero
+        self.logsig_dim = logsig_dim - 1
         self.vf = VectorField(
             hidden_dim,
-            hidden_dim * logsig_dim,
+            hidden_dim * self.logsig_dim,
             vf_hidden_dim,
             vf_num_hidden,
             key=vf_key,
         )
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
-        self.cont_output = cont_output
+        self.classification = classification
         self.hidden_dim = hidden_dim
         self.data_dim = data_dim
-        self.logsig_dim = logsig_dim
         self.intervals = intervals
 
-    def __call__(self, ts, logsig, x0):
+    def __call__(self, X):
+        ts, logsig, x0 = X
+
         def func(t, y, args):
             idx = jnp.searchsorted(self.intervals, t)
             return jnp.dot(
@@ -131,10 +134,10 @@ class NeuralRDE(eqx.Module):
             )
 
         y0 = self.linear1(x0)
-        if self.cont_output:
-            saveat = diffrax.SaveAt(ts=ts)
-        else:
+        if self.classification:
             saveat = diffrax.SaveAt(t1=True)
+        else:
+            saveat = diffrax.SaveAt(ts=ts)
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),
@@ -144,8 +147,9 @@ class NeuralRDE(eqx.Module):
             dt0=None,
             y0=y0,
             saveat=saveat,
+            stepsize_controller=diffrax.PIDController(rtol=1e-3, atol=1e-6),
         )
-        if self.cont_output:
-            return jax.vmap(self.linear2)(solution.ys)
-        else:
+        if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
+        else:
+            return jax.vmap(self.linear2)(solution.ys)
