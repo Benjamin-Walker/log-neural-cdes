@@ -32,9 +32,7 @@ def make_step(model, X, y, opt, opt_state):
 
 def train_model(
     model,
-    train_dataloader,
-    val_dataloader,
-    test_dataloader,
+    dataloaders,
     num_steps,
     print_steps,
     lr,
@@ -57,7 +55,7 @@ def train_model(
     all_val_acc = [0.0]
     for step, data in zip(
         range(num_steps),
-        train_dataloader.loop(batch_size, key=batchkey),
+        dataloaders["train"].loop(batch_size, key=batchkey),
     ):
         X, y = data
         model, value = make_step(model, X, y, opt, opt_state)
@@ -66,7 +64,7 @@ def train_model(
 
             for _, data in zip(
                 range(1),
-                val_dataloader.loop(val_dataloader.size, key=None),
+                dataloaders["val"].loop(dataloaders["val"].size, key=None),
             ):
                 X, y = data
                 prediction = calc_output(model, X)
@@ -91,7 +89,7 @@ def train_model(
     best_model = eqx.tree_deserialise_leaves(model_file, model)
     for _, data in zip(
         range(1),
-        test_dataloader.loop(test_dataloader.size, key=None),
+        dataloaders["test"].loop(dataloaders["test"].size, key=None),
     ):
         X, y = data
         prediction = calc_output(best_model, X)
@@ -149,9 +147,7 @@ if __name__ == "__main__":
 
     train_model(
         model,
-        dataloaders["train"],
-        dataloaders["val"],
-        dataloaders["test"],
+        dataloaders,
         num_steps,
         print_steps,
         lr,
