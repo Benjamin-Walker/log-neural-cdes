@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="803eb798-dc6f-44b4-82b7-c3490127ce1f" name="arc">
+        <fileTransfer rootFolder="/home/shug6778" accessType="SFTP" host="htc-login.arc.ox.ac.uk" port="22" sshConfigId="173161a8-8d88-49ee-8c11-6ffac7ef79f7" sshConfig="shug6778@htc-login.arc.ox.ac.uk:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="218c5caa-a690-4ca1-bc81-d6cf68c7ac6f" name="arc_data">
+        <fileTransfer rootFolder="/data/math-datasig/shug6778" accessType="SFTP" host="htc-login.arc.ox.ac.uk" port="22" sshConfigId="173161a8-8d88-49ee-8c11-6ffac7ef79f7" sshConfig="shug6778@htc-login.arc.ox.ac.uk:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

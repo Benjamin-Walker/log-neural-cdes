@@ -43,6 +43,13 @@ output dir.
 
 ## Requirements
 
+```
+conda create -n Log-NCDE python=3.10
+conda activate Log-NCDE
+conda install --file conda_requirements.txt -c conda-forge
+
+```
+
 - python 3.10
 - pre-commit 3.3.1
 - sktime 0.17.2
