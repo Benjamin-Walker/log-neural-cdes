@@ -74,7 +74,9 @@ class NeuralCDE(eqx.Module):
             dt0=None,
             y0=y0,
             saveat=saveat,
-            stepsize_controller=diffrax.PIDController(rtol=1e-3, atol=1e-6),
+            stepsize_controller=diffrax.PIDController(
+                rtol=1e-3, atol=1e-6, dtmin=(ts[-1] - ts[0]) / 4095
+            ),
         )
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
@@ -147,7 +149,9 @@ class NeuralRDE(eqx.Module):
             dt0=None,
             y0=y0,
             saveat=saveat,
-            stepsize_controller=diffrax.PIDController(rtol=1e-3, atol=1e-6),
+            stepsize_controller=diffrax.PIDController(
+                rtol=1e-3, atol=1e-6, dtmin=(ts[-1] - ts[0]) / 4095
+            ),
         )
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
