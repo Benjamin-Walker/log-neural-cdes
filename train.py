@@ -173,23 +173,23 @@ def run_training(
 
 if __name__ == "__main__":
     seed = 1234
-    num_steps = 1000
+    num_steps = 100000
     print_steps = 200
     batch_size = 32
-    lr = 1e-3
+    lr = 3e-5
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         # "EigenWorms",
         "EthanolConcentration",
-        "FaceDetection",
+        # "FaceDetection", # not enough memory
         "FingerMovements",
         "HandMovementDirection",
         "Handwriting",
         "Heartbeat",
         "Libras",
         "LSST",
-        "InsectWingbeat",
-        "MotorImagery",
+        # "InsectWingbeat", # not enough memory to process
+        # "MotorImagery", # not enough memory
         "NATOPS",
         "PhonemeSpectra",
         "RacketSports",
@@ -199,18 +199,19 @@ if __name__ == "__main__":
     ]
     stepsize = 4
     logsig_depth = 2
-    model_name = "log_ncde"
+    model_names = [
+        "rnn_linear",
+        "rnn_gru",
+        "rnn_lstm",
+        "rnn_mlp",
+        # "ncde",
+        # "nrde",
+        # "log_ncde"
+    ]
 
     model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
 
     for dataset_name in dataset_names:
-        output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-        output_dir = f"nsteps_{num_steps}_lr_{lr}"
-        if model_name == "log_ncde" or model_name == "nrde":
-            output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
-        for k, v in model_args.items():
-            output_dir += f"_{k}_{v}"
-        output_dir += f"_seed_{seed}"
 
         key = jr.PRNGKey(seed)
 
@@ -223,32 +224,42 @@ if __name__ == "__main__":
             use_idxs=False,
             key=datasetkey,
         )
-        print(f"Creating model {model_name}")
-        model = create_model(
-            model_name,
-            dataset.data_dim,
-            dataset.logsig_dim,
-            logsig_depth,
-            dataset.intervals,
-            dataset.label_dim,
-            **model_args,
-            key=modelkey,
-        )
 
-        if model_name == "nrde" or model_name == "log_ncde":
-            dataloaders = dataset.path_dataloaders
-        elif model_name == "ncde":
-            dataloaders = dataset.coeff_dataloaders
-        else:
-            dataloaders = dataset.raw_dataloaders
+        for model_name in model_names:
+            output_parent_dir = "outputs/" + model_name + "/" + dataset_name
+            output_dir = f"nsteps_{num_steps}_lr_{lr}"
+            if model_name == "log_ncde" or model_name == "nrde":
+                output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
+            for k, v in model_args.items():
+                output_dir += f"_{k}_{v}"
+            output_dir += f"_seed_{seed}"
 
-        train_model(
-            model,
-            dataloaders,
-            num_steps,
-            print_steps,
-            lr,
-            batch_size,
-            key,
-            output_parent_dir + "/" + output_dir,
-        )
+            print(f"Creating model {model_name}")
+            model = create_model(
+                model_name,
+                dataset.data_dim,
+                dataset.logsig_dim,
+                logsig_depth,
+                dataset.intervals,
+                dataset.label_dim,
+                **model_args,
+                key=modelkey,
+            )
+
+            if model_name == "nrde" or model_name == "log_ncde":
+                dataloaders = dataset.path_dataloaders
+            elif model_name == "ncde":
+                dataloaders = dataset.coeff_dataloaders
+            else:
+                dataloaders = dataset.raw_dataloaders
+
+            train_model(
+                model,
+                dataloaders,
+                num_steps,
+                print_steps,
+                lr,
+                batch_size,
+                key,
+                output_parent_dir + "/" + output_dir,
+            )

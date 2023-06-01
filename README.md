@@ -47,7 +47,7 @@ output dir.
 conda create -n Log-NCDE python=3.10
 conda activate Log-NCDE
 conda install --file conda_requirements.txt -c conda-forge
-
+/path/to/conda/envs/Log-NCDE/bin/pip install -r pip_requirements.txt
 ```
 
 - python 3.10
