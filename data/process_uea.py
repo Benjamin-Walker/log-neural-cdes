@@ -50,9 +50,9 @@ def create_jax_data(train_file, test_file):
     return train_data, test_data, train_labels, test_labels
 
 
-def convert_all_files():
+def convert_all_files(data_dir):
     """Convert UEA files into jax data to be stored in /interim."""
-    arff_folder = "raw/UEA/Multivariate_arff"
+    arff_folder = data_dir + "/raw/UEA/Multivariate_arff"
 
     for ds_name in tqdm(
         [x for x in os.listdir(arff_folder) if os.path.isdir(arff_folder + "/" + x)]
@@ -62,7 +62,7 @@ def convert_all_files():
         test_file = arff_folder + "/{}/{}_TEST.arff".format(ds_name, ds_name)
 
         # Ready save dir
-        save_dir = "processed/UEA/{}".format(ds_name)
+        save_dir = data_dir + "/processed/UEA/{}".format(ds_name)
 
         # If files don't exist, skip.
         if any(
@@ -99,4 +99,5 @@ def convert_all_files():
 
 
 if __name__ == "__main__":
-    convert_all_files()
+    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
+    convert_all_files(data_dir)

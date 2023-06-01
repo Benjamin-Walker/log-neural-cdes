@@ -133,19 +133,19 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
     )
 
 
-def create_uea_dataset(name, use_idxs, stepsize, depth, *, key):
-    subfolders = [f.name for f in os.scandir("data/processed/UEA") if f.is_dir()]
+def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, *, key):
+    subfolders = [f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()]
     if name not in subfolders:
         raise ValueError(f"Dataset {name} not found in UEA folder")
 
-    with open(f"data/processed/UEA/{name}/data.pkl", "rb") as f:
+    with open(data_dir + f"/processed/UEA/{name}/data.pkl", "rb") as f:
         data = pickle.load(f)
-    with open(f"data/processed/UEA/{name}/labels.pkl", "rb") as f:
+    with open(data_dir + f"/processed/UEA/{name}/labels.pkl", "rb") as f:
         labels = pickle.load(f)
     onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     if use_idxs:
-        with open(f"data/processed/UEA/{name}/original_idxs.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/original_idxs.pkl", "rb") as f:
             idxs = pickle.load(f)
     else:
         idxs = None

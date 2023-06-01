@@ -172,6 +172,7 @@ def run_training(
 
 
 if __name__ == "__main__":
+    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
     seed = 1234
     num_steps = 100000
     print_steps = 200
@@ -218,6 +219,7 @@ if __name__ == "__main__":
         datasetkey, modelkey, key = jr.split(key, 3)
         print(f"Creating dataset {dataset_name}")
         dataset = create_uea_dataset(
+			data_dir,
             dataset_name,
             stepsize=stepsize,
             depth=logsig_depth,

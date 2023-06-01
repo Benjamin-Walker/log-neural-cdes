@@ -32,15 +32,17 @@ def download_and_unzip(url, save_dir, zipname):
 
 
 if __name__ == "__main__":
+    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
     url = (
         "http://www.timeseriesclassification.com/Downloads/Archives"
         "/Multivariate2018_arff.zip"
     )
-    save_dir = "raw/UEA/"
+    save_dir = data_dir + "/raw/UEA/"
     zipname = save_dir + "uea.zip"
     download_and_unzip(url, save_dir, zipname)
 
     url = "https://storage.googleapis.com/long-range-arena/lra_release.gz"
-    save_dir = "raw/LRA/"
+    save_dir = data_dir + "/raw/LRA/"
     zipname = save_dir + "lra.gz"
     download_and_unzip(url, save_dir, zipname)
+
