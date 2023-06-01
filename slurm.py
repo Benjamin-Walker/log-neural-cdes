@@ -14,7 +14,7 @@ HOME_DIRECTORY = "/home/shug6778/Log-Neural-CDEs"
 WORKING_DIRECTORY = "/data/math-datasig/shug6778/Log-Neural-CDEs"
 PARALLEL = True
 
-PARTITION = "long"
+PARTITION = "short"
 TIME = "12:00:00"
 GPUS = 1
 
@@ -114,8 +114,8 @@ def run_experiments(
         time=TIME,
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
-        constraint="gpu_mem:20GB",
-        # qos='priority',
+        # constraint="gpu_mem:20GB",
+        qos="priority",
         account="math-datasig",
     )
 

@@ -204,9 +204,9 @@ if __name__ == "__main__":
         "rnn_gru",
         "rnn_lstm",
         "rnn_mlp",
-        # "ncde",
-        # "nrde",
-        # "log_ncde"
+        "ncde",
+        "nrde",
+        "log_ncde",
     ]
 
     model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
