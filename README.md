@@ -59,6 +59,7 @@ conda install --file conda_requirements.txt -c conda-forge
 - equinox 0.10.3
 - optax 0.1.5
 - diffrax 0.3.1
+- roughpy 0.0.1
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging

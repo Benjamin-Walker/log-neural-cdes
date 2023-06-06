@@ -52,8 +52,7 @@ def create_jax_data(train_file, test_file):
 
 def convert_all_files(data_dir):
     """Convert UEA files into jax data to be stored in /interim."""
-    arff_folder = data_dir + "/raw/UEA/Multivariate_arff"
-
+    arff_folder = data_dir + "/raw/uea/multivariate_arff"
     for ds_name in tqdm(
         [x for x in os.listdir(arff_folder) if os.path.isdir(arff_folder + "/" + x)]
     ):
