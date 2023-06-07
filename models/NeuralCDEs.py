@@ -31,6 +31,8 @@ class NeuralCDE(eqx.Module):
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
+    stateful: bool = False
+    nondeterministic: bool = False
 
     def __init__(
         self,
@@ -93,6 +95,8 @@ class NeuralRDE(eqx.Module):
     linear2: eqx.nn.Linear
     classification: bool
     intervals: jnp.ndarray
+    stateful: bool = False
+    nondeterministic: bool = False
 
     def __init__(
         self,

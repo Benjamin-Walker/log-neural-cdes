@@ -12,27 +12,44 @@ from models.generate_model import create_model
 
 
 @eqx.filter_jit
-def calc_output(model, X):
-    return jax.vmap(model)(X)
+def calc_output(model, X, state, key, stateful, nondeterministic):
+    if stateful:
+        if nondeterministic:
+            output, state = jax.vmap(
+                model, axis_name="batch", in_axes=(0, None, None), out_axes=(0, None)
+            )(X, state, key)
+        else:
+            output, state = jax.vmap(
+                model, axis_name="batch", in_axes=(0, None), out_axes=(0, None)
+            )(X, state)
+    elif nondeterministic:
+        output = jax.vmap(model, in_axes=(0, None))(X, key)
+    else:
+        output = jax.vmap(model)(X)
+
+    return output, state
 
 
 @eqx.filter_jit
-@eqx.filter_value_and_grad
-def classification_loss(model, X, y):
-    pred_y = calc_output(model, X)
-    return jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1))
+@eqx.filter_value_and_grad(has_aux=True)
+def classification_loss(model, X, y, state, key):
+    pred_y, state = calc_output(
+        model, X, state, key, model.stateful, model.nondeterministic
+    )
+    return jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)), state
 
 
 @eqx.filter_jit
-def make_step(model, X, y, opt, opt_state):
-    value, grads = classification_loss(model, X, y)
+def make_step(model, X, y, state, opt, opt_state, key):
+    (value, state), grads = classification_loss(model, X, y, state, key)
     updates, opt_state = opt.update(grads, opt_state)
     model = eqx.apply_updates(model, updates)
-    return model, value
+    return model, state, value
 
 
 def train_model(
     model,
+    state,
     dataloaders,
     num_steps,
     print_steps,
@@ -62,8 +79,9 @@ def train_model(
         range(num_steps),
         dataloaders["train"].loop(batch_size, key=batchkey),
     ):
+        stepkey, key = jr.split(key, 2)
         X, y = data
-        model, value = make_step(model, X, y, opt, opt_state)
+        model, state, value = make_step(model, X, y, state, opt, opt_state, stepkey)
         running_loss += value
         if (step + 1) % print_steps == 0:
 
@@ -71,8 +89,17 @@ def train_model(
                 range(1),
                 dataloaders["val"].loop(dataloaders["val"].size, key=None),
             ):
+                stepkey, key = jr.split(key, 2)
+                inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
-                prediction = calc_output(model, X)
+                prediction, _ = calc_output(
+                    inference_model,
+                    X,
+                    state,
+                    stepkey,
+                    model.stateful,
+                    model.nondeterministic,
+                )
                 val_accuracy = jnp.mean(
                     jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
                 )
@@ -98,12 +125,21 @@ def train_model(
     jnp.save(output_dir + "/all_time.npy", all_time)
 
     best_model = eqx.tree_deserialise_leaves(model_file, model)
+    inference_model = eqx.tree_inference(best_model, value=True)
     for _, data in zip(
         range(1),
         dataloaders["test"].loop(dataloaders["test"].size, key=None),
     ):
         X, y = data
-        prediction = calc_output(best_model, X)
+        stepkey, key = jr.split(key, 2)
+        prediction, _ = calc_output(
+            inference_model,
+            X,
+            state,
+            stepkey,
+            best_model.stateful,
+            best_model.nondeterministic,
+        )
         test_accuracy = jnp.mean(
             jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
         )
@@ -127,12 +163,12 @@ def run_training(
     batch_size,
     slurm=False,
 ):
-
     key = jr.PRNGKey(seed)
 
     datasetkey, modelkey, key = jr.split(key, 3)
     print(f"Creating dataset {dataset_name}")
     dataset = create_uea_dataset(
+        data_dir,
         dataset_name,
         stepsize=stepsize,
         depth=logsig_depth,
@@ -172,9 +208,9 @@ def run_training(
 
 
 if __name__ == "__main__":
-    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
+    data_dir = "data"
     seed = 1234
-    num_steps = 100000
+    num_steps = 10000
     print_steps = 200
     batch_size = 32
     lr = 3e-5
@@ -201,6 +237,7 @@ if __name__ == "__main__":
     stepsize = 4
     logsig_depth = 2
     model_names = [
+        "lru",
         "rnn_linear",
         "rnn_gru",
         "rnn_lstm",
@@ -210,7 +247,7 @@ if __name__ == "__main__":
         "log_ncde",
     ]
 
-    model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
+    model_args = {"num_blocks": 6, "hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
 
     for dataset_name in dataset_names:
 
@@ -219,7 +256,7 @@ if __name__ == "__main__":
         datasetkey, modelkey, key = jr.split(key, 3)
         print(f"Creating dataset {dataset_name}")
         dataset = create_uea_dataset(
-			data_dir,
+            data_dir,
             dataset_name,
             stepsize=stepsize,
             depth=logsig_depth,
@@ -237,7 +274,7 @@ if __name__ == "__main__":
             output_dir += f"_seed_{seed}"
 
             print(f"Creating model {model_name}")
-            model = create_model(
+            model, state = create_model(
                 model_name,
                 dataset.data_dim,
                 dataset.logsig_dim,
@@ -257,6 +294,7 @@ if __name__ == "__main__":
 
             train_model(
                 model,
+                state,
                 dataloaders,
                 num_steps,
                 print_steps,
