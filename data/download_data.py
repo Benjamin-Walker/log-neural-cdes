@@ -45,4 +45,3 @@ if __name__ == "__main__":
     save_dir = data_dir + "/raw/LRA/"
     zipname = save_dir + "lra.gz"
     download_and_unzip(url, save_dir, zipname)
-
