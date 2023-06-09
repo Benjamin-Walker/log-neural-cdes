@@ -67,8 +67,14 @@ def train_model(
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
-
-    opt = optax.adam(learning_rate=lr)
+    warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
+        init_value=1e-7,
+        peak_value=lr,
+        warmup_steps=int(num_steps * 0.1),
+        decay_steps=num_steps,
+        end_value=1e-7,
+    )
+    opt = optax.adam(learning_rate=warmup_cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
