@@ -18,6 +18,8 @@ class LogNeuralCDE(eqx.Module):
     pairs: jnp.array
     classification: bool
     intervals: jnp.ndarray
+    stateful: bool = False
+    nondeterministic: bool = False
 
     def __init__(
         self,

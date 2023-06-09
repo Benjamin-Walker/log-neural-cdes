@@ -75,6 +75,8 @@ class RNN(eqx.Module):
     output_layer: eqx.nn.Linear
     hidden_dim: int
     classification: bool
+    stateful: bool = False
+    nondeterministic: bool = False
 
     def __init__(self, cell, hidden_dim, label_dim, classification=True, *, key):
         self.cell = cell
