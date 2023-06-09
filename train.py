@@ -106,7 +106,7 @@ def train_model(
                 end = time.time()
                 total_time = end - start
                 print(
-                    f"Step: {step + 1}, Loss: {running_loss / 100}, "
+                    f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
                     f"Validation accuracy: {val_accuracy}, Time: {total_time}"
                 )
                 start = time.time()
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     lr = 3e-5
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        # "EigenWorms",
+        "EigenWorms",
         "EthanolConcentration",
         # "FaceDetection", # not enough memory
         "FingerMovements",
