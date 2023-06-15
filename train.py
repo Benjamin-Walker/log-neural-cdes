@@ -218,15 +218,15 @@ if __name__ == "__main__":
     dataset_names = [
         "EigenWorms",
         "EthanolConcentration",
-        # "FaceDetection", # not enough memory
+        "FaceDetection",
         "FingerMovements",
         "HandMovementDirection",
         "Handwriting",
         "Heartbeat",
         "Libras",
         "LSST",
-        # "InsectWingbeat", # not enough memory to process
-        # "MotorImagery", # not enough memory
+        "InsectWingbeat",
+        "MotorImagery",
         "NATOPS",
         "PhonemeSpectra",
         "RacketSports",
