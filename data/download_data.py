@@ -32,7 +32,7 @@ def download_and_unzip(url, save_dir, zipname):
 
 
 if __name__ == "__main__":
-    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
+    data_dir = "data"
     url = (
         "http://www.timeseriesclassification.com/Downloads/Archives"
         "/Multivariate2018_arff.zip"
