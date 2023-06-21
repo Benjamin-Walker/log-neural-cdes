@@ -247,57 +247,59 @@ if __name__ == "__main__":
         "ssm_blocks": 10,
     }
 
-    for dataset_name in dataset_names:
+    for lr in [1e-3, 3e-4, 1e-4]:
 
-        key = jr.PRNGKey(seed)
+        for dataset_name in dataset_names:
 
-        datasetkey, modelkey, key = jr.split(key, 3)
-        print(f"Creating dataset {dataset_name}")
-        dataset = create_uea_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            use_idxs=False,
-            key=datasetkey,
-        )
+            key = jr.PRNGKey(seed)
 
-        for model_name in model_names:
-            output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-            output_dir = f"nsteps_{num_steps}_lr_{lr}"
-            if model_name == "log_ncde" or model_name == "nrde":
-                output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
-            for k, v in model_args.items():
-                output_dir += f"_{k}_{v}"
-            output_dir += f"_seed_{seed}"
-
-            print(f"Creating model {model_name}")
-            model, state = create_model(
-                model_name,
-                dataset.data_dim,
-                dataset.logsig_dim,
-                logsig_depth,
-                dataset.intervals,
-                dataset.label_dim,
-                **model_args,
-                key=modelkey,
+            datasetkey, modelkey, key = jr.split(key, 3)
+            print(f"Creating dataset {dataset_name}")
+            dataset = create_uea_dataset(
+                data_dir,
+                dataset_name,
+                stepsize=stepsize,
+                depth=logsig_depth,
+                use_idxs=False,
+                key=datasetkey,
             )
 
-            if model_name == "nrde" or model_name == "log_ncde":
-                dataloaders = dataset.path_dataloaders
-            elif model_name == "ncde":
-                dataloaders = dataset.coeff_dataloaders
-            else:
-                dataloaders = dataset.raw_dataloaders
+            for model_name in model_names:
+                output_parent_dir = "outputs/" + model_name + "/" + dataset_name
+                output_dir = f"nsteps_{num_steps}_lr_{lr}"
+                if model_name == "log_ncde" or model_name == "nrde":
+                    output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
+                for k, v in model_args.items():
+                    output_dir += f"_{k}_{v}"
+                output_dir += f"_seed_{seed}"
 
-            train_model(
-                model,
-                state,
-                dataloaders,
-                num_steps,
-                print_steps,
-                lr,
-                batch_size,
-                key,
-                output_parent_dir + "/" + output_dir,
-            )
+                print(f"Creating model {model_name}")
+                model, state = create_model(
+                    model_name,
+                    dataset.data_dim,
+                    dataset.logsig_dim,
+                    logsig_depth,
+                    dataset.intervals,
+                    dataset.label_dim,
+                    **model_args,
+                    key=modelkey,
+                )
+
+                if model_name == "nrde" or model_name == "log_ncde":
+                    dataloaders = dataset.path_dataloaders
+                elif model_name == "ncde":
+                    dataloaders = dataset.coeff_dataloaders
+                else:
+                    dataloaders = dataset.raw_dataloaders
+
+                train_model(
+                    model,
+                    state,
+                    dataloaders,
+                    num_steps,
+                    print_steps,
+                    lr,
+                    batch_size,
+                    key,
+                    output_parent_dir + "/" + output_dir,
+                )
