@@ -224,14 +224,14 @@ if __name__ == "__main__":
     dataset_names = [
         # "EigenWorms",
         # "EthanolConcentration",
-        "FaceDetection", # not enough memory
+        # "FaceDetection", # not enough memory
         # "FingerMovements",
         # "HandMovementDirection",
         # "Handwriting",
         # "Heartbeat",
         # "Libras",
         # "LSST",
-        # "InsectWingbeat", # not enough memory to process
+        "InsectWingbeat",  # not enough memory to process
         # "MotorImagery", # not enough memory
         # "NATOPS",
         # "PhonemeSpectra",
@@ -254,8 +254,14 @@ if __name__ == "__main__":
         # "ssm"
     ]
 
-    model_args = {"num_blocks": 6, "hidden_dim": 20, "vf_depth": 3, "vf_width": 8,
-    "ssm_dim": 100, "ssm_blocks": 10}
+    model_args = {
+        "num_blocks": 6,
+        "hidden_dim": 20,
+        "vf_depth": 3,
+        "vf_width": 8,
+        "ssm_dim": 100,
+        "ssm_blocks": 10,
+    }
 
     for dataset_name in dataset_names:
 

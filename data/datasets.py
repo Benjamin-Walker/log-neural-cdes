@@ -30,7 +30,9 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
     remainder = N % batchsize
     path_data = []
     for i in range(num_batches):
-        path_data.append(calc_paths(data[i * batchsize: (i + 1) * batchsize], stepsize, depth))
+        path_data.append(
+            calc_paths(data[i * batchsize : (i + 1) * batchsize], stepsize, depth)
+        )
     if remainder > 0:
         path_data.append(calc_paths(data[-remainder:], stepsize, depth))
     path_data = jnp.concatenate(path_data)
