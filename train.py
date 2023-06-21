@@ -251,7 +251,7 @@ if __name__ == "__main__":
         "ncde",
         "nrde",
         "log_ncde",
-        "ssm"
+        "ssm",
     ]
 
     model_args = {
