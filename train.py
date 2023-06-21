@@ -214,9 +214,9 @@ def run_training(
 
 
 if __name__ == "__main__":
-    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
+    data_dir = "data"
     seed = 1234
-    num_steps = 100000
+    num_steps = 10000
     print_steps = 200
     batch_size = 32
     lr = 3e-4
@@ -243,15 +243,15 @@ if __name__ == "__main__":
     stepsize = 4
     logsig_depth = 2
     model_names = [
-        # "lru",
-        # "rnn_linear",
-        # "rnn_gru",
-        # "rnn_lstm",
-        # "rnn_mlp",
-        # "ncde",
-        # "nrde",
+        "lru",
+        "rnn_linear",
+        "rnn_gru",
+        "rnn_lstm",
+        "rnn_mlp",
+        "ncde",
+        "nrde",
         "log_ncde",
-        # "ssm"
+        "ssm",
     ]
 
     model_args = {
