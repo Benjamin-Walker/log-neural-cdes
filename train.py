@@ -67,8 +67,14 @@ def train_model(
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
-
-    opt = optax.adam(learning_rate=lr)
+    warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
+        init_value=1e-7,
+        peak_value=lr,
+        warmup_steps=int(num_steps * 0.1),
+        decay_steps=num_steps,
+        end_value=1e-7,
+    )
+    opt = optax.adam(learning_rate=warmup_cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
@@ -208,12 +214,12 @@ def run_training(
 
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
     seed = 1234
-    num_steps = 10000
+    num_steps = 100000
     print_steps = 200
     batch_size = 32
-    lr = 3e-5
+    lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "EigenWorms",
@@ -237,17 +243,25 @@ if __name__ == "__main__":
     stepsize = 4
     logsig_depth = 2
     model_names = [
-        "lru",
-        "rnn_linear",
-        "rnn_gru",
-        "rnn_lstm",
-        "rnn_mlp",
-        "ncde",
-        "nrde",
+        # "lru",
+        # "rnn_linear",
+        # "rnn_gru",
+        # "rnn_lstm",
+        # "rnn_mlp",
+        # "ncde",
+        # "nrde",
         "log_ncde",
+        # "ssm"
     ]
 
-    model_args = {"num_blocks": 6, "hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
+    model_args = {
+        "num_blocks": 6,
+        "hidden_dim": 20,
+        "vf_depth": 3,
+        "vf_width": 8,
+        "ssm_dim": 100,
+        "ssm_blocks": 10,
+    }
 
     for dataset_name in dataset_names:
 
