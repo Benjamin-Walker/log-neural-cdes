@@ -222,23 +222,23 @@ if __name__ == "__main__":
     lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        # "EigenWorms",
-        # "EthanolConcentration",
-        # "FaceDetection", # not enough memory
-        # "FingerMovements",
-        # "HandMovementDirection",
-        # "Handwriting",
-        # "Heartbeat",
-        # "Libras",
-        # "LSST",
-        "InsectWingbeat",  # not enough memory to process
-        # "MotorImagery", # not enough memory
-        # "NATOPS",
-        # "PhonemeSpectra",
-        # "RacketSports",
-        # "SelfRegulationSCP1",
-        # "SelfRegulationSCP2",
-        # "UWaveGestureLibrary",
+        "EigenWorms",
+        "EthanolConcentration",
+        "FaceDetection",
+        "FingerMovements",
+        "HandMovementDirection",
+        "Handwriting",
+        "Heartbeat",
+        "Libras",
+        "LSST",
+        "InsectWingbeat",
+        "MotorImagery",
+        "NATOPS",
+        "PhonemeSpectra",
+        "RacketSports",
+        "SelfRegulationSCP1",
+        "SelfRegulationSCP2",
+        "UWaveGestureLibrary",
     ]
     stepsize = 4
     logsig_depth = 2
