@@ -5,6 +5,7 @@ from models.LogNeuralCDEs import LogNeuralCDE
 from models.LRU import LRU
 from models.NeuralCDEs import NeuralCDE, NeuralRDE
 from models.RNN import GRUCell, LinearCell, LSTMCell, MLPCell, RNN
+from models.SSM import S5
 
 
 def create_model(
@@ -19,6 +20,8 @@ def create_model(
     vf_depth=None,
     vf_width=None,
     classification=True,
+    ssm_dim=None,
+    ssm_blocks=None,
     *,
     key,
 ):
@@ -81,6 +84,31 @@ def create_model(
         lru = LRU(num_blocks, data_dim, hidden_dim, label_dim, key=key)
         state = eqx.nn.State(lru)
         return lru, state
+    elif model_name == "ssm":
+        if num_blocks is None:
+            raise ValueError("Must specify num_blocks for SSM.")
+        if ssm_dim is None:
+            raise ValueError("Must specify ssm_dim for SSM.")
+        if ssm_blocks is None:
+            raise ValueError("Must specify ssm_blocks for SSM.")
+        ssm = S5(
+            num_blocks,
+            data_dim,
+            ssm_dim,
+            ssm_blocks,
+            hidden_dim,
+            label_dim,
+            "lecun_normal",
+            True,
+            False,
+            "zoh",
+            0.1,
+            1.0,
+            1.0,
+            key=key,
+        )
+        state = eqx.nn.State(ssm)
+        return ssm, state
     elif model_name == "rnn_linear":
         cell = LinearCell(data_dim, hidden_dim, key=cellkey)
     elif model_name == "rnn_gru":
