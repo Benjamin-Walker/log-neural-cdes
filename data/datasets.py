@@ -24,7 +24,18 @@ class Dataset:
 
 
 def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
-    path_data = calc_paths(data, stepsize, depth)
+    N = len(data)
+    batchsize = 128
+    num_batches = N // batchsize
+    remainder = N % batchsize
+    path_data = []
+    for i in range(num_batches):
+        path_data.append(calc_paths(data[i * batchsize: (i + 1) * batchsize], stepsize, depth))
+    if remainder > 0:
+        path_data.append(calc_paths(data[-remainder:], stepsize, depth))
+    path_data = jnp.concatenate(path_data)
+    breakpoint()
+    path_data_ = calc_paths(data, stepsize, depth)
     intervals = jnp.arange(0, data.shape[1], stepsize)
     intervals = jnp.concatenate((intervals, jnp.array([data.shape[1]])))
 
@@ -32,7 +43,6 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
 
     if idxs is None:
         permkey, key = jr.split(key)
-        N = len(data)
         bound1 = int(N * 0.7)
         bound2 = int(N * 0.85)
         idxs = jr.permutation(permkey, N)
