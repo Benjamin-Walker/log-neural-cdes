@@ -216,42 +216,26 @@ def run_training(
 if __name__ == "__main__":
     data_dir = "data"
     seed = 1234
-    num_steps = 10000
-    print_steps = 200
+    num_steps = 100
+    print_steps = 20
     batch_size = 32
     lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
         "FaceDetection",
-        "FingerMovements",
-        "HandMovementDirection",
-        "Handwriting",
-        "Heartbeat",
         "Libras",
-        "LSST",
-        "InsectWingbeat",
-        "MotorImagery",
-        "NATOPS",
-        "PhonemeSpectra",
-        "RacketSports",
         "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
-        "UWaveGestureLibrary",
     ]
     stepsize = 4
     logsig_depth = 2
     model_names = [
         "lru",
+        "ssm",
         "rnn_linear",
         "rnn_gru",
         "rnn_lstm",
         "rnn_mlp",
         "ncde",
-        "nrde",
-        "log_ncde",
-        "ssm",
     ]
 
     model_args = {
