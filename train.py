@@ -214,25 +214,25 @@ def run_training(
 
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "/scratch/walkerb1/data/Log-NCDE/data"
     seed = 1234
-    num_steps = 10000
+    num_steps = 100000
     print_steps = 200
     batch_size = 32
-    lr = 3e-5
+    lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
+        # "EigenWorms",
         # "EthanolConcentration",
-        # "FaceDetection",
+        "FaceDetection", # not enough memory
         # "FingerMovements",
         # "HandMovementDirection",
         # "Handwriting",
         # "Heartbeat",
         # "Libras",
         # "LSST",
-        # "InsectWingbeat",
-        # "MotorImagery",
+        # "InsectWingbeat", # not enough memory to process
+        # "MotorImagery", # not enough memory
         # "NATOPS",
         # "PhonemeSpectra",
         # "RacketSports",
@@ -251,9 +251,11 @@ if __name__ == "__main__":
         # "ncde",
         # "nrde",
         "log_ncde",
+        # "ssm"
     ]
 
-    model_args = {"num_blocks": 6, "hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
+    model_args = {"num_blocks": 6, "hidden_dim": 20, "vf_depth": 3, "vf_width": 8,
+    "ssm_dim": 100, "ssm_blocks": 10}
 
     for dataset_name in dataset_names:
 

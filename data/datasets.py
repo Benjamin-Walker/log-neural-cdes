@@ -34,8 +34,6 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
     if remainder > 0:
         path_data.append(calc_paths(data[-remainder:], stepsize, depth))
     path_data = jnp.concatenate(path_data)
-    breakpoint()
-    path_data_ = calc_paths(data, stepsize, depth)
     intervals = jnp.arange(0, data.shape[1], stepsize)
     intervals = jnp.concatenate((intervals, jnp.array([data.shape[1]])))
 
