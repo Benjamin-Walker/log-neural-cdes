@@ -452,8 +452,8 @@ class S5(eqx.Module):
         key
     ):
 
-        linear_encoder_key, *block_keys, linear_layer_key = jr.split(
-            key, num_blocks + 2
+        linear_encoder_key, *block_keys, linear_layer_key, weightkey = jr.split(
+            key, num_blocks + 3
         )
         self.linear_encoder = jax.vmap(eqx.nn.Linear(N, H, key=linear_encoder_key))
         self.blocks = [
@@ -472,7 +472,10 @@ class S5(eqx.Module):
             )
             for key in block_keys
         ]
-        self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
+        linear = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
+        new_weight = jr.normal(weightkey, linear.weight.shape) / 1000
+        where = lambda l: l.weight
+        self.linear_layer = eqx.tree_at(where, linear, new_weight)
 
     def __call__(self, x, state, key):
         """Compute S5."""

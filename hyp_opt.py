@@ -68,13 +68,13 @@ def train_model(
 
     batchkey, key = jr.split(key, 2)
     warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
-        init_value=1e-4,
+        init_value=1e-7,
         peak_value=lr,
         warmup_steps=int(num_steps * 0.1),
         decay_steps=num_steps,
-        end_value=1e-4,
+        end_value=1e-7,
     )
-    opt = optax.adam(learning_rate=lr)
+    opt = optax.adam(learning_rate=warmup_cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
@@ -224,8 +224,6 @@ def create_model_and_train(
     print_steps,
     lr,
     batch_size,
-    *,
-    key
 ):
     output_parent_dir = "outputs/" + model_name + "/" + dataset_name
     output_dir = f"nsteps_{num_steps}_lr_{lr}"
@@ -234,8 +232,6 @@ def create_model_and_train(
     for k, v in model_args.items():
         output_dir += f"_{k}_{v}"
     output_dir += f"_seed_{seed}"
-
-    modelkey, trainkey, key = jr.split(key, 3)
 
     print(f"Creating model {model_name}")
     model, state = create_model(
@@ -264,35 +260,43 @@ def create_model_and_train(
         print_steps,
         lr,
         batch_size,
-        trainkey,
+        key,
         output_parent_dir + "/" + output_dir,
         )
 
 
 if __name__ == "__main__":
     data_dir = "data"
-    seed = 9012
-    num_steps = 100000
-    print_steps = 2000
+    seed = 2345
+    num_steps = 100
+    print_steps = 20
     batch_size = 32
     lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
+        "FaceDetection",
+        "Libras",
+        "SelfRegulationSCP1",
     ]
     stepsize = 4
     logsig_depth = 2
     model_names = [
+        "lru",
         "ssm",
+        "rnn_linear",
+        "rnn_gru",
+        "rnn_lstm",
+        "rnn_mlp",
+        "ncde",
     ]
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 128,
+        "hidden_dim": 20,
         "vf_depth": 3,
         "vf_width": 8,
-        "ssm_dim": 32,
-        "ssm_blocks": 2,
+        "ssm_dim": 100,
+        "ssm_blocks": 10,
     }
 
     for dataset_name in dataset_names:
@@ -311,16 +315,76 @@ if __name__ == "__main__":
         )
 
         for model_name in model_names:
-            create_model_and_train(
-                seed,
-                dataset_name,
-                model_name,
-                stepsize,
-                logsig_depth,
-                model_args,
-                num_steps,
-                print_steps,
-                lr,
-                batch_size,
-                key=modelkey
-            )
+            for lr in [1e-3, 3e-4, 1e-4]:
+                if model_name == "lru":
+                    for num_blocks in [2, 4, 6]:
+                        for hidden_dim in [20, 50, 100]:
+                            model_args["num_blocks"] = num_blocks
+                            model_args["hidden_dim"] = hidden_dim
+                            create_model_and_train(
+                                seed,
+                                dataset_name,
+                                model_name,
+                                stepsize,
+                                logsig_depth,
+                                model_args,
+                                num_steps,
+                                print_steps,
+                                lr,
+                                batch_size,
+                            )
+                elif model_name == "ssm":
+                    for num_blocks in [2, 4, 6]:
+                        for hidden_dim in [20, 50, 100]:
+                            for ssm_dim in [20, 50, 100]:
+                                for ssm_blocks in [2, 4, 6]:
+                                    model_args["num_blocks"] = num_blocks
+                                    model_args["hidden_dim"] = hidden_dim
+                                    model_args["ssm_dim"] = ssm_dim
+                                    model_args["ssm_blocks"] = ssm_blocks
+                                    create_model_and_train(
+                                        seed,
+                                        dataset_name,
+                                        model_name,
+                                        stepsize,
+                                        logsig_depth,
+                                        model_args,
+                                        num_steps,
+                                        print_steps,
+                                        lr,
+                                        batch_size,
+                                    )
+                elif model_name == "rnn_linear" or "rnn_gru" or "rnn_lstm":
+                    for hidden_dim in [20, 50, 100]:
+                        model_args["hidden_dim"] = hidden_dim
+                        create_model_and_train(
+                            seed,
+                            dataset_name,
+                            model_name,
+                            stepsize,
+                            logsig_depth,
+                            model_args,
+                            num_steps,
+                            print_steps,
+                            lr,
+                            batch_size,
+                        )
+                elif model_name == "rnn_mlp" or "ncde":
+                    for hidden_dim in [20, 50, 100]:
+                        for vf_width in [8, 16, 64]:
+                            for vf_depth in [3, 6, 9]:
+                                model_args["hidden_dim"] = hidden_dim
+                                model_args["vf_width"] = vf_width
+                                model_args["vf_depth"] = vf_depth
+                                create_model_and_train(
+                                    seed,
+                                    dataset_name,
+                                    model_name,
+                                    stepsize,
+                                    logsig_depth,
+                                    model_args,
+                                    num_steps,
+                                    print_steps,
+                                    lr,
+                                    batch_size,
+                                )
