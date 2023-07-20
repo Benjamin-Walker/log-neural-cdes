@@ -68,13 +68,13 @@ def train_model(
 
     batchkey, key = jr.split(key, 2)
     warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
-        init_value=1e-4,
+        init_value=1e-6,
         peak_value=lr,
         warmup_steps=int(num_steps * 0.1),
         decay_steps=num_steps,
-        end_value=1e-4,
+        end_value=1e-6,
     )
-    opt = optax.adam(learning_rate=lr)
+    opt = optax.adam(learning_rate=warmup_cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
@@ -225,7 +225,7 @@ def create_model_and_train(
     lr,
     batch_size,
     *,
-    key
+    key,
 ):
     output_parent_dir = "outputs/" + model_name + "/" + dataset_name
     output_dir = f"nsteps_{num_steps}_lr_{lr}"
@@ -266,7 +266,7 @@ def create_model_and_train(
         batch_size,
         trainkey,
         output_parent_dir + "/" + output_dir,
-        )
+    )
 
 
 if __name__ == "__main__":
@@ -322,5 +322,5 @@ if __name__ == "__main__":
                 print_steps,
                 lr,
                 batch_size,
-                key=modelkey
+                key=modelkey,
             )
