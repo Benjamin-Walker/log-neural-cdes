@@ -16,6 +16,9 @@ where data.pkl and labels.pkl are jnp.arrays with shape (n_samples, n_timesteps,
 and (n_samples, n_classes) respectively. If the dataset had original_idxs then those should
 be saved as a list of jnp.arrays with shape [(n_train,), (n_val,), (n_test,)].
 
+The UEA dataset can be downloaded using the `download_data.py` script. The UEA data can be preprocessed by 
+running the `process_uea.py` script.
+
 ## Models
 
 The scrips in the models folder are used to define the various deep learning
@@ -63,3 +66,5 @@ conda install --file conda_requirements.txt -c conda-forge
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
+
+After installing the requirements, run `pre-commit install` to install the pre-commit hooks.
