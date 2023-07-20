@@ -66,3 +66,5 @@ conda install --file conda_requirements.txt -c conda-forge
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
+
+After installing the requirements, run `pre-commit install` to install the pre-commit hooks.
