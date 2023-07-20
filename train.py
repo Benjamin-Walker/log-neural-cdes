@@ -68,11 +68,11 @@ def train_model(
 
     batchkey, key = jr.split(key, 2)
     warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
-        init_value=1e-7,
+        init_value=1e-6,
         peak_value=lr,
         warmup_steps=int(num_steps * 0.1),
         decay_steps=num_steps,
-        end_value=1e-7,
+        end_value=1e-6,
     )
     opt = optax.adam(learning_rate=warmup_cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
@@ -213,54 +213,86 @@ def run_training(
     )
 
 
+def create_model_and_train(
+    seed,
+    dataset_name,
+    model_name,
+    stepsize,
+    logsig_depth,
+    model_args,
+    num_steps,
+    print_steps,
+    lr,
+    batch_size,
+    *,
+    key,
+):
+    output_parent_dir = "outputs/" + model_name + "/" + dataset_name
+    output_dir = f"nsteps_{num_steps}_lr_{lr}"
+    if model_name == "log_ncde" or model_name == "nrde":
+        output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
+    for k, v in model_args.items():
+        output_dir += f"_{k}_{v}"
+    output_dir += f"_seed_{seed}"
+
+    modelkey, trainkey, key = jr.split(key, 3)
+
+    print(f"Creating model {model_name}")
+    model, state = create_model(
+        model_name,
+        dataset.data_dim,
+        dataset.logsig_dim,
+        logsig_depth,
+        dataset.intervals,
+        dataset.label_dim,
+        **model_args,
+        key=modelkey,
+    )
+
+    if model_name == "nrde" or model_name == "log_ncde":
+        dataloaders = dataset.path_dataloaders
+    elif model_name == "ncde":
+        dataloaders = dataset.coeff_dataloaders
+    else:
+        dataloaders = dataset.raw_dataloaders
+
+    train_model(
+        model,
+        state,
+        dataloaders,
+        num_steps,
+        print_steps,
+        lr,
+        batch_size,
+        trainkey,
+        output_parent_dir + "/" + output_dir,
+    )
+
+
 if __name__ == "__main__":
     data_dir = "data"
-    seed = 1234
-    num_steps = 10000
-    print_steps = 200
+    seed = 9012
+    num_steps = 100000
+    print_steps = 2000
     batch_size = 32
     lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "EigenWorms",
-        "EthanolConcentration",
-        "FaceDetection",
-        "FingerMovements",
-        "HandMovementDirection",
-        "Handwriting",
-        "Heartbeat",
-        "Libras",
-        "LSST",
-        "InsectWingbeat",
-        "MotorImagery",
-        "NATOPS",
-        "PhonemeSpectra",
-        "RacketSports",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
-        "UWaveGestureLibrary",
     ]
     stepsize = 4
     logsig_depth = 2
     model_names = [
-        "lru",
-        "rnn_linear",
-        "rnn_gru",
-        "rnn_lstm",
-        "rnn_mlp",
-        "ncde",
-        "nrde",
-        "log_ncde",
         "ssm",
     ]
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 20,
+        "hidden_dim": 128,
         "vf_depth": 3,
         "vf_width": 8,
-        "ssm_dim": 100,
-        "ssm_blocks": 10,
+        "ssm_dim": 32,
+        "ssm_blocks": 2,
     }
 
     for dataset_name in dataset_names:
@@ -279,41 +311,16 @@ if __name__ == "__main__":
         )
 
         for model_name in model_names:
-            output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-            output_dir = f"nsteps_{num_steps}_lr_{lr}"
-            if model_name == "log_ncde" or model_name == "nrde":
-                output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
-            for k, v in model_args.items():
-                output_dir += f"_{k}_{v}"
-            output_dir += f"_seed_{seed}"
-
-            print(f"Creating model {model_name}")
-            model, state = create_model(
+            create_model_and_train(
+                seed,
+                dataset_name,
                 model_name,
-                dataset.data_dim,
-                dataset.logsig_dim,
+                stepsize,
                 logsig_depth,
-                dataset.intervals,
-                dataset.label_dim,
-                **model_args,
-                key=modelkey,
-            )
-
-            if model_name == "nrde" or model_name == "log_ncde":
-                dataloaders = dataset.path_dataloaders
-            elif model_name == "ncde":
-                dataloaders = dataset.coeff_dataloaders
-            else:
-                dataloaders = dataset.raw_dataloaders
-
-            train_model(
-                model,
-                state,
-                dataloaders,
+                model_args,
                 num_steps,
                 print_steps,
                 lr,
                 batch_size,
-                key,
-                output_parent_dir + "/" + output_dir,
+                key=modelkey,
             )
