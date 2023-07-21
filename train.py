@@ -283,12 +283,12 @@ if __name__ == "__main__":
     stepsize = 4
     logsig_depth = 2
     model_names = [
-        "ssm",
+        "log_ncde",
     ]
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 128,
+        "hidden_dim": 16,
         "vf_depth": 3,
         "vf_width": 8,
         "ssm_dim": 32,
