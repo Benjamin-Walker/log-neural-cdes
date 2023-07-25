@@ -34,7 +34,7 @@ def download_and_unzip(url, save_dir, zipname):
 if __name__ == "__main__":
     data_dir = "data"
     url = (
-        "http://www.timeseriesclassification.com/Downloads/Archives"
+        "http://www.timeseriesclassification.com/ClassificationDownloads/Archives"
         "/Multivariate2018_arff.zip"
     )
     save_dir = data_dir + "/raw/UEA/"
