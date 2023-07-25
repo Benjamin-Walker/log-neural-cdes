@@ -21,6 +21,8 @@ def calc_paths(data, stepsize, depth=2):
     it is necessary to specify the stepsize and depth ahead of time.
     """
 
+    data = data[:, :, 1:]
+
     hs = HallSet(data.shape[-1], depth)
     t2l = hs.t2l_matrix(depth)
 
