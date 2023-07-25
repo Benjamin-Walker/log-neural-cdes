@@ -59,10 +59,12 @@ class LogNeuralCDE(eqx.Module):
     def __call__(self, X):
 
         ts, logsig, x0 = X
+        ts = ts / 30
         y0 = self.linear1(x0[1:])
 
         def func(t, y, args):
-            idx = jnp.searchsorted(self.intervals, t)
+            # idx = jnp.searchsorted(self.intervals, t)
+            idx = jnp.searchsorted(ts, t) // 8
             logsig_t = logsig[idx]
             vf_out = jnp.reshape(self.vf(y), (self.width, self.hidden_dim))
             jvps = jnp.reshape(

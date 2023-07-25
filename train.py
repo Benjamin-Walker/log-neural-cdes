@@ -276,7 +276,7 @@ if __name__ == "__main__":
     data_dir = "data"
     seed = 9012
     num_steps = 2000
-    print_steps = 100
+    print_steps = 10
     batch_size = 32
     lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
