@@ -3,28 +3,35 @@ import jax.numpy as jnp
 import jax.random as jr
 
 
-def interaction_kernel(x, y, label):
-    diff = x - y
+def get_interaction_kernel(label):
     if label == 0:
-        if 0 <= diff < 2 ** 0.5:
-            return 0.2 * diff
-        if 2 ** 0.5 <= diff < 2:
-            return 2 * diff
-        if 2 <= diff:
-            return 0
-    if label == 1:
-        if 0 <= diff < 2 ** 0.5:
-            return 2 * diff
-        if 2 ** 0.5 <= diff < 2:
-            return 0.2 * diff
-        if 2 <= diff:
-            return 0
+        def interaction_kernel(x, y):
+            diff = x-y
+            norm = jnp.linalg.norm(diff, ord=2)
+            if 0 <= norm < 2 ** 0.5:
+                return 0.2 * diff
+            if 2 ** 0.5 <= norm < 2:
+                return 2 * diff
+            if 2 <= norm:
+                return 0
+    elif label == 1:
+        def interaction_kernel(x, y):
+            diff = x-y
+            norm = jnp.linalg.norm(diff, ord=2)
+            if 0 <= norm < 2 ** 0.5:
+                return 2 * diff
+            if 2 ** 0.5 <= norm < 2:
+                return 0.2 * diff
+            if 2 <= norm:
+                return 0
+    else:
+        raise ValueError("Label must be 0 or 1")
+
+    return interaction_kernel
 
 
 def get_drift(label):
-    diff = x-y
-    dist = jnp.linalg.norm(diff, ord=2)
-    return jnp.exp(-jnp.abs(x - y) ** 2)
+    interaction_kernel = get_interaction_kernel(label)
 
 
 t0, t1 = 1, 3
