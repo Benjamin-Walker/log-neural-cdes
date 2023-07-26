@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from data.datasets import create_uea_dataset
+from data.datasets import create_dataset
 from models.generate_model import create_model
 
 
@@ -173,7 +173,7 @@ def run_training(
 
     datasetkey, modelkey, key = jr.split(key, 3)
     print(f"Creating dataset {dataset_name}")
-    dataset = create_uea_dataset(
+    dataset = create_dataset(
         data_dir,
         dataset_name,
         stepsize=stepsize,
@@ -278,7 +278,7 @@ if __name__ == "__main__":
     lr = 3e-4
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
+        "toy",
     ]
     stepsize = 4
     logsig_depth = 2
@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
         datasetkey, modelkey, key = jr.split(key, 3)
         print(f"Creating dataset {dataset_name}")
-        dataset = create_uea_dataset(
+        dataset = create_dataset(
             data_dir,
             dataset_name,
             stepsize=stepsize,
@@ -309,7 +309,6 @@ if __name__ == "__main__":
             use_idxs=False,
             key=datasetkey,
         )
-
         for model_name in model_names:
             create_model_and_train(
                 seed,
