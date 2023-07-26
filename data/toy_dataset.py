@@ -60,11 +60,13 @@ if __name__ == "__main__":
     d = 2 * N
     t0, t1 = 0, 2
     key = jr.PRNGKey(0)
-    data = []
-    labels = []
+    data_list = []
+    labels_list = []
     for label in [0, 1]:
-        for _ in range(1000):
-            initkey, noisekey, key = jr.split(key, 3)
+        *keys, key = jr.split(key, 1001)
+
+        def gen_data(key):
+            initkey, noisekey = jr.split(key, 2)
             y0 = jr.normal(initkey, (d,))
             drift = get_drift(0)
             diffusion = lambda t, y, args: jnp.eye(d)
@@ -85,11 +87,12 @@ if __name__ == "__main__":
                 y0=y0,
                 saveat=diffrax.SaveAt(ts=jnp.linspace(t0, t1, 21)),
             )
-            data.append(jnp.concatenate((sol.ts[:, None], sol.ys), axis=1))
-            labels.append(label)
+            data = jnp.concatenate((sol.ts[:, None], sol.ys), axis=1)
+            return data, label
 
-    data = jnp.stack(data)
-    labels = jnp.stack(labels)
+        data, labels = jax.vmap(gen_data)(jnp.array(keys))
+        data_list.append(data)
+        labels_list.append(labels)
 
-    save_pickle(data, save_dir + "/data.pkl")
-    save_pickle(labels, save_dir + "/labels.pkl")
+    save_pickle(jnp.vstack(data_list), save_dir + "/data.pkl")
+    save_pickle(jnp.concatenate(labels_list), save_dir + "/labels.pkl")
