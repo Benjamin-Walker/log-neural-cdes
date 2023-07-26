@@ -297,33 +297,33 @@ if __name__ == "__main__":
         "ssm_dim": 32,
         "ssm_blocks": 2,
     }
+    for seed in [1234, 2345, 3456, 4567, 5678]:
+        for dataset_name in dataset_names:
 
-    for dataset_name in dataset_names:
+            key = jr.PRNGKey(seed)
 
-        key = jr.PRNGKey(seed)
-
-        datasetkey, modelkey, key = jr.split(key, 3)
-        print(f"Creating dataset {dataset_name}")
-        dataset = create_uea_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            use_idxs=False,
-            key=datasetkey,
-        )
-
-        for model_name in model_names:
-            create_model_and_train(
-                seed,
+            datasetkey, modelkey, key = jr.split(key, 3)
+            print(f"Creating dataset {dataset_name}")
+            dataset = create_uea_dataset(
+                data_dir,
                 dataset_name,
-                model_name,
-                stepsize,
-                logsig_depth,
-                model_args,
-                num_steps,
-                print_steps,
-                lr,
-                batch_size,
-                key=modelkey,
+                stepsize=stepsize,
+                depth=logsig_depth,
+                use_idxs=False,
+                key=datasetkey,
             )
+
+            for model_name in model_names:
+                create_model_and_train(
+                    seed,
+                    dataset_name,
+                    model_name,
+                    stepsize,
+                    logsig_depth,
+                    model_args,
+                    num_steps,
+                    print_steps,
+                    lr,
+                    batch_size,
+                    key=modelkey,
+                )

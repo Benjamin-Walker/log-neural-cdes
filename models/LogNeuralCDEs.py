@@ -46,10 +46,6 @@ class LogNeuralCDE(eqx.Module):
         self.depth = depth
         self.hidden_dim = hidden_dim
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
-        # linear = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
-        # new_weight = jr.normal(weightkey, linear.weight.shape) / 1
-        # where = lambda l: l.weight
-        # self.linear2 = eqx.tree_at(where, linear, new_weight)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
         hs = HallSet(self.width, self.depth)
         self.pairs = jnp.asarray(hs.data[1:])
@@ -59,7 +55,6 @@ class LogNeuralCDE(eqx.Module):
     def __call__(self, X):
 
         ts, logsig, x0 = X
-        ts = ts / 30
         y0 = self.linear1(x0[1:])
 
         def func(t, y, args):
@@ -92,16 +87,17 @@ class LogNeuralCDE(eqx.Module):
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),
-            diffrax.Heun(),
+            diffrax.Tsit5(),
             t0=ts[0],
             t1=ts[-1],
             dt0=(ts[-1] - ts[0]) / 2248,
             y0=y0,
-            # stepsize_controller=diffrax.PIDController(
-            #     rtol=1e-3, atol=1e-6, dtmin=(ts[-1] - ts[0]) / 4095
-            # ),
+            stepsize_controller=diffrax.PIDController(
+                rtol=1e-2,
+                atol=1e-4,  # dtmin=(ts[-1] - ts[0]) / 4095
+            ),
             saveat=saveat,
-            max_steps=2 * 2248,
+            max_steps=16**6,
         )
 
         if self.classification:

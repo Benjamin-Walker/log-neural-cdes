@@ -160,7 +160,9 @@ def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, *, key):
     else:
         idxs = None
 
-    ts = jnp.repeat(jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0)
+    ts = jnp.repeat(jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0) / 30
+    # average_diff = jnp.abs(jnp.mean(jnp.diff(data, axis=1)))
+    # ts = jnp.repeat(jnp.arange(data.shape[1])[None, :] * average_diff, data.shape[0], axis=0)
     data = jnp.concatenate([ts[:, :, None], data], axis=2)
 
     return dataset_generator(name, data, onehot_labels, stepsize, depth, idxs, key=key)
