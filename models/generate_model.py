@@ -1,3 +1,4 @@
+import diffrax
 import equinox as eqx
 import jax.random as jr
 
@@ -22,6 +23,10 @@ def create_model(
     classification=True,
     ssm_dim=None,
     ssm_blocks=None,
+    solver=diffrax.Heun(),
+    stepsize_controller=None,
+    dt0=1,
+    max_steps=16**4,
     *,
     key,
 ):
@@ -42,6 +47,10 @@ def create_model(
                 label_dim,
                 classification,
                 intervals,
+                solver,
+                stepsize_controller,
+                dt0,
+                max_steps,
                 key=key,
             ),
             None,
@@ -57,6 +66,10 @@ def create_model(
                 data_dim,
                 label_dim,
                 classification,
+                solver,
+                stepsize_controller,
+                dt0,
+                max_steps,
                 key=key,
             ),
             None,
@@ -74,6 +87,10 @@ def create_model(
                 label_dim,
                 classification,
                 intervals,
+                solver,
+                stepsize_controller,
+                dt0,
+                max_steps,
                 key=key,
             ),
             None,

@@ -18,6 +18,10 @@ class LogNeuralCDE(eqx.Module):
     pairs: jnp.array
     classification: bool
     intervals: jnp.ndarray
+    solver: diffrax.AbstractSolver
+    stepsize_controller: diffrax.AbstractStepSizeController
+    dt0: float
+    max_steps: int
     stateful: bool = False
     nondeterministic: bool = False
 
@@ -31,6 +35,10 @@ class LogNeuralCDE(eqx.Module):
         label_dim,
         classification,
         intervals,
+        solver,
+        stepsize_controller,
+        dt0,
+        max_steps,
         *,
         key,
         **kwargs
@@ -51,6 +59,10 @@ class LogNeuralCDE(eqx.Module):
         self.pairs = jnp.asarray(hs.data[1:])
         self.classification = classification
         self.intervals = intervals
+        self.solver = solver
+        self.stepsize_controller = stepsize_controller
+        self.dt0 = dt0
+        self.max_steps = max_steps
 
     def __call__(self, X):
 
@@ -87,17 +99,14 @@ class LogNeuralCDE(eqx.Module):
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),
-            diffrax.Heun(),
+            self.solver,
             t0=ts[0],
             t1=ts[-1],
-            dt0=(ts[-1] - ts[0]) / 17984,
+            dt0=self.dt0,
             y0=y0,
-            # stepsize_controller=diffrax.PIDController(
-            #     rtol=1e-2,
-            #     atol=1e-4,  # dtmin=(ts[-1] - ts[0]) / 4095
-            # ),
+            stepsize_controller=self.stepsize_controller,
             saveat=saveat,
-            max_steps=2 * 17984,
+            max_steps=self.max_steps,
         )
 
         if self.classification:
