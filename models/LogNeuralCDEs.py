@@ -87,17 +87,17 @@ class LogNeuralCDE(eqx.Module):
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),
-            diffrax.Tsit5(),
+            diffrax.Heun(),
             t0=ts[0],
             t1=ts[-1],
-            dt0=(ts[-1] - ts[0]) / 2248,
+            dt0=(ts[-1] - ts[0]) / 17984,
             y0=y0,
-            stepsize_controller=diffrax.PIDController(
-                rtol=1e-2,
-                atol=1e-4,  # dtmin=(ts[-1] - ts[0]) / 4095
-            ),
+            # stepsize_controller=diffrax.PIDController(
+            #     rtol=1e-2,
+            #     atol=1e-4,  # dtmin=(ts[-1] - ts[0]) / 4095
+            # ),
             saveat=saveat,
-            max_steps=16**6,
+            max_steps=2 * 17984,
         )
 
         if self.classification:
