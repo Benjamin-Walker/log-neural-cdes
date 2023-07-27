@@ -143,7 +143,7 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
     )
 
 
-def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, *, key):
+def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, T, *, key):
     subfolders = [f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()]
     if name not in subfolders:
         raise ValueError(f"Dataset {name} not found in UEA folder")
@@ -160,9 +160,11 @@ def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, *, key):
     else:
         idxs = None
 
-    ts = jnp.repeat(jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0) / 30
-    # average_diff = jnp.abs(jnp.mean(jnp.diff(data, axis=1)))
-    # ts = jnp.repeat(jnp.arange(data.shape[1])[None, :] * average_diff, data.shape[0], axis=0)
+    ts = (
+        T
+        * jnp.repeat(jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0)
+        / (data.shape[1])
+    )
     data = jnp.concatenate([ts[:, :, None], data], axis=2)
 
     return dataset_generator(name, data, onehot_labels, stepsize, depth, idxs, key=key)

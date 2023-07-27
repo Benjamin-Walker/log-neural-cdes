@@ -24,7 +24,7 @@ def create_model(
     ssm_dim=None,
     ssm_blocks=None,
     solver=diffrax.Heun(),
-    stepsize_controller=None,
+    stepsize_controller=diffrax.ConstantStepSize(),
     dt0=1,
     max_steps=16**4,
     *,

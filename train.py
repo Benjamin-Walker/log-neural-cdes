@@ -279,6 +279,7 @@ if __name__ == "__main__":
     print_steps = 10
     batch_size = 32
     lr = 3e-4
+    T = 17984 / 30
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "EigenWorms",
@@ -296,6 +297,7 @@ if __name__ == "__main__":
         "vf_width": 32,
         "ssm_dim": 32,
         "ssm_blocks": 2,
+        "dt0": T / 2284,
     }
     for seed in [1234, 2345, 3456, 4567, 5678]:
         for dataset_name in dataset_names:
@@ -309,6 +311,7 @@ if __name__ == "__main__":
                 dataset_name,
                 stepsize=stepsize,
                 depth=logsig_depth,
+                T=T,
                 use_idxs=False,
                 key=datasetkey,
             )
