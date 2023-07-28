@@ -299,6 +299,7 @@ if __name__ == "__main__":
         "ssm_dim": 32,
         "ssm_blocks": 2,
         "dt0": T / 2284,
+        "include_time": include_time,
     }
     for seed in [1234, 2345, 3456, 4567, 5678]:
         for dataset_name in dataset_names:
