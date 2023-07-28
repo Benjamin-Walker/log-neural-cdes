@@ -286,6 +286,7 @@ if __name__ == "__main__":
     ]
     stepsize = 8
     logsig_depth = 2
+    include_time = False
     model_names = [
         "log_ncde",
     ]
@@ -311,6 +312,7 @@ if __name__ == "__main__":
                 dataset_name,
                 stepsize=stepsize,
                 depth=logsig_depth,
+                include_time=include_time,
                 T=T,
                 use_idxs=False,
                 key=datasetkey,

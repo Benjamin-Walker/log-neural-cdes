@@ -23,7 +23,9 @@ class Dataset:
     label_dim: int
 
 
-def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
+def dataset_generator(
+    name, data, labels, stepsize, depth, include_time, idxs=None, *, key
+):
     N = len(data)
     batchsize = 128
     num_batches = N // batchsize
@@ -31,10 +33,12 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
     path_data = []
     for i in range(num_batches):
         path_data.append(
-            calc_paths(data[i * batchsize : (i + 1) * batchsize], stepsize, depth)
+            calc_paths(
+                data[i * batchsize : (i + 1) * batchsize], stepsize, depth, include_time
+            )
         )
     if remainder > 0:
-        path_data.append(calc_paths(data[-remainder:], stepsize, depth))
+        path_data.append(calc_paths(data[-remainder:], stepsize, depth, include_time))
     path_data = jnp.concatenate(path_data)
     intervals = jnp.arange(0, data.shape[1], stepsize)
     intervals = jnp.concatenate((intervals, jnp.array([data.shape[1]])))
@@ -143,7 +147,9 @@ def dataset_generator(name, data, labels, stepsize, depth, idxs=None, *, key):
     )
 
 
-def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, T, *, key):
+def create_uea_dataset(
+    data_dir, name, use_idxs, stepsize, depth, include_time, T, *, key
+):
     subfolders = [f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()]
     if name not in subfolders:
         raise ValueError(f"Dataset {name} not found in UEA folder")
@@ -167,4 +173,6 @@ def create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, T, *, key):
     )
     data = jnp.concatenate([ts[:, :, None], data], axis=2)
 
-    return dataset_generator(name, data, onehot_labels, stepsize, depth, idxs, key=key)
+    return dataset_generator(
+        name, data, onehot_labels, stepsize, depth, include_time, idxs, key=key
+    )

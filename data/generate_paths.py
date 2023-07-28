@@ -12,7 +12,7 @@ def hall_basis_logsig(x, depth, t2l):
     return t2l[:, 1:] @ logsig
 
 
-def calc_paths(data, stepsize, depth=2):
+def calc_paths(data, stepsize, depth, include_time):
     """
     Generate log-signature objects from data.
 
@@ -21,7 +21,8 @@ def calc_paths(data, stepsize, depth=2):
     it is necessary to specify the stepsize and depth ahead of time.
     """
 
-    data = data[:, :, 1:]
+    if not include_time:
+        data = data[:, :, 1:]
 
     hs = HallSet(data.shape[-1], depth)
     t2l = hs.t2l_matrix(depth)
