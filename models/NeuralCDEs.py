@@ -31,6 +31,10 @@ class NeuralCDE(eqx.Module):
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
+    solver: diffrax.AbstractSolver
+    stepsize_controller: diffrax.AbstractStepSizeController
+    dt0: float
+    max_steps: int
     stateful: bool = False
     nondeterministic: bool = False
 
@@ -42,6 +46,10 @@ class NeuralCDE(eqx.Module):
         data_dim,
         label_dim,
         classification,
+        solver,
+        stepsize_controller,
+        dt0,
+        max_steps,
         *,
         key,
         **kwargs
@@ -56,6 +64,10 @@ class NeuralCDE(eqx.Module):
         self.classification = classification
         self.hidden_dim = hidden_dim
         self.data_dim = data_dim
+        self.solver = solver
+        self.stepsize_controller = stepsize_controller
+        self.dt0 = dt0
+        self.max_steps = max_steps
 
     def __call__(self, X):
         ts, coeffs, x0 = X
@@ -70,15 +82,14 @@ class NeuralCDE(eqx.Module):
             saveat = diffrax.SaveAt(ts=ts)
         solution = diffrax.diffeqsolve(
             terms=diffrax.ControlTerm(func, control).to_ode(),
-            solver=diffrax.Tsit5(),
+            solver=self.solver,
             t0=ts[0],
             t1=ts[-1],
-            dt0=None,
+            dt0=self.dt0,
             y0=y0,
             saveat=saveat,
-            stepsize_controller=diffrax.PIDController(
-                rtol=1e-3, atol=1e-6, dtmin=(ts[-1] - ts[0]) / 4095
-            ),
+            stepsize_controller=self.stepsize_controller,
+            max_steps=self.max_steps,
         )
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
@@ -95,6 +106,10 @@ class NeuralRDE(eqx.Module):
     linear2: eqx.nn.Linear
     classification: bool
     intervals: jnp.ndarray
+    solver: diffrax.AbstractSolver
+    stepsize_controller: diffrax.AbstractStepSizeController
+    dt0: float
+    max_steps: int
     stateful: bool = False
     nondeterministic: bool = False
 
@@ -108,6 +123,10 @@ class NeuralRDE(eqx.Module):
         label_dim,
         classification,
         intervals,
+        solver,
+        stepsize_controller,
+        dt0,
+        max_steps,
         *,
         key,
         **kwargs
@@ -128,6 +147,10 @@ class NeuralRDE(eqx.Module):
         self.hidden_dim = hidden_dim
         self.data_dim = data_dim
         self.intervals = intervals
+        self.solver = solver
+        self.stepsize_controller = stepsize_controller
+        self.dt0 = dt0
+        self.max_steps = max_steps
 
     def __call__(self, X):
         ts, logsig, x0 = X
@@ -147,15 +170,14 @@ class NeuralRDE(eqx.Module):
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),
-            diffrax.Tsit5(),
+            self.solver,
             t0=ts[0],
             t1=ts[-1],
-            dt0=None,
+            dt0=self.dt0,
             y0=y0,
             saveat=saveat,
-            stepsize_controller=diffrax.PIDController(
-                rtol=1e-3, atol=1e-6, dtmin=(ts[-1] - ts[0]) / 4095
-            ),
+            stepsize_controller=self.stepsize_controller,
+            max_steps=self.max_steps,
         )
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))

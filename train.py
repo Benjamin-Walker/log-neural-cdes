@@ -67,14 +67,10 @@ def train_model(
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
-    warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
-        init_value=1e-6,
-        peak_value=lr,
-        warmup_steps=int(num_steps * 0.1),
-        decay_steps=num_steps,
-        end_value=1e-6,
+    cosine_decay_scheduler = optax.cosine_decay_schedule(
+        lr, decay_steps=num_steps, alpha=0.5
     )
-    opt = optax.adam(learning_rate=warmup_cosine_decay_scheduler)
+    opt = optax.adam(learning_rate=cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
@@ -272,29 +268,32 @@ def create_model_and_train(
 if __name__ == "__main__":
     data_dir = "data"
     seed = 9012
-    num_steps = 100000
-    print_steps = 2000
+    num_steps = 2000
+    print_steps = 10
     batch_size = 32
     lr = 3e-4
+    T = 17984 / 30
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "toy",
     ]
-    stepsize = 4
+    stepsize = 8
     logsig_depth = 2
+    include_time = False
     model_names = [
         "log_ncde",
     ]
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 16,
-        "vf_depth": 3,
-        "vf_width": 8,
+        "hidden_dim": 64,
+        "vf_depth": 2,
+        "vf_width": 32,
         "ssm_dim": 32,
         "ssm_blocks": 2,
+        "dt0": T / 2284,
+        "include_time": include_time,
     }
-
     for dataset_name in dataset_names:
 
         key = jr.PRNGKey(seed)
@@ -306,6 +305,8 @@ if __name__ == "__main__":
             dataset_name,
             stepsize=stepsize,
             depth=logsig_depth,
+            include_time=include_time,
+            T=T,
             use_idxs=False,
             key=datasetkey,
         )

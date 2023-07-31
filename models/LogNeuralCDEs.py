@@ -18,6 +18,11 @@ class LogNeuralCDE(eqx.Module):
     pairs: jnp.array
     classification: bool
     intervals: jnp.ndarray
+    solver: diffrax.AbstractSolver
+    stepsize_controller: diffrax.AbstractStepSizeController
+    dt0: float
+    max_steps: int
+    include_time: bool
     stateful: bool = False
     nondeterministic: bool = False
 
@@ -31,12 +36,19 @@ class LogNeuralCDE(eqx.Module):
         label_dim,
         classification,
         intervals,
+        solver,
+        stepsize_controller,
+        dt0,
+        max_steps,
+        include_time,
         *,
         key,
         **kwargs
     ):
         super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
+        if not include_time:
+            data_dim = data_dim - 1
         vf = VectorField(
             hidden_dim, hidden_dim * data_dim, vf_hidden_dim, vf_num_hidden, key=vf_key
         )
@@ -45,22 +57,28 @@ class LogNeuralCDE(eqx.Module):
         self.depth = depth
         self.hidden_dim = hidden_dim
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
-        linear = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
-        new_weight = jr.normal(weightkey, linear.weight.shape) / 1000
-        where = lambda l: l.weight
-        self.linear2 = eqx.tree_at(where, linear, new_weight)
+        self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
         hs = HallSet(self.width, self.depth)
         self.pairs = jnp.asarray(hs.data[1:])
         self.classification = classification
         self.intervals = intervals
+        self.solver = solver
+        self.stepsize_controller = stepsize_controller
+        self.dt0 = dt0
+        self.max_steps = max_steps
+        self.include_time = include_time
 
     def __call__(self, X):
 
         ts, logsig, x0 = X
+
+        if not self.include_time:
+            x0 = x0[1:]
+
         y0 = self.linear1(x0)
 
         def func(t, y, args):
-            idx = jnp.searchsorted(self.intervals, t)
+            idx = jnp.searchsorted(ts, t) // self.intervals[1]
             logsig_t = logsig[idx]
             vf_out = jnp.reshape(self.vf(y), (self.width, self.hidden_dim))
             jvps = jnp.reshape(
@@ -88,15 +106,14 @@ class LogNeuralCDE(eqx.Module):
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),
-            diffrax.Tsit5(),
+            self.solver,
             t0=ts[0],
             t1=ts[-1],
-            dt0=None,
+            dt0=self.dt0,
             y0=y0,
-            stepsize_controller=diffrax.PIDController(
-                rtol=1e-2, atol=1e-4, dtmin=(ts[-1] - ts[0]) / 4095
-            ),
+            stepsize_controller=self.stepsize_controller,
             saveat=saveat,
+            max_steps=self.max_steps,
         )
 
         if self.classification:
