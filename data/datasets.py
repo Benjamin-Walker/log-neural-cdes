@@ -165,10 +165,8 @@ def create_uea_dataset(
     else:
         idxs = None
 
-    ts = (
-        T
-        * jnp.repeat(jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0)
-        / (data.shape[1])
+    ts = (T / data.shape[1]) * jnp.repeat(
+        jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0
     )
     data = jnp.concatenate([ts[:, :, None], data], axis=2)
 
@@ -194,7 +192,9 @@ def create_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, *
         f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
     ]
     if name in uea_subfolders:
-        return create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, key=key)
+        return create_uea_dataset(
+            data_dir, name, use_idxs, stepsize, depth, include_time, T, key=key
+        )
     elif name == "toy":
         return create_toy_dataset(data_dir, stepsize, depth, key=key)
     else:

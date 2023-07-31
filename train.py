@@ -67,13 +67,6 @@ def train_model(
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
-    # warmup_cosine_decay_scheduler = optax.warmup_cosine_decay_schedule(
-    #    init_value=1e-6,
-    #    peak_value=lr,
-    #    warmup_steps=int(num_steps * 0.1),
-    #    decay_steps=num_steps,
-    #    end_value=1e-6,
-    # )
     cosine_decay_scheduler = optax.cosine_decay_schedule(
         lr, decay_steps=num_steps, alpha=0.5
     )
@@ -312,7 +305,7 @@ if __name__ == "__main__":
             dataset_name,
             stepsize=stepsize,
             depth=logsig_depth,
-            includetime=includetime,
+            include_time=include_time,
             T=T,
             use_idxs=False,
             key=datasetkey,
@@ -330,4 +323,4 @@ if __name__ == "__main__":
                 lr,
                 batch_size,
                 key=modelkey,
-                )
+            )
