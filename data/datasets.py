@@ -175,7 +175,7 @@ def create_uea_dataset(
     )
 
 
-def create_toy_dataset(data_dir, stepsize, depth, *, key):
+def create_toy_dataset(data_dir, stepsize, depth, include_time, *, key):
     with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
         data = pickle.load(f)
     with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
@@ -184,7 +184,9 @@ def create_toy_dataset(data_dir, stepsize, depth, *, key):
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     idxs = None
 
-    return dataset_generator("toy", data, onehot_labels, stepsize, depth, idxs, key=key)
+    return dataset_generator(
+        "toy", data, onehot_labels, stepsize, depth, include_time, idxs, key=key
+    )
 
 
 def create_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, *, key):
@@ -196,6 +198,6 @@ def create_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, *
             data_dir, name, use_idxs, stepsize, depth, include_time, T, key=key
         )
     elif name == "toy":
-        return create_toy_dataset(data_dir, stepsize, depth, key=key)
+        return create_toy_dataset(data_dir, stepsize, depth, include_time, key=key)
     else:
         raise ValueError(f"Dataset {name} not found in UEA folder and not toy dataset")
