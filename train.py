@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from data.datasets import create_uea_dataset
+from data.datasets import create_dataset
 from models.generate_model import create_model
 
 
@@ -176,7 +176,7 @@ def run_training(
 
     datasetkey, modelkey, key = jr.split(key, 3)
     print(f"Creating dataset {dataset_name}")
-    dataset = create_uea_dataset(
+    dataset = create_dataset(
         data_dir,
         dataset_name,
         stepsize=stepsize,
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     T = 17984 / 30
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
+        "toy",
     ]
     stepsize = 8
     logsig_depth = 2
@@ -301,35 +301,33 @@ if __name__ == "__main__":
         "dt0": T / 2284,
         "include_time": include_time,
     }
-    for seed in [1234, 2345, 3456, 4567, 5678]:
-        for dataset_name in dataset_names:
+    for dataset_name in dataset_names:
 
-            key = jr.PRNGKey(seed)
+        key = jr.PRNGKey(seed)
 
-            datasetkey, modelkey, key = jr.split(key, 3)
-            print(f"Creating dataset {dataset_name}")
-            dataset = create_uea_dataset(
-                data_dir,
+        datasetkey, modelkey, key = jr.split(key, 3)
+        print(f"Creating dataset {dataset_name}")
+        dataset = create_dataset(
+            data_dir,
+            dataset_name,
+            stepsize=stepsize,
+            depth=logsig_depth,
+            includetime=includetime,
+            T=T,
+            use_idxs=False,
+            key=datasetkey,
+        )
+        for model_name in model_names:
+            create_model_and_train(
+                seed,
                 dataset_name,
-                stepsize=stepsize,
-                depth=logsig_depth,
-                include_time=include_time,
-                T=T,
-                use_idxs=False,
-                key=datasetkey,
-            )
-
-            for model_name in model_names:
-                create_model_and_train(
-                    seed,
-                    dataset_name,
-                    model_name,
-                    stepsize,
-                    logsig_depth,
-                    model_args,
-                    num_steps,
-                    print_steps,
-                    lr,
-                    batch_size,
-                    key=modelkey,
+                model_name,
+                stepsize,
+                logsig_depth,
+                model_args,
+                num_steps,
+                print_steps,
+                lr,
+                batch_size,
+                key=modelkey,
                 )

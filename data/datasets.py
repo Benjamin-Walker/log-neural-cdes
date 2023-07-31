@@ -134,7 +134,6 @@ def dataset_generator(
         "val": InMemoryDataloader(val_path_data, val_labels),
         "test": InMemoryDataloader(test_path_data, test_labels),
     }
-
     return Dataset(
         name,
         raw_dataloaders,
@@ -176,3 +175,27 @@ def create_uea_dataset(
     return dataset_generator(
         name, data, onehot_labels, stepsize, depth, include_time, idxs, key=key
     )
+
+
+def create_toy_dataset(data_dir, stepsize, depth, *, key):
+    with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
+        data = pickle.load(f)
+    with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
+        labels = pickle.load(f)
+    onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
+    onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
+    idxs = None
+
+    return dataset_generator("toy", data, onehot_labels, stepsize, depth, idxs, key=key)
+
+
+def create_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, *, key):
+    uea_subfolders = [
+        f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
+    ]
+    if name in uea_subfolders:
+        return create_uea_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, key=key)
+    elif name == "toy":
+        return create_toy_dataset(data_dir, stepsize, depth, key=key)
+    else:
+        raise ValueError(f"Dataset {name} not found in UEA folder and not toy dataset")
