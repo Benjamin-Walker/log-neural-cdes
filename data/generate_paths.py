@@ -8,6 +8,7 @@ from data.hall_set import HallSet
 
 
 def hall_basis_logsig(x, depth, t2l):
+    breakpoint()
     logsig = flatten(log(signature(x, depth)))
     return t2l[:, 1:] @ logsig
 
@@ -26,18 +27,31 @@ def calc_paths(data, stepsize, depth, include_time):
     hs = HallSet(data.shape[-1], depth)
     t2l = hs.t2l_matrix(depth)
 
+    prepend = lambda x: jnp.concatenate(
+        (
+            jnp.concatenate((jnp.zeros((1, data.shape[-1])), x[:-1, -1, :]))[
+                :, None, :
+            ],
+            x,
+        ),
+        axis=1,
+    )
+
     if data.shape[1] % stepsize != 0:
         final_data = data[:, -(data.shape[1] % stepsize) - 1 :, ...]
         data = data[:, : -(data.shape[1] % stepsize), ...].reshape(
             data.shape[0], -1, stepsize, data.shape[-1]
         )
+        data = jax.vmap(prepend)(data)
+        final_data = prepend(final_data)
     else:
         data = data.reshape(data.shape[0], -1, stepsize, data.shape[-1])
+        data = jax.vmap(prepend)(data)
         final_data = None
 
+    hall_basis_logsig(data[0, 1, :, :], depth, t2l)
     vmap_calc_logsig = jax.vmap(hall_basis_logsig, in_axes=(0, None, None))
     logsigs = jax.vmap(vmap_calc_logsig, in_axes=(0, None, None))(data, depth, t2l)
-
     if final_data is not None:
         final_logsigs = vmap_calc_logsig(final_data, depth, t2l)[:, None, :]
         logsigs = jnp.concatenate(

@@ -1,6 +1,7 @@
 import os
 import time
 
+import diffrax
 import equinox as eqx
 import jax
 import jax.numpy as jnp
@@ -212,6 +213,7 @@ def run_training(
 def create_model_and_train(
     seed,
     dataset_name,
+    T,
     model_name,
     stepsize,
     logsig_depth,
@@ -224,11 +226,16 @@ def create_model_and_train(
     key,
 ):
     output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"nsteps_{num_steps}_lr_{lr}"
+    output_dir = f"T_{T}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
     for k, v in model_args.items():
-        output_dir += f"_{k}_{v}"
+        name = str(v)
+        if "(" in name:
+            name = name.split("(", 1)[0]
+        output_dir += f"_{k}_" + name
+        if name == "PIDController":
+            output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"
 
     modelkey, trainkey, key = jr.split(key, 3)
@@ -267,19 +274,21 @@ def create_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
-    seed = 9012
-    num_steps = 20000
-    print_steps = 200
+    seed = 2222
+    num_steps = 2000
+    print_steps = 100
     batch_size = 32
-    lr = 3e-4
-    T = 2
+    lr = 3e-3
+    T = 20
     dt0 = 0.01
+    solver = diffrax.Heun()
+    stepsize_controller = diffrax.ConstantStepSize()
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "toy",
     ]
-    stepsize = 2
-    logsig_depth = 2
+    stepsize = 1
+    logsig_depth = 1
     include_time = True
     model_names = [
         "log_ncde",
@@ -294,6 +303,8 @@ if __name__ == "__main__":
         "ssm_blocks": 2,
         "dt0": dt0,
         "include_time": include_time,
+        "solver": solver,
+        "stepsize_controller": stepsize_controller,
     }
     for dataset_name in dataset_names:
 
@@ -315,6 +326,7 @@ if __name__ == "__main__":
             create_model_and_train(
                 seed,
                 dataset_name,
+                T,
                 model_name,
                 stepsize,
                 logsig_depth,

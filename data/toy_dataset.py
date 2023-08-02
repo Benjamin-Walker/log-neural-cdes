@@ -4,6 +4,7 @@ import diffrax
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+import matplotlib.pyplot as plt
 from process_uea import save_pickle
 
 
@@ -53,22 +54,40 @@ def get_drift(label):
     return drift
 
 
+def get_drift_diff_potentials(label):
+    if label == 0:
+
+        def drift(t, y, args):
+            return -(y**2 - 1) * 2 * y
+
+    elif label == 1:
+
+        def drift(t, y, args):
+            return -(y**3)
+
+    else:
+        raise ValueError("Label must be 0 or 1")
+    return drift
+
+
 if __name__ == "__main__":
+
     save_dir = "data/processed/toy"
     os.mkdir(save_dir)
-    N = 3
-    d = 2 * N
-    t0, t1 = 0, 2
+    N = 12
+    d = 1
+    t0, t1 = 0, 4
+    colors = ["r", "b"]
     key = jr.PRNGKey(0)
     data_list = []
     labels_list = []
     for label in [0, 1]:
         *keys, key = jr.split(key, 1001)
 
-        def gen_data(key):
+        def gen_data(key, label):
             initkey, noisekey = jr.split(key, 2)
             y0 = jr.normal(initkey, (d,))
-            drift = get_drift(0)
+            drift = get_drift_diff_potentials(label)
             diffusion = lambda t, y, args: jnp.eye(d)
             brownian_motion = diffrax.VirtualBrownianTree(
                 t0, t1, tol=1e-3, shape=(d,), key=noisekey
@@ -85,14 +104,16 @@ if __name__ == "__main__":
                 t1,
                 dt0=0.01,
                 y0=y0,
-                saveat=diffrax.SaveAt(ts=jnp.linspace(t0, t1, 21)),
+                saveat=diffrax.SaveAt(ts=jnp.linspace(t0, t1, 81)),
             )
             data = jnp.concatenate((sol.ts[:, None], sol.ys), axis=1)
             return data, label
 
-        data, labels = jax.vmap(gen_data)(jnp.array(keys))
+        data, labels = jax.vmap(gen_data, in_axes=(0, None))(jnp.array(keys), label)
+        for x in data[:5]:
+            plt.plot(x[:, 0], x[:, 1], colors[label])
         data_list.append(data)
         labels_list.append(labels)
-
+    plt.show()
     save_pickle(jnp.vstack(data_list), save_dir + "/data.pkl")
     save_pickle(jnp.concatenate(labels_list), save_dir + "/labels.pkl")
