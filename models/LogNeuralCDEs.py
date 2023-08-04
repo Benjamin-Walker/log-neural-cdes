@@ -88,9 +88,10 @@ class LogNeuralCDE(eqx.Module):
             t1=ts[-1],
             dt0=None,
             y0=y0,
-            stepsize_controller=diffrax.PIDController(rtol=1e-3, atol=1e-6),
+            stepsize_controller=diffrax.PIDController(rtol=1e-3, atol=1e-6, dtmin=(ts[-1]-ts[0]) / 4095),
             saveat=saveat,
         )
+
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
         else:

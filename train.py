@@ -5,6 +5,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import optax
+import time
 
 from data.datasets import create_uea_dataset
 from models.generate_model import create_model
@@ -39,11 +40,13 @@ def train_model(
     batch_size,
     key,
     output_dir,
+    slurm=False,
 ):
-    if os.path.isdir(output_dir):
-        raise ValueError(f"Output directory {output_dir} already exists")
-    else:
-        os.makedirs(output_dir)
+    if not slurm:
+        if os.path.isdir(output_dir):
+            raise ValueError(f"Warning: Output directory {output_dir} already exists")
+        else:
+            os.makedirs(output_dir)
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
@@ -53,6 +56,8 @@ def train_model(
 
     running_loss = 0.0
     all_val_acc = [0.0]
+    all_time = []
+    start = time.time()
     for step, data in zip(
         range(num_steps),
         dataloaders["train"].loop(batch_size, key=batchkey),
@@ -71,20 +76,26 @@ def train_model(
                 val_accuracy = jnp.mean(
                     jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
                 )
+                end = time.time()
+                total_time = end - start
                 print(
                     f"Step: {step + 1}, Loss: {running_loss / 100}, "
-                    f"Validation accuracy: {val_accuracy}"
+                    f"Validation accuracy: {val_accuracy}, Time: {total_time}"
                 )
+                start = time.time()
                 if val_accuracy >= max(all_val_acc):
                     print("Saving model")
                     eqx.tree_serialise_leaves(model_file, model)
                 running_loss = 0.0
                 all_val_acc.append(val_accuracy)
+                all_time.append(total_time)
 
     steps = jnp.arange(0, num_steps + 1, print_steps)
     all_val_acc = jnp.array(all_val_acc)
+    all_time = jnp.array(all_time)
     jnp.save(output_dir + "/steps.npy", steps)
     jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
+    jnp.save(output_dir + "/all_time.npy", all_time)
 
     best_model = eqx.tree_deserialise_leaves(model_file, model)
     for _, data in zip(
@@ -101,32 +112,13 @@ def train_model(
     jnp.save(output_dir + "/test_acc.npy", test_accuracy)
 
 
-if __name__ == "__main__":
-    seed = 1234
-    num_steps = 20000
-    print_steps = 1000
-    batch_size = 32
-    lr = 1e-4
-    # Spoken Arabic Digits has nan values in training data
-    dataset_name = "Libras"
-    stepsize = 4
-    logsig_depth = 2
-    model_name = "log_ncde"
-
-    model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
-
-    output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"nsteps_{num_steps}_lr_{lr}"
-    if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
-    for k, v in model_args.items():
-        output_dir += f"_{k}_{v}"
-    output_dir += f"_seed_{seed}"
+def run_training(seed, dataset_name, model_name, output_parent_dir, output_dir, stepsize, logsig_depth, model_args, num_steps, print_steps, lr, batch_size,
+                 slurm=False):
 
     key = jr.PRNGKey(seed)
 
     datasetkey, modelkey, key = jr.split(key, 3)
-
+    print(f"Creating dataset {dataset_name}")
     dataset = create_uea_dataset(
         dataset_name,
         stepsize=stepsize,
@@ -134,6 +126,7 @@ if __name__ == "__main__":
         use_idxs=False,
         key=datasetkey,
     )
+    print(f"Creating model {model_name}")
     model = create_model(
         model_name,
         dataset.data_dim,
@@ -161,4 +154,88 @@ if __name__ == "__main__":
         batch_size,
         key,
         output_parent_dir + "/" + output_dir,
+        slurm
     )
+
+
+if __name__ == "__main__":
+    seed = 1234
+    num_steps = 1000
+    print_steps = 200
+    batch_size = 32
+    lr = 1e-3
+    # Spoken Arabic Digits has nan values in training data
+    dataset_names = [
+        #"EigenWorms",
+        "EthanolConcentration",
+        "FaceDetection",
+        "FingerMovements",
+        "HandMovementDirection",
+        "Handwriting",
+        "Heartbeat",
+        "Libras",
+        "LSST",
+        "InsectWingbeat",
+        "MotorImagery",
+        "NATOPS",
+        "PhonemeSpectra",
+        "RacketSports",
+        "SelfRegulationSCP1",
+        "SelfRegulationSCP2",
+        "UWaveGestureLibrary"
+        ]
+    stepsize = 4
+    logsig_depth = 2
+    model_name = "log_ncde"
+
+    model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
+
+    for dataset_name in dataset_names:
+        output_parent_dir = "outputs/" + model_name + "/" + dataset_name
+        output_dir = f"nsteps_{num_steps}_lr_{lr}"
+        if model_name == "log_ncde" or model_name == "nrde":
+            output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
+        for k, v in model_args.items():
+            output_dir += f"_{k}_{v}"
+        output_dir += f"_seed_{seed}"
+
+        key = jr.PRNGKey(seed)
+
+        datasetkey, modelkey, key = jr.split(key, 3)
+        print(f"Creating dataset {dataset_name}")
+        dataset = create_uea_dataset(
+            dataset_name,
+            stepsize=stepsize,
+            depth=logsig_depth,
+            use_idxs=False,
+            key=datasetkey,
+        )
+        print(f"Creating model {model_name}")
+        model = create_model(
+            model_name,
+            dataset.data_dim,
+            dataset.logsig_dim,
+            logsig_depth,
+            dataset.intervals,
+            dataset.label_dim,
+            **model_args,
+            key=modelkey,
+        )
+
+        if model_name == "nrde" or model_name == "log_ncde":
+            dataloaders = dataset.path_dataloaders
+        elif model_name == "ncde":
+            dataloaders = dataset.coeff_dataloaders
+        else:
+            dataloaders = dataset.raw_dataloaders
+
+        train_model(
+            model,
+            dataloaders,
+            num_steps,
+            print_steps,
+            lr,
+            batch_size,
+            key,
+            output_parent_dir + "/" + output_dir,
+        )

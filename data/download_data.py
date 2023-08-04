@@ -36,11 +36,11 @@ if __name__ == "__main__":
         "http://www.timeseriesclassification.com/Downloads/Archives"
         "/Multivariate2018_arff.zip"
     )
-    save_dir = "raw/UEA/"
+    save_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data/raw/UEA/"
     zipname = save_dir + "uea.zip"
     download_and_unzip(url, save_dir, zipname)
 
     url = "https://storage.googleapis.com/long-range-arena/lra_release.gz"
     save_dir = "raw/LRA/"
     zipname = save_dir + "lra.gz"
-    download_and_unzip(url, save_dir, zipname)
+    # download_and_unzip(url, save_dir, zipname)
