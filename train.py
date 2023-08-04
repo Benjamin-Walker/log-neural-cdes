@@ -1,12 +1,12 @@
 import os
 import time
 
+import diffrax
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
 import optax
-import time
 
 from data.datasets import create_dataset
 from models.generate_model import create_model
@@ -109,11 +109,7 @@ def train_model(
                 end = time.time()
                 total_time = end - start
                 print(
-<<<<<<< HEAD
-                    f"Step: {step + 1}, Loss: {running_loss / 100}, "
-=======
                     f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
->>>>>>> main
                     f"Validation accuracy: {val_accuracy}, Time: {total_time}"
                 )
                 start = time.time()
@@ -155,11 +151,6 @@ def train_model(
     jnp.save(output_dir + "/test_acc.npy", test_accuracy)
 
 
-<<<<<<< HEAD
-def run_training(seed, dataset_name, model_name, output_parent_dir, output_dir, stepsize, logsig_depth, model_args, num_steps, print_steps, lr, batch_size,
-                 slurm=False):
-
-=======
 def run_training(
     seed,
     dataset_name,
@@ -175,17 +166,12 @@ def run_training(
     batch_size,
     slurm=False,
 ):
->>>>>>> main
     key = jr.PRNGKey(seed)
 
     datasetkey, modelkey, key = jr.split(key, 3)
     print(f"Creating dataset {dataset_name}")
-<<<<<<< HEAD
-    dataset = create_uea_dataset(
-=======
     dataset = create_dataset(
         data_dir,
->>>>>>> main
         dataset_name,
         stepsize=stepsize,
         depth=logsig_depth,
@@ -220,9 +206,6 @@ def run_training(
         batch_size,
         key,
         output_parent_dir + "/" + output_dir,
-<<<<<<< HEAD
-        slurm
-=======
         slurm,
     )
 
@@ -230,6 +213,7 @@ def run_training(
 def create_model_and_train(
     seed,
     dataset_name,
+    T,
     model_name,
     stepsize,
     logsig_depth,
@@ -242,11 +226,16 @@ def create_model_and_train(
     key,
 ):
     output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"nsteps_{num_steps}_lr_{lr}"
+    output_dir = f"T_{T}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
     for k, v in model_args.items():
-        output_dir += f"_{k}_{v}"
+        name = str(v)
+        if "(" in name:
+            name = name.split("(", 1)[0]
+        output_dir += f"_{k}_" + name
+        if name == "PIDController":
+            output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"
 
     modelkey, trainkey, key = jr.split(key, 3)
@@ -280,20 +269,25 @@ def create_model_and_train(
         batch_size,
         trainkey,
         output_parent_dir + "/" + output_dir,
->>>>>>> main
     )
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
+    data_dir = "data"
     seed = 1234
     num_steps = 1000
     print_steps = 200
     batch_size = 32
     lr = 1e-3
+    T = 1
+    include_time = False
+    solver = diffrax.Heun()
+    stepsize_controller = diffrax.ConstantStepSize()
+    stepsize = 4
+    logsig_depth = 2
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        #"EigenWorms",
+        "EigenWorms",
         "EthanolConcentration",
         "FaceDetection",
         "FingerMovements",
@@ -309,40 +303,9 @@ if __name__ == "__main__":
         "RacketSports",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
-        "UWaveGestureLibrary"
-        ]
-    stepsize = 4
-    logsig_depth = 2
-    model_name = "log_ncde"
-
-    model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
-
-    for dataset_name in dataset_names:
-        output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-        output_dir = f"nsteps_{num_steps}_lr_{lr}"
-        if model_name == "log_ncde" or model_name == "nrde":
-            output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
-        for k, v in model_args.items():
-            output_dir += f"_{k}_{v}"
-        output_dir += f"_seed_{seed}"
-=======
-    data_dir = "data"
-    seed = 9012
-    num_steps = 2000
-    print_steps = 10
-    batch_size = 32
-    lr = 3e-4
-    T = 17984 / 30
-    # Spoken Arabic Digits has nan values in training data
-    dataset_names = [
-        "toy",
+        "UWaveGestureLibrary",
     ]
-    stepsize = 8
-    logsig_depth = 2
-    include_time = False
-    model_names = [
-        "log_ncde",
-    ]
+    model_names = ["log_ncde"]
 
     model_args = {
         "num_blocks": 6,
@@ -353,52 +316,15 @@ if __name__ == "__main__":
         "ssm_blocks": 2,
         "dt0": T / 2284,
         "include_time": include_time,
+        "solver": solver,
+        "stepsize_controller": stepsize_controller,
     }
     for dataset_name in dataset_names:
->>>>>>> main
-
         key = jr.PRNGKey(seed)
 
         datasetkey, modelkey, key = jr.split(key, 3)
         print(f"Creating dataset {dataset_name}")
-<<<<<<< HEAD
-        dataset = create_uea_dataset(
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            use_idxs=False,
-            key=datasetkey,
-        )
-        print(f"Creating model {model_name}")
-        model = create_model(
-            model_name,
-            dataset.data_dim,
-            dataset.logsig_dim,
-            logsig_depth,
-            dataset.intervals,
-            dataset.label_dim,
-            **model_args,
-            key=modelkey,
-        )
 
-        if model_name == "nrde" or model_name == "log_ncde":
-            dataloaders = dataset.path_dataloaders
-        elif model_name == "ncde":
-            dataloaders = dataset.coeff_dataloaders
-        else:
-            dataloaders = dataset.raw_dataloaders
-
-        train_model(
-            model,
-            dataloaders,
-            num_steps,
-            print_steps,
-            lr,
-            batch_size,
-            key,
-            output_parent_dir + "/" + output_dir,
-        )
-=======
         dataset = create_dataset(
             data_dir,
             dataset_name,
@@ -409,10 +335,12 @@ if __name__ == "__main__":
             use_idxs=False,
             key=datasetkey,
         )
+
         for model_name in model_names:
             create_model_and_train(
                 seed,
                 dataset_name,
+                T,
                 model_name,
                 stepsize,
                 logsig_depth,
@@ -423,4 +351,3 @@ if __name__ == "__main__":
                 batch_size,
                 key=modelkey,
             )
->>>>>>> main

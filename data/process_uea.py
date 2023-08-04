@@ -52,51 +52,50 @@ def create_jax_data(train_file, test_file):
 
 def convert_all_files(data_dir):
     """Convert UEA files into jax data to be stored in /interim."""
-    arff_folder = "/scratch/walkerb1/data/Log-NCDE/data/raw/UEA/Multivariate_arff"
+    arff_folder = data_dir + "/raw/UEA/Multivariate_arff"
 
     for ds_name in tqdm(
         [x for x in os.listdir(arff_folder) if os.path.isdir(arff_folder + "/" + x)]
     ):
-        if ds_name != "InsectWingbeat":
-            # File locations
-            train_file = arff_folder + "/{}/{}_TRAIN.arff".format(ds_name, ds_name)
-            test_file = arff_folder + "/{}/{}_TEST.arff".format(ds_name, ds_name)
+        # File locations
+        train_file = arff_folder + "/{}/{}_TRAIN.arff".format(ds_name, ds_name)
+        test_file = arff_folder + "/{}/{}_TEST.arff".format(ds_name, ds_name)
 
-            # Ready save dir
-            save_dir = "/scratch/walkerb1/data/Log-NCDE/data/processed/UEA/{}".format(ds_name)
+        # Ready save dir
+        save_dir = data_dir + "/processed/UEA/{}".format(ds_name)
 
-            # If files don't exist, skip.
-            if any(
-                [
-                    x.split("/")[-1] not in os.listdir(arff_folder + "/{}".format(ds_name))
-                    for x in (train_file, test_file)
-                ]
-            ):
-                if ds_name not in ["Images", "Descriptions"]:
-                    print("No files found for folder: {}".format(ds_name))
-                continue
-            elif os.path.isdir(save_dir):
-                print("Files already exist for: {}".format(ds_name))
-                continue
-            else:
-                os.makedirs(save_dir)
-                train_data, test_data, train_labels, test_labels = create_jax_data(
-                    train_file, test_file
-                )
-                # Compile train and test data together
-                data = jnp.concatenate([train_data, test_data])
-                labels = jnp.concatenate([train_labels, test_labels])
+        # If files don't exist, skip.
+        if any(
+            [
+                x.split("/")[-1] not in os.listdir(arff_folder + "/{}".format(ds_name))
+                for x in (train_file, test_file)
+            ]
+        ):
+            if ds_name not in ["Images", "Descriptions"]:
+                print("No files found for folder: {}".format(ds_name))
+            continue
+        elif os.path.isdir(save_dir):
+            print("Files already exist for: {}".format(ds_name))
+            continue
+        else:
+            os.makedirs(save_dir)
+            train_data, test_data, train_labels, test_labels = create_jax_data(
+                train_file, test_file
+            )
+            # Compile train and test data together
+            data = jnp.concatenate([train_data, test_data])
+            labels = jnp.concatenate([train_labels, test_labels])
 
-                # Save original train test indexes in case we wish to use original splits
-                original_idxs = (
-                    np.arange(0, train_data.shape[0]),
-                    np.arange(train_data.shape[0], data.shape[0]),
-                )
+            # Save original train test indexes in case we wish to use original splits
+            original_idxs = (
+                np.arange(0, train_data.shape[0]),
+                np.arange(train_data.shape[0], data.shape[0]),
+            )
 
-                # Save data
-                save_pickle(data, save_dir + "/data.pkl")
-                save_pickle(labels, save_dir + "/labels.pkl")
-                save_pickle(original_idxs, save_dir + "/original_idxs.pkl")
+            # Save data
+            save_pickle(data, save_dir + "/data.pkl")
+            save_pickle(labels, save_dir + "/labels.pkl")
+            save_pickle(original_idxs, save_dir + "/original_idxs.pkl")
 
 
 if __name__ == "__main__":

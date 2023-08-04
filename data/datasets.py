@@ -146,19 +146,21 @@ def dataset_generator(
     )
 
 
-def create_uea_dataset(name, use_idxs, stepsize, depth, *, key):
-    subfolders = [f.name for f in os.scandir("/data/math-datasig/shug6778/Log-Neural-CDEs/data/processed/UEA") if f.is_dir()]
+def create_uea_dataset(
+    data_dir, name, use_idxs, stepsize, depth, include_time, T, *, key
+):
+    subfolders = [f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()]
     if name not in subfolders:
         raise ValueError(f"Dataset {name} not found in UEA folder")
 
-    with open(f"/data/math-datasig/shug6778/Log-Neural-CDEs/data/processed/UEA/{name}/data.pkl", "rb") as f:
+    with open(data_dir + f"/processed/UEA/{name}/data.pkl", "rb") as f:
         data = pickle.load(f)
-    with open(f"/data/math-datasig/shug6778/Log-Neural-CDEs/data/processed/UEA/{name}/labels.pkl", "rb") as f:
+    with open(data_dir + f"/processed/UEA/{name}/labels.pkl", "rb") as f:
         labels = pickle.load(f)
     onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     if use_idxs:
-        with open(f"/data/math-datasig/shug6778/Log-Neural-CDEs/data/processed/UEA/{name}/original_idxs.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/original_idxs.pkl", "rb") as f:
             idxs = pickle.load(f)
     else:
         idxs = None
@@ -173,7 +175,7 @@ def create_uea_dataset(name, use_idxs, stepsize, depth, *, key):
     )
 
 
-def create_toy_dataset(data_dir, stepsize, depth, *, key):
+def create_toy_dataset(data_dir, stepsize, depth, include_time, *, key):
     with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
         data = pickle.load(f)
     with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
@@ -182,7 +184,9 @@ def create_toy_dataset(data_dir, stepsize, depth, *, key):
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     idxs = None
 
-    return dataset_generator("toy", data, onehot_labels, stepsize, depth, idxs, key=key)
+    return dataset_generator(
+        "toy", data, onehot_labels, stepsize, depth, include_time, idxs, key=key
+    )
 
 
 def create_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, *, key):
