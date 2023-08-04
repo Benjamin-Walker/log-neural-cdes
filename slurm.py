@@ -34,16 +34,18 @@ def run_with_config(
         if not working_directory.is_dir():
             os.chdir(HOME_DIRECTORY)
             ignore_list = os.listdir(WORKING_DIRECTORY + "/data/processed/UEA/")
-            ignore_list.remove(run_config[0][1])
+            ignore_list.remove(run_config[0][2])
             ignore_list.append("results")
+            if os.path.exists(working_directory):
+                shutil.rmtree(working_directory)
             shutil.copytree(
                 ".", working_directory, ignore=shutil.ignore_patterns(*ignore_list)
             )
-        os.chdir(working_directory)
+            os.chdir(working_directory)
         print(f"Running at {working_directory}")
 
     executor = submitit.SlurmExecutor(
-        folder=HOME_DIRECTORY + "/slurm_logs",
+        folder=HOME_DIRECTORY + "/logs_slurm",
     )
     executor.update_parameters(**cluster_config)
     if parallel:
@@ -90,8 +92,7 @@ def run_experiments(
                 lr,
                 lr_scheduler,
                 batch_size,
-                True,
-                WORKING_DIRECTORY,
+                WORKING_DIRECTORY + '/',
             ]
         )
 
@@ -106,7 +107,7 @@ def run_experiments(
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:20GB",
-        # qos="priority",
+        qos="priority",
         account="math-datasig",
     )
 
@@ -119,23 +120,23 @@ if __name__ == "__main__":
     # Spoken Arabic Digits has nan values in training data
     data_dir = WORKING_DIRECTORY + "/data"
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "FaceDetection",
-        "FingerMovements",
-        "HandMovementDirection",
-        "Handwriting",
-        "Heartbeat",
-        "Libras",
-        "LSST",
-        "InsectWingbeat",
-        "MotorImagery",
-        "NATOPS",
-        "PhonemeSpectra",
-        "RacketSports",
+        # "EigenWorms",
+        # "EthanolConcentration",
+        # "FaceDetection",
+        # "FingerMovements",
+        # "HandMovementDirection",
+        # "Handwriting",
+        # "Heartbeat",
+        # "Libras",
+        # "LSST",
+        # "InsectWingbeat",
+        # "MotorImagery",
+        # "NATOPS",
+        # "PhonemeSpectra",
+        # "RacketSports",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
-        "UWaveGestureLibrary",
+        # "UWaveGestureLibrary",
     ]
 
     model_names = ["rnn_lstm", "lru", "ssm"]

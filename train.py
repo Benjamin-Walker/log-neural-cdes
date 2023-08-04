@@ -59,13 +59,11 @@ def train_model(
     batch_size,
     key,
     output_dir,
-    slurm=False,
 ):
-    if not slurm:
-        if os.path.isdir(output_dir):
-            raise ValueError(f"Warning: Output directory {output_dir} already exists")
-        else:
-            os.makedirs(output_dir)
+    if os.path.isdir(output_dir):
+        raise ValueError(f"Warning: Output directory {output_dir} already exists")
+    else:
+        os.makedirs(output_dir)
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
@@ -163,7 +161,6 @@ def create_dataset_model_and_train(
     lr,
     lr_scheduler,
     batch_size,
-    slurm=False,
     output_parent_dir="",
 ):
     output_parent_dir += "outputs/" + model_name + "/" + dataset_name
@@ -225,7 +222,6 @@ def create_dataset_model_and_train(
         batch_size,
         trainkey,
         output_parent_dir + "/" + output_dir,
-        slurm,
     )
 
 
