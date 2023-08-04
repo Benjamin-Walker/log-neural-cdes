@@ -151,6 +151,7 @@ def train_model(
 
 def create_dataset_model_and_train(
     seed,
+    data_dir,
     dataset_name,
     T,
     model_name,

@@ -58,6 +58,7 @@ def run_with_config(
 def run_experiments(
     model_name,
     dataset_name,
+    data_dir,
     T,
     num_steps,
     print_steps,
@@ -77,6 +78,7 @@ def run_experiments(
         cfg_list.append(
             [
                 seed,
+                data_dir,
                 dataset_name,
                 T,
                 model_name,
@@ -115,6 +117,7 @@ def run(cfg):
 
 if __name__ == "__main__":
     # Spoken Arabic Digits has nan values in training data
+    data_dir = WORKING_DIRECTORY + "/data"
     dataset_names = [
         "EigenWorms",
         "EthanolConcentration",
@@ -169,6 +172,7 @@ if __name__ == "__main__":
             run_experiments(
                 model_name,
                 dataset_name,
+                data_dir,
                 T,
                 num_steps,
                 print_steps,
