@@ -16,6 +16,9 @@ where data.pkl and labels.pkl are jnp.arrays with shape (n_samples, n_timesteps,
 and (n_samples, n_classes) respectively. If the dataset had original_idxs then those should
 be saved as a list of jnp.arrays with shape [(n_train,), (n_val,), (n_test,)].
 
+The UEA dataset can be downloaded using the `download_data.py` script. The UEA data can be preprocessed by 
+running the `process_uea.py` script.
+
 ## Models
 
 The scrips in the models folder are used to define the various deep learning
@@ -43,6 +46,13 @@ output dir.
 
 ## Requirements
 
+```
+conda create -n Log-NCDE python=3.10
+conda activate Log-NCDE
+conda install --file conda_requirements.txt -c conda-forge
+/path/to/conda/envs/Log-NCDE/bin/pip install -r pip_requirements.txt
+```
+
 - python 3.10
 - pre-commit 3.3.1
 - sktime 0.17.2
@@ -52,6 +62,9 @@ output dir.
 - equinox 0.10.3
 - optax 0.1.5
 - diffrax 0.3.1
+- roughpy 0.0.1
 
 If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
+
+After installing the requirements, run `pre-commit install` to install the pre-commit hooks.

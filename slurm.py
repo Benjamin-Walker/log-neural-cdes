@@ -115,7 +115,11 @@ def run_experiments(
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:20GB",
+<<<<<<< HEAD
         qos='priority',
+=======
+        qos="priority",
+>>>>>>> main
         account="math-datasig",
     )
 
