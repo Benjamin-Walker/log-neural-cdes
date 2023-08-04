@@ -55,6 +55,7 @@ def train_model(
     num_steps,
     print_steps,
     lr,
+    lr_scheduler,
     batch_size,
     key,
     output_dir,
@@ -68,10 +69,7 @@ def train_model(
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
-    cosine_decay_scheduler = optax.cosine_decay_schedule(
-        lr, decay_steps=num_steps, alpha=0.5
-    )
-    opt = optax.adam(learning_rate=cosine_decay_scheduler)
+    opt = optax.adam(learning_rate=lr_scheduler(lr))
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
@@ -151,66 +149,7 @@ def train_model(
     jnp.save(output_dir + "/test_acc.npy", test_accuracy)
 
 
-def run_training(
-    seed,
-    dataset_name,
-    model_name,
-    output_parent_dir,
-    output_dir,
-    stepsize,
-    logsig_depth,
-    model_args,
-    num_steps,
-    print_steps,
-    lr,
-    batch_size,
-    slurm=False,
-):
-    key = jr.PRNGKey(seed)
-
-    datasetkey, modelkey, key = jr.split(key, 3)
-    print(f"Creating dataset {dataset_name}")
-    dataset = create_dataset(
-        data_dir,
-        dataset_name,
-        stepsize=stepsize,
-        depth=logsig_depth,
-        use_idxs=False,
-        key=datasetkey,
-    )
-    print(f"Creating model {model_name}")
-    model = create_model(
-        model_name,
-        dataset.data_dim,
-        dataset.logsig_dim,
-        logsig_depth,
-        dataset.intervals,
-        dataset.label_dim,
-        **model_args,
-        key=modelkey,
-    )
-
-    if model_name == "nrde" or model_name == "log_ncde":
-        dataloaders = dataset.path_dataloaders
-    elif model_name == "ncde":
-        dataloaders = dataset.coeff_dataloaders
-    else:
-        dataloaders = dataset.raw_dataloaders
-
-    train_model(
-        model,
-        dataloaders,
-        num_steps,
-        print_steps,
-        lr,
-        batch_size,
-        key,
-        output_parent_dir + "/" + output_dir,
-        slurm,
-    )
-
-
-def create_model_and_train(
+def create_dataset_model_and_train(
     seed,
     dataset_name,
     T,
@@ -221,11 +160,12 @@ def create_model_and_train(
     num_steps,
     print_steps,
     lr,
+    lr_scheduler,
     batch_size,
-    *,
-    key,
+    slurm=False,
+    output_parent_dir="",
 ):
-    output_parent_dir = "outputs/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
     output_dir = f"T_{T}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
@@ -238,7 +178,21 @@ def create_model_and_train(
             output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"
 
-    modelkey, trainkey, key = jr.split(key, 3)
+    key = jr.PRNGKey(seed)
+
+    datasetkey, modelkey, trainkey, key = jr.split(key, 4)
+    print(f"Creating dataset {dataset_name}")
+
+    dataset = create_dataset(
+        data_dir,
+        dataset_name,
+        stepsize=stepsize,
+        depth=logsig_depth,
+        include_time=model_args["include_time"],
+        T=T,
+        use_idxs=False,
+        key=datasetkey,
+    )
 
     print(f"Creating model {model_name}")
     model, state = create_model(
@@ -266,9 +220,11 @@ def create_model_and_train(
         num_steps,
         print_steps,
         lr,
+        lr_scheduler,
         batch_size,
         trainkey,
         output_parent_dir + "/" + output_dir,
+        slurm,
     )
 
 
@@ -320,24 +276,8 @@ if __name__ == "__main__":
         "stepsize_controller": stepsize_controller,
     }
     for dataset_name in dataset_names:
-        key = jr.PRNGKey(seed)
-
-        datasetkey, modelkey, key = jr.split(key, 3)
-        print(f"Creating dataset {dataset_name}")
-
-        dataset = create_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            include_time=include_time,
-            T=T,
-            use_idxs=False,
-            key=datasetkey,
-        )
-
         for model_name in model_names:
-            create_model_and_train(
+            create_dataset_model_and_train(
                 seed,
                 dataset_name,
                 T,
@@ -349,5 +289,4 @@ if __name__ == "__main__":
                 print_steps,
                 lr,
                 batch_size,
-                key=modelkey,
             )

@@ -4,7 +4,7 @@ import shutil
 
 import submitit
 
-from train import run_training
+from train import create_dataset_model_and_train
 
 
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
@@ -23,7 +23,6 @@ def run_with_config(
     run_fn,
     run_config,
     directory,
-    results_dir,
     parallel=False,
     **cluster_config,
 ):
@@ -41,13 +40,10 @@ def run_with_config(
                 ".", working_directory, ignore=shutil.ignore_patterns(*ignore_list)
             )
         os.chdir(working_directory)
-        if os.path.isdir(results_dir):
-            raise ValueError(f"Warning: Output directory {results_dir} already exists")
-        # os.makedirs(results_dir, exist_ok=True)
         print(f"Running at {working_directory}")
 
     executor = submitit.SlurmExecutor(
-        folder=os.path.join(WORKING_DIRECTORY, results_dir)
+        folder=HOME_DIRECTORY + "/slurm_logs",
     )
     executor.update_parameters(**cluster_config)
     if parallel:
@@ -62,25 +58,18 @@ def run_with_config(
 def run_experiments(
     model_name,
     dataset_name,
+    T,
     num_steps,
     print_steps,
     lr,
+    lr_scheduler,
     stepsize,
     batch_size,
     logsig_depth,
     model_args,
-    seed,
 ):
 
     SEEDS = [1234]
-
-    output_parent_dir = HOME_DIRECTORY + "/outputs/" + model_name + "/" + dataset_name
-    output_dir = f"nsteps_{num_steps}_lr_{lr}"
-    if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
-    for k, v in model_args.items():
-        output_dir += f"_{k}_{v}"
-    output_dir += f"_seed_{seed}"
 
     cfg_list = []
 
@@ -89,17 +78,18 @@ def run_experiments(
             [
                 seed,
                 dataset_name,
+                T,
                 model_name,
-                output_parent_dir,
-                output_dir,
                 stepsize,
                 logsig_depth,
                 model_args,
                 num_steps,
                 print_steps,
                 lr,
+                lr_scheduler,
                 batch_size,
                 True,
+                WORKING_DIRECTORY,
             ]
         )
 
@@ -107,7 +97,6 @@ def run_experiments(
         run,
         cfg_list,
         WORKING_DIRECTORY,
-        output_parent_dir + "/" + output_dir,
         parallel=PARALLEL,
         array_parallelism=500,
         job_name=JOB_NAME + f"_{dataset_name}",
@@ -115,24 +104,19 @@ def run_experiments(
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:20GB",
-        qos="priority",
+        # qos="priority",
         account="math-datasig",
     )
 
 
 def run(cfg):
-    run_training(*cfg)
+    create_dataset_model_and_train(*cfg)
 
 
 if __name__ == "__main__":
-    seed = 1234
-    num_steps = 100000
-    print_steps = 1000
-    batch_size = 32
-    lr = 1e-3
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        # "EigenWorms",
+        "EigenWorms",
         "EthanolConcentration",
         "FaceDetection",
         "FingerMovements",
@@ -150,22 +134,48 @@ if __name__ == "__main__":
         "SelfRegulationSCP2",
         "UWaveGestureLibrary",
     ]
-    dataset_name = "Libras"
+
+    model_names = ["rnn_lstm", "lru", "ssm"]
+
+    num_steps = 100
+    print_steps = 10
+    batch_size = 32
+    lr = 1e-3
+    lr_scheduler = lambda x: x
+    T = 10
+    dt0 = 0.1
+    include_time = False
+    solver = None
+    stepsize_controller = None
     stepsize = 4
     logsig_depth = 2
-    model_name = "log_ncde"
 
-    model_args = {"hidden_dim": 20, "vf_depth": 3, "vf_width": 8}
+    model_args = {
+        "num_blocks": 6,
+        "hidden_dim": 64,
+        "vf_depth": 2,
+        "vf_width": 32,
+        "ssm_dim": 32,
+        "ssm_blocks": 2,
+        "dt0": dt0,
+        "include_time": include_time,
+        "solver": solver,
+        "stepsize_controller": stepsize_controller,
+    }
 
-    run_experiments(
-        model_name,
-        dataset_name,
-        num_steps,
-        print_steps,
-        lr,
-        stepsize,
-        batch_size,
-        logsig_depth,
-        model_args,
-        seed,
-    )
+    for dataset_name in dataset_names:
+        for model_name in model_names:
+
+            run_experiments(
+                model_name,
+                dataset_name,
+                T,
+                num_steps,
+                print_steps,
+                lr,
+                lr_scheduler,
+                stepsize,
+                batch_size,
+                logsig_depth,
+                model_args,
+            )
