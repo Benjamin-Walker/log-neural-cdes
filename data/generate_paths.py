@@ -8,9 +8,11 @@ from data.hall_set import HallSet
 
 
 def hall_basis_logsig(x, depth, t2l):
-    breakpoint()
     logsig = flatten(log(signature(x, depth)))
-    return t2l[:, 1:] @ logsig
+    if depth == 1:
+        return jnp.concatenate((jnp.array([0]), logsig))
+    else:
+        return t2l[:, 1:] @ logsig
 
 
 def calc_paths(data, stepsize, depth, include_time):

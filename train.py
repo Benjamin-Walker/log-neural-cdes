@@ -69,7 +69,7 @@ def train_model(
 
     batchkey, key = jr.split(key, 2)
     cosine_decay_scheduler = optax.cosine_decay_schedule(
-        lr, decay_steps=num_steps, alpha=0.5
+        lr, decay_steps=num_steps, alpha=0.1
     )
     opt = optax.adam(learning_rate=cosine_decay_scheduler)
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
@@ -190,7 +190,7 @@ def run_training(
         key=modelkey,
     )
 
-    if model_name == "nrde" or model_name == "log_ncde":
+    if model_name == "nrde" or model_name == "log_ncde" or model_name == "LogNCDE":
         dataloaders = dataset.path_dataloaders
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders
@@ -252,7 +252,7 @@ def create_model_and_train(
         key=modelkey,
     )
 
-    if model_name == "nrde" or model_name == "log_ncde":
+    if model_name == "nrde" or model_name == "log_ncde" or model_name == "LogNCDE":
         dataloaders = dataset.path_dataloaders
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders
@@ -274,12 +274,12 @@ def create_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
-    seed = 2222
-    num_steps = 2000
-    print_steps = 100
+    seed = 1234
+    num_steps = 1000000
+    print_steps = 1000
     batch_size = 32
-    lr = 3e-3
-    T = 20
+    lr = 3e-4
+    T = 8
     dt0 = 0.01
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
@@ -287,8 +287,8 @@ if __name__ == "__main__":
     dataset_names = [
         "toy",
     ]
-    stepsize = 1
-    logsig_depth = 1
+    stepsize = 2
+    logsig_depth = 2
     include_time = True
     model_names = [
         "log_ncde",
@@ -296,7 +296,7 @@ if __name__ == "__main__":
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 64,
+        "hidden_dim": 8,
         "vf_depth": 2,
         "vf_width": 32,
         "ssm_dim": 32,
