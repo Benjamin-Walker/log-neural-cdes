@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 
+import optax
 import submitit
 
 from train import create_dataset_model_and_train
@@ -26,7 +27,6 @@ def run_with_config(
     parallel=False,
     **cluster_config,
 ):
-
     copy_and_change_dir = True
     if copy_and_change_dir:
         print("Let's use slurm!")
@@ -71,7 +71,6 @@ def run_experiments(
     logsig_depth,
     model_args,
 ):
-
     SEEDS = [1234]
 
     cfg_list = []
@@ -92,7 +91,7 @@ def run_experiments(
                 lr,
                 lr_scheduler,
                 batch_size,
-                WORKING_DIRECTORY + '/',
+                WORKING_DIRECTORY + "/",
             ]
         )
 
@@ -120,29 +119,29 @@ if __name__ == "__main__":
     # Spoken Arabic Digits has nan values in training data
     data_dir = WORKING_DIRECTORY + "/data"
     dataset_names = [
-        # "EigenWorms",
-        # "EthanolConcentration",
-        # "FaceDetection",
-        # "FingerMovements",
-        # "HandMovementDirection",
-        # "Handwriting",
-        # "Heartbeat",
-        # "Libras",
-        # "LSST",
-        # "InsectWingbeat",
-        # "MotorImagery",
-        # "NATOPS",
-        # "PhonemeSpectra",
-        # "RacketSports",
+        "EigenWorms",
+        "EthanolConcentration",
+        "FaceDetection",
+        "FingerMovements",
+        "HandMovementDirection",
+        "Handwriting",
+        "Heartbeat",
+        "Libras",
+        "LSST",
+        "InsectWingbeat",
+        "MotorImagery",
+        "NATOPS",
+        "PhonemeSpectra",
+        "RacketSports",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
-        # "UWaveGestureLibrary",
+        "UWaveGestureLibrary",
     ]
 
     model_names = ["rnn_lstm", "lru", "ssm"]
 
-    num_steps = 100
-    print_steps = 10
+    num_steps = 100000
+    print_steps = 1000
     batch_size = 32
     lr = 1e-3
     lr_scheduler = lambda x: x
@@ -154,33 +153,107 @@ if __name__ == "__main__":
     stepsize = 4
     logsig_depth = 2
 
-    model_args = {
-        "num_blocks": 6,
-        "hidden_dim": 64,
-        "vf_depth": 2,
-        "vf_width": 32,
-        "ssm_dim": 32,
-        "ssm_blocks": 2,
-        "dt0": dt0,
-        "include_time": include_time,
-        "solver": solver,
-        "stepsize_controller": stepsize_controller,
-    }
-
     for dataset_name in dataset_names:
         for model_name in model_names:
+            for lr in [1e-3, 3e-4, 1e-4]:
+                for lr_scheduler in [
+                    lambda x: x,
+                    lambda x: optax.warmup_cosine_decay_schedule(
+                        init_value=1e-6,
+                        decay_steps=num_steps,
+                        peak_value=x,
+                        warmup_steps=int(num_steps / 100),
+                        end_value=1e-6,
+                    ),
+                ]:
+                    for hidden_dim in [8, 32, 128]:
+                        if model_name == "ssm" or model_name == "lru":
+                            for num_blocks in [2, 4, 6]:
+                                if model_name == "ssm":
+                                    for ssm_dim in [16, 64, 256]:
+                                        for ssm_blocks in [
+                                            ssm_dim // 2,
+                                            ssm_dim // 4,
+                                            ssm_dim // 8,
+                                        ]:
+                                            model_args = {
+                                                "num_blocks": num_blocks,
+                                                "hidden_dim": hidden_dim,
+                                                "vf_depth": 2,
+                                                "vf_width": 32,
+                                                "ssm_dim": ssm_dim,
+                                                "ssm_blocks": ssm_blocks,
+                                                "dt0": dt0,
+                                                "include_time": include_time,
+                                                "solver": solver,
+                                                "stepsize_controller": stepsize_controller,
+                                            }
+                                            run_experiments(
+                                                model_name,
+                                                dataset_name,
+                                                data_dir,
+                                                T,
+                                                num_steps,
+                                                print_steps,
+                                                lr,
+                                                lr_scheduler,
+                                                stepsize,
+                                                batch_size,
+                                                logsig_depth,
+                                                model_args,
+                                            )
+                                elif model_name == "lru":
+                                    model_args = {
+                                        "num_blocks": num_blocks,
+                                        "hidden_dim": hidden_dim,
+                                        "vf_depth": 2,
+                                        "vf_width": 32,
+                                        "ssm_dim": 32,
+                                        "ssm_blocks": 2,
+                                        "dt0": dt0,
+                                        "include_time": include_time,
+                                        "solver": solver,
+                                        "stepsize_controller": stepsize_controller,
+                                    }
+                                    run_experiments(
+                                        model_name,
+                                        dataset_name,
+                                        data_dir,
+                                        T,
+                                        num_steps,
+                                        print_steps,
+                                        lr,
+                                        lr_scheduler,
+                                        stepsize,
+                                        batch_size,
+                                        logsig_depth,
+                                        model_args,
+                                    )
 
-            run_experiments(
-                model_name,
-                dataset_name,
-                data_dir,
-                T,
-                num_steps,
-                print_steps,
-                lr,
-                lr_scheduler,
-                stepsize,
-                batch_size,
-                logsig_depth,
-                model_args,
-            )
+                        elif model_name == "rnn_lstm":
+                            model_args = {
+                                "num_blocks": 6,
+                                "hidden_dim": hidden_dim,
+                                "vf_depth": 2,
+                                "vf_width": 32,
+                                "ssm_dim": 32,
+                                "ssm_blocks": 2,
+                                "dt0": dt0,
+                                "include_time": include_time,
+                                "solver": solver,
+                                "stepsize_controller": stepsize_controller,
+                            }
+                            run_experiments(
+                                model_name,
+                                dataset_name,
+                                data_dir,
+                                T,
+                                num_steps,
+                                print_steps,
+                                lr,
+                                lr_scheduler,
+                                stepsize,
+                                batch_size,
+                                logsig_depth,
+                                model_args,
+                            )
