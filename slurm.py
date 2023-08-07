@@ -106,7 +106,7 @@ def run_experiments(
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:20GB",
-        qos="priority",
+        # qos="priority",
         account="math-datasig",
     )
 
@@ -140,8 +140,8 @@ if __name__ == "__main__":
 
     model_names = ["rnn_lstm", "lru", "ssm"]
 
-    num_steps = 100000
-    print_steps = 1000
+    num_steps = 100
+    print_steps = 10
     batch_size = 32
     lr = 1e-3
     lr_scheduler = lambda x: x
@@ -170,11 +170,10 @@ if __name__ == "__main__":
                         if model_name == "ssm" or model_name == "lru":
                             for num_blocks in [2, 4, 6]:
                                 if model_name == "ssm":
-                                    for ssm_dim in [16, 64, 256]:
+                                    for ssm_dim in [32, 256]:
                                         for ssm_blocks in [
-                                            ssm_dim // 2,
-                                            ssm_dim // 4,
-                                            ssm_dim // 8,
+                                            ssm_dim // 16,
+                                            ssm_dim // 32,
                                         ]:
                                             model_args = {
                                                 "num_blocks": num_blocks,
