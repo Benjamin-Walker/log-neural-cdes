@@ -268,18 +268,19 @@ def create_model_and_train(
 if __name__ == "__main__":
     data_dir = "data"
     seed = 9012
-    num_steps = 2000
-    print_steps = 10
+    num_steps = 20000
+    print_steps = 200
     batch_size = 32
     lr = 3e-4
-    T = 17984 / 30
+    T = 2
+    dt0 = 0.01
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "toy",
     ]
-    stepsize = 8
+    stepsize = 2
     logsig_depth = 2
-    include_time = False
+    include_time = True
     model_names = [
         "log_ncde",
     ]
@@ -291,7 +292,7 @@ if __name__ == "__main__":
         "vf_width": 32,
         "ssm_dim": 32,
         "ssm_blocks": 2,
-        "dt0": T / 2284,
+        "dt0": dt0,
         "include_time": include_time,
     }
     for dataset_name in dataset_names:
