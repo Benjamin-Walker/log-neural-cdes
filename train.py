@@ -190,7 +190,7 @@ def run_training(
         key=modelkey,
     )
 
-    if model_name == "nrde" or model_name == "log_ncde" or model_name == "LogNCDE":
+    if model_name == "nrde" or model_name == "log_ncde":
         dataloaders = dataset.path_dataloaders
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders
@@ -252,7 +252,7 @@ def create_model_and_train(
         key=modelkey,
     )
 
-    if model_name == "nrde" or model_name == "log_ncde" or model_name == "LogNCDE":
+    if model_name == "nrde" or model_name == "log_ncde":
         dataloaders = dataset.path_dataloaders
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     print_steps = 1000
     batch_size = 32
     lr = 3e-4
-    T = 8
+    T = 1
     dt0 = 0.01
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
@@ -296,9 +296,9 @@ if __name__ == "__main__":
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 8,
+        "hidden_dim": 2,
         "vf_depth": 2,
-        "vf_width": 32,
+        "vf_width": 8,
         "ssm_dim": 32,
         "ssm_blocks": 2,
         "dt0": dt0,

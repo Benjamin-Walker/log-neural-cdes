@@ -51,7 +51,6 @@ def calc_paths(data, stepsize, depth, include_time):
         data = jax.vmap(prepend)(data)
         final_data = None
 
-    hall_basis_logsig(data[0, 1, :, :], depth, t2l)
     vmap_calc_logsig = jax.vmap(hall_basis_logsig, in_axes=(0, None, None))
     logsigs = jax.vmap(vmap_calc_logsig, in_axes=(0, None, None))(data, depth, t2l)
     if final_data is not None:

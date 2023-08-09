@@ -73,15 +73,15 @@ if __name__ == "__main__":
 
     save_dir = "data/processed/toy"
     os.mkdir(save_dir)
-    N = 12
+    N = 3
     d = 2 * N
-    t0, t1 = 0, 4
+    t0, t1 = 0, 2
     colors = ["r", "b"]
     key = jr.PRNGKey(0)
     data_list = []
     labels_list = []
     for label in [0, 1]:
-        *keys, key = jr.split(key, 10001)
+        *keys, key = jr.split(key, 1001)
 
         def gen_data(key, label):
             initkey, noisekey = jr.split(key, 2)
@@ -103,7 +103,7 @@ if __name__ == "__main__":
                 t1,
                 dt0=0.01,
                 y0=y0,
-                saveat=diffrax.SaveAt(ts=jnp.linspace(t0, t1, 81)),
+                saveat=diffrax.SaveAt(ts=jnp.linspace(t0, t1, 21)),
             )
             data = jnp.concatenate((sol.ts[:, None], sol.ys), axis=1)
             return data, label

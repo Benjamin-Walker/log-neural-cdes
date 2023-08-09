@@ -1,6 +1,5 @@
 import diffrax
 import equinox as eqx
-import iisignature
 import jax
 import jax.numpy as jnp
 import jax.random as jr
@@ -127,50 +126,3 @@ class LogNeuralCDE(eqx.Module):
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
         else:
             return jax.vmap(self.linear2)(solution.ys)
-
-
-class LogNCDE(eqx.Module):
-
-    logsigdim: int
-    int: eqx.nn.MLP
-    linear1: eqx.nn.Linear
-    linear2: eqx.nn.Linear
-    classification: bool
-    stateful: bool = False
-    nondeterministic: bool = False
-
-    def __init__(
-        self,
-        mlp_hidden_dim,
-        mlp_num_hidden,
-        hidden_dim,
-        data_dim,
-        depth,
-        label_dim,
-        classification,
-        *,
-        key,
-    ):
-        mlpkey, l1key, l2key = jr.split(key, 3)
-        self.logsigdim = iisignature.logsiglength(data_dim, depth)
-        self.int = eqx.nn.MLP(
-            hidden_dim + self.logsigdim,
-            hidden_dim,
-            mlp_hidden_dim,
-            mlp_num_hidden,
-            key=mlpkey,
-        )
-        self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
-        self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
-        self.classification = classification
-
-    def __call__(self, X):
-
-        ts, logsigs, x0 = X
-        y = self.linear1(x0)
-        for logsig in logsigs:
-            y = self.int(jnp.concatenate((y, logsig[1:]), axis=-1))
-        if self.classification:
-            return jax.nn.softmax(self.linear2(y))
-        else:
-            return jax.vmap(self.linear2)(y)
