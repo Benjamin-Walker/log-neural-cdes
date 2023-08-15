@@ -137,7 +137,9 @@ def train_model(
                         val_acc_for_best_model.append(val_accuracy)
                         for _, data in zip(
                             range(1),
-                            dataloaders["test"].loop(dataloaders["test"].size, key=None),
+                            dataloaders["test"].loop(
+                                dataloaders["test"].size, key=None
+                            ),
                         ):
                             X, y = data
                             stepkey, key = jr.split(key, 2)
@@ -168,6 +170,7 @@ def train_model(
     jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
     jnp.save(output_dir + "/all_time.npy", all_time)
     jnp.save(output_dir + "/test_acc.npy", test_acc)
+
 
 def create_dataset_model_and_train(
     seed,
@@ -259,6 +262,7 @@ if __name__ == "__main__":
     print_steps = 200
     batch_size = 32
     lr = 1e-3
+    lr_scheduler = lambda lr: lr
     T = 1
     include_time = False
     solver = diffrax.Heun()
