@@ -135,43 +135,39 @@ def train_model(
                         print("Saving model")
                         eqx.tree_serialise_leaves(model_file, model)
                         val_acc_for_best_model.append(val_accuracy)
+                        for _, data in zip(
+                            range(1),
+                            dataloaders["test"].loop(dataloaders["test"].size, key=None),
+                        ):
+                            X, y = data
+                            stepkey, key = jr.split(key, 2)
+                            prediction, _ = calc_output(
+                                inference_model,
+                                X,
+                                state,
+                                stepkey,
+                                model.stateful,
+                                model.nondeterministic,
+                            )
+                            test_accuracy = jnp.mean(
+                                jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+                            )
                 running_loss = 0.0
                 all_train_acc.append(train_accuracy)
                 all_val_acc.append(val_accuracy)
                 all_time.append(total_time)
 
+    print(f"Test accuracy: {test_accuracy}")
     steps = jnp.arange(0, num_steps + 1, print_steps)
     all_train_acc = jnp.array(all_train_acc)
     all_val_acc = jnp.array(all_val_acc)
     all_time = jnp.array(all_time)
+    test_acc = jnp.array(test_accuracy)
     jnp.save(output_dir + "/steps.npy", steps)
     jnp.save(output_dir + "/all_train_acc.npy", all_train_acc)
     jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
     jnp.save(output_dir + "/all_time.npy", all_time)
-
-    best_model = eqx.tree_deserialise_leaves(model_file, model)
-    inference_model = eqx.tree_inference(best_model, value=True)
-    for _, data in zip(
-        range(1),
-        dataloaders["test"].loop(dataloaders["test"].size, key=None),
-    ):
-        X, y = data
-        stepkey, key = jr.split(key, 2)
-        prediction, _ = calc_output(
-            inference_model,
-            X,
-            state,
-            stepkey,
-            best_model.stateful,
-            best_model.nondeterministic,
-        )
-        test_accuracy = jnp.mean(
-            jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
-        )
-        print(f"Test accuracy: {test_accuracy}")
-
-    jnp.save(output_dir + "/test_acc.npy", test_accuracy)
-
+    jnp.save(output_dir + "/test_acc.npy", test_acc)
 
 def create_dataset_model_and_train(
     seed,
