@@ -20,9 +20,8 @@ def calc_paths(data, stepsize, depth, include_time):
     which can be queried over any interval for the log-signature. Right now,
     it is necessary to specify the stepsize and depth ahead of time.
     """
-
     if not include_time:
-        data = data[:, :, 1:]
+        data = data[..., 1:]
 
     hs = HallSet(data.shape[-1], depth)
     t2l = hs.t2l_matrix(depth)

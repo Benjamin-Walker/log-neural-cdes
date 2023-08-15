@@ -198,6 +198,6 @@ def create_dataset(data_dir, name, use_idxs, stepsize, depth, include_time, T, *
             data_dir, name, use_idxs, stepsize, depth, include_time, T, key=key
         )
     elif name == "toy":
-        return create_toy_dataset(data_dir, stepsize, depth, key=key)
+        return create_toy_dataset(data_dir, stepsize, depth, include_time, key=key)
     else:
         raise ValueError(f"Dataset {name} not found in UEA folder and not toy dataset")
