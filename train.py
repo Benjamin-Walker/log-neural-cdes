@@ -219,6 +219,7 @@ def create_dataset_model_and_train(
         include_time=model_args["include_time"],
         T=T,
         use_idxs=False,
+        use_presplit=False,
         key=datasetkey,
     )
 
@@ -263,7 +264,9 @@ if __name__ == "__main__":
     print_steps = 200
     batch_size = 32
     lr = 1e-3
+    lr_scheduler = lambda lr: lr
     T = 1
+    dt0 = T / 100
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
@@ -298,7 +301,7 @@ if __name__ == "__main__":
         "vf_width": 32,
         "ssm_dim": 32,
         "ssm_blocks": 2,
-        "dt0": T / 2284,
+        "dt0": dt0,
         "include_time": include_time,
         "solver": solver,
         "stepsize_controller": stepsize_controller,
