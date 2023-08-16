@@ -55,27 +55,25 @@ def train_model(
     num_steps,
     print_steps,
     lr,
+    lr_scheduler,
     batch_size,
     key,
     output_dir,
-    slurm=False,
 ):
-    if not slurm:
-        if os.path.isdir(output_dir):
-            raise ValueError(f"Warning: Output directory {output_dir} already exists")
-        else:
-            os.makedirs(output_dir)
+    if os.path.isdir(output_dir):
+        raise ValueError(f"Warning: Output directory {output_dir} already exists")
+    else:
+        os.makedirs(output_dir)
     model_file = output_dir + "/model.checkpoint.npz"
 
     batchkey, key = jr.split(key, 2)
-    cosine_decay_scheduler = optax.cosine_decay_schedule(
-        lr, decay_steps=num_steps, alpha=0.1
-    )
-    opt = optax.adam(learning_rate=cosine_decay_scheduler)
+    opt = optax.adam(learning_rate=lr_scheduler(lr))
     opt_state = opt.init(eqx.filter(model, eqx.is_inexact_array))
 
     running_loss = 0.0
     all_val_acc = [0.0]
+    all_train_acc = [0.0]
+    val_acc_for_best_model = [0.0]
     all_time = []
     start = time.time()
     for step, data in zip(
@@ -88,6 +86,24 @@ def train_model(
         running_loss += value
         if (step + 1) % print_steps == 0:
 
+            for _, data in zip(
+                range(1),
+                dataloaders["train"].loop(dataloaders["train"].size, key=None),
+            ):
+                stepkey, key = jr.split(key, 2)
+                inference_model = eqx.tree_inference(model, value=True)
+                X, y = data
+                prediction, _ = calc_output(
+                    inference_model,
+                    X,
+                    state,
+                    stepkey,
+                    model.stateful,
+                    model.nondeterministic,
+                )
+                train_accuracy = jnp.mean(
+                    jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+                )
             for _, data in zip(
                 range(1),
                 dataloaders["val"].loop(dataloaders["val"].size, key=None),
@@ -110,108 +126,56 @@ def train_model(
                 total_time = end - start
                 print(
                     f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
+                    f"Train accuracy: {train_accuracy}, "
                     f"Validation accuracy: {val_accuracy}, Time: {total_time}"
                 )
                 start = time.time()
-                if val_accuracy >= max(all_val_acc):
-                    print("Saving model")
-                    eqx.tree_serialise_leaves(model_file, model)
+                if step > 0:
+                    if val_accuracy >= max(val_acc_for_best_model):
+                        print("Saving model")
+                        eqx.tree_serialise_leaves(model_file, model)
+                        val_acc_for_best_model.append(val_accuracy)
+                        for _, data in zip(
+                            range(1),
+                            dataloaders["test"].loop(
+                                dataloaders["test"].size, key=None
+                            ),
+                        ):
+                            X, y = data
+                            stepkey, key = jr.split(key, 2)
+                            prediction, _ = calc_output(
+                                inference_model,
+                                X,
+                                state,
+                                stepkey,
+                                model.stateful,
+                                model.nondeterministic,
+                            )
+                            test_accuracy = jnp.mean(
+                                jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+                            )
                 running_loss = 0.0
+                all_train_acc.append(train_accuracy)
                 all_val_acc.append(val_accuracy)
                 all_time.append(total_time)
 
+    print(f"Test accuracy: {test_accuracy}")
     steps = jnp.arange(0, num_steps + 1, print_steps)
+    all_train_acc = jnp.array(all_train_acc)
     all_val_acc = jnp.array(all_val_acc)
     all_time = jnp.array(all_time)
+    test_acc = jnp.array(test_accuracy)
     jnp.save(output_dir + "/steps.npy", steps)
+    jnp.save(output_dir + "/all_train_acc.npy", all_train_acc)
     jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
     jnp.save(output_dir + "/all_time.npy", all_time)
-
-    best_model = eqx.tree_deserialise_leaves(model_file, model)
-    inference_model = eqx.tree_inference(best_model, value=True)
-    for _, data in zip(
-        range(1),
-        dataloaders["test"].loop(dataloaders["test"].size, key=None),
-    ):
-        X, y = data
-        stepkey, key = jr.split(key, 2)
-        prediction, _ = calc_output(
-            inference_model,
-            X,
-            state,
-            stepkey,
-            best_model.stateful,
-            best_model.nondeterministic,
-        )
-        test_accuracy = jnp.mean(
-            jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
-        )
-        print(f"Test accuracy: {test_accuracy}")
-
-    jnp.save(output_dir + "/test_acc.npy", test_accuracy)
+    jnp.save(output_dir + "/test_acc.npy", test_acc)
 
 
-def run_training(
+def create_dataset_model_and_train(
     seed,
-    dataset_name,
-    model_name,
-    output_parent_dir,
-    output_dir,
-    stepsize,
-    logsig_depth,
-    model_args,
-    num_steps,
-    print_steps,
-    lr,
-    batch_size,
-    slurm=False,
-):
-    key = jr.PRNGKey(seed)
-
-    datasetkey, modelkey, key = jr.split(key, 3)
-    print(f"Creating dataset {dataset_name}")
-    dataset = create_dataset(
-        data_dir,
-        dataset_name,
-        stepsize=stepsize,
-        depth=logsig_depth,
-        use_idxs=False,
-        key=datasetkey,
-    )
-    print(f"Creating model {model_name}")
-    model = create_model(
-        model_name,
-        dataset.data_dim,
-        dataset.logsig_dim,
-        logsig_depth,
-        dataset.intervals,
-        dataset.label_dim,
-        **model_args,
-        key=modelkey,
-    )
-
-    if model_name == "nrde" or model_name == "log_ncde":
-        dataloaders = dataset.path_dataloaders
-    elif model_name == "ncde":
-        dataloaders = dataset.coeff_dataloaders
-    else:
-        dataloaders = dataset.raw_dataloaders
-
-    train_model(
-        model,
-        dataloaders,
-        num_steps,
-        print_steps,
-        lr,
-        batch_size,
-        key,
-        output_parent_dir + "/" + output_dir,
-        slurm,
-    )
-
-
-def create_model_and_train(
-    seed,
+    data_dir,
+    use_presplit,
     dataset_name,
     T,
     model_name,
@@ -221,14 +185,18 @@ def create_model_and_train(
     num_steps,
     print_steps,
     lr,
+    lr_scheduler,
     batch_size,
-    *,
-    key,
+    output_parent_dir="",
 ):
-    output_parent_dir = "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"T_{T}_nsteps_{num_steps}_lr_{lr}"
+    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
+    output_dir = f"T_{T:.2f}_nsteps_{num_steps}_lr_{lr}"
+    if lr_scheduler(1) == 1:
+        output_dir += "_schedule_False"
+    else:
+        output_dir += "_schedule_True"
     if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
+        output_dir += f"_stepsize_{stepsize:.2f}_logsigdepth_{logsig_depth}"
     for k, v in model_args.items():
         name = str(v)
         if "(" in name:
@@ -238,7 +206,22 @@ def create_model_and_train(
             output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"
 
-    modelkey, trainkey, key = jr.split(key, 3)
+    key = jr.PRNGKey(seed)
+
+    datasetkey, modelkey, trainkey, key = jr.split(key, 4)
+    print(f"Creating dataset {dataset_name}")
+
+    dataset = create_dataset(
+        data_dir,
+        dataset_name,
+        stepsize=stepsize,
+        depth=logsig_depth,
+        include_time=model_args["include_time"],
+        T=T,
+        use_idxs=False,
+        use_presplit=use_presplit,
+        key=datasetkey,
+    )
 
     print(f"Creating model {model_name}")
     model, state = create_model(
@@ -266,6 +249,7 @@ def create_model_and_train(
         num_steps,
         print_steps,
         lr,
+        lr_scheduler,
         batch_size,
         trainkey,
         output_parent_dir + "/" + output_dir,
@@ -274,31 +258,48 @@ def create_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
+    use_presplit = True
+    output_parent_dir = ""
     seed = 1234
-    num_steps = 1000000
-    print_steps = 1000
+    num_steps = 10001
+    print_steps = 200
     batch_size = 32
     lr = 3e-4
-    T = 1
-    dt0 = 0.01
+    lr_scheduler = lambda lr: lr
+    T = 17984 / 30
+    dt0 = T / 2284
+    include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
+    stepsize = 8
+    logsig_depth = 2
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "toy",
+        "EigenWorms",
+        "EthanolConcentration",
+        "FaceDetection",
+        "FingerMovements",
+        "HandMovementDirection",
+        "Handwriting",
+        "Heartbeat",
+        "Libras",
+        "LSST",
+        "InsectWingbeat",
+        "MotorImagery",
+        "NATOPS",
+        "PhonemeSpectra",
+        "RacketSports",
+        "SelfRegulationSCP1",
+        "SelfRegulationSCP2",
+        "UWaveGestureLibrary",
     ]
-    stepsize = 2
-    logsig_depth = 2
-    include_time = True
-    model_names = [
-        "log_ncde",
-    ]
+    model_names = ["log_ncde"]
 
     model_args = {
         "num_blocks": 6,
-        "hidden_dim": 2,
+        "hidden_dim": 64,
         "vf_depth": 2,
-        "vf_width": 8,
+        "vf_width": 32,
         "ssm_dim": 32,
         "ssm_blocks": 2,
         "dt0": dt0,
@@ -307,24 +308,11 @@ if __name__ == "__main__":
         "stepsize_controller": stepsize_controller,
     }
     for dataset_name in dataset_names:
-
-        key = jr.PRNGKey(seed)
-
-        datasetkey, modelkey, key = jr.split(key, 3)
-        print(f"Creating dataset {dataset_name}")
-        dataset = create_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            include_time=include_time,
-            T=T,
-            use_idxs=False,
-            key=datasetkey,
-        )
         for model_name in model_names:
-            create_model_and_train(
+            create_dataset_model_and_train(
                 seed,
+                data_dir,
+                use_presplit,
                 dataset_name,
                 T,
                 model_name,
@@ -334,6 +322,7 @@ if __name__ == "__main__":
                 num_steps,
                 print_steps,
                 lr,
+                lr_scheduler,
                 batch_size,
-                key=modelkey,
+                output_parent_dir,
             )
