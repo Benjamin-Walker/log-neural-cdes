@@ -175,6 +175,7 @@ def train_model(
 def create_dataset_model_and_train(
     seed,
     data_dir,
+    use_presplit,
     dataset_name,
     T,
     model_name,
@@ -189,13 +190,13 @@ def create_dataset_model_and_train(
     output_parent_dir="",
 ):
     output_parent_dir += "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"T_{T}_nsteps_{num_steps}_lr_{lr}"
+    output_dir = f"T_{T:.2f}_nsteps_{num_steps}_lr_{lr}"
     if lr_scheduler(1) == 1:
         output_dir += "_schedule_False"
     else:
         output_dir += "_schedule_True"
     if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize}_logsigdepth_{logsig_depth}"
+        output_dir += f"_stepsize_{stepsize:.2f}_logsigdepth_{logsig_depth}"
     for k, v in model_args.items():
         name = str(v)
         if "(" in name:
@@ -218,7 +219,7 @@ def create_dataset_model_and_train(
         include_time=model_args["include_time"],
         T=T,
         use_idxs=False,
-        use_presplit=False,
+        use_presplit=use_presplit,
         key=datasetkey,
     )
 
@@ -257,19 +258,20 @@ def create_dataset_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
+    use_presplit = True
     output_parent_dir = ""
     seed = 1234
-    num_steps = 1000
+    num_steps = 10001
     print_steps = 200
     batch_size = 32
-    lr = 1e-3
+    lr = 3e-4
     lr_scheduler = lambda lr: lr
-    T = 1
-    dt0 = T / 100
+    T = 17984 / 30
+    dt0 = T / 2284
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 4
+    stepsize = 8
     logsig_depth = 2
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
@@ -310,6 +312,7 @@ if __name__ == "__main__":
             create_dataset_model_and_train(
                 seed,
                 data_dir,
+                use_presplit,
                 dataset_name,
                 T,
                 model_name,
