@@ -7,9 +7,8 @@ from data.datasets import create_dataset
 
 
 def create_data(
-    data_dir, dataset_name, stepsize=2, depth=2, include_time=True, T=1, *, key
+    data_dir, dataset_name, stepsize=18000, depth=2, include_time=True, T=1, *, key
 ):
-
     print(f"Creating dataset {dataset_name}")
     dataset = create_dataset(
         data_dir,
@@ -19,6 +18,7 @@ def create_data(
         include_time=include_time,
         T=T,
         use_idxs=False,
+        use_presplit=True,
         key=key,
     )
 
@@ -29,33 +29,29 @@ def create_data(
         dataloaders["train"].loop(dataloaders["train"].size, key=None),
     ):
         X_train, y_train = data
-        X_train = jnp.moveaxis(X_train, 1, 2)
     for _, data in zip(
         range(1),
         dataloaders["val"].loop(dataloaders["val"].size, key=None),
     ):
         X_val, y_val = data
-        X_val = jnp.moveaxis(X_val, 1, 2)
     for _, data in zip(
         range(1),
         dataloaders["test"].loop(dataloaders["test"].size, key=None),
     ):
         X_test, y_test = data
-        X_test = jnp.moveaxis(X_test, 1, 2)
 
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
 def train(num_kernels, X_train, y_train, X_val, y_val, X_test, y_test):
-
     clf = RocketClassifier(
         num_kernels=num_kernels, n_jobs=-1, use_multivariate="yes", random_state=1
     )
-    clf.fit(np.array(X_train), np.argmax(np.array(y_train), axis=1))
-    y_pred_val = clf.predict(np.array(X_val))
+    clf.fit(X_train, np.argmax(np.array(y_train), axis=1))
+    y_pred_val = clf.predict(X_val)
     val_acc = (np.argmax(np.array(y_val), axis=1) == y_pred_val).sum() / len(y_pred_val)
     print(f"Val accuracy: {val_acc}")
-    y_pred_test = clf.predict(np.array(X_test))
+    y_pred_test = clf.predict(X_test)
     test_acc = (np.argmax(np.array(y_test), axis=1) == y_pred_test).sum() / len(
         y_pred_test
     )
@@ -66,21 +62,21 @@ if __name__ == "__main__":
     dataset_names = [
         "EigenWorms",
         "EthanolConcentration",
-        # "FaceDetection",
+        "FaceDetection",
         "FingerMovements",
         "HandMovementDirection",
         "Handwriting",
         "Heartbeat",
+        "InsectWingbeat",
+        "JapaneseVowels",
         "Libras",
         "LSST",
-        # "InsectWingbeat",
         "MotorImagery",
         "NATOPS",
+        "PEMS-SF",
         "PhonemeSpectra",
-        "RacketSports",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
-        "UWaveGestureLibrary",
     ]
     for datasetname in dataset_names:
         data_dir = "data"
@@ -89,6 +85,18 @@ if __name__ == "__main__":
         X_train, y_train, X_val, y_val, X_test, y_test = create_data(
             data_dir, datasetname, key=datasetkey
         )
+
+        X_train = jnp.moveaxis(X_train, 1, 2)
+        X_val = jnp.moveaxis(X_val, 1, 2)
+        X_test = jnp.moveaxis(X_test, 1, 2)
+
+        X_train = np.array(X_train)
+        X_val = np.array(X_val)
+        X_test = np.array(X_test)
+
+        X_train = np.nan_to_num(X_train, nan=0.0)
+        X_val = np.nan_to_num(X_val, nan=0.0)
+        X_test = np.nan_to_num(X_test, nan=0.0)
 
         for num_kernels in [500, 2000, 10000, 40000]:
             print(f"Num kernels: {num_kernels}")

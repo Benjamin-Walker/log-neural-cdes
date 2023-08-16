@@ -43,7 +43,7 @@ class LogNeuralCDE(eqx.Module):
         include_time,
         *,
         key,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
@@ -59,7 +59,10 @@ class LogNeuralCDE(eqx.Module):
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
         hs = HallSet(self.width, self.depth)
-        self.pairs = jnp.asarray(hs.data[1:])
+        if self.depth == 1:
+            self.pairs = None
+        else:
+            self.pairs = jnp.asarray(hs.data[1:])
         self.classification = classification
         self.intervals = intervals
         self.solver = solver
@@ -71,7 +74,6 @@ class LogNeuralCDE(eqx.Module):
     def __call__(self, X):
 
         ts, logsig, x0 = X
-
         if not self.include_time:
             x0 = x0[1:]
 
@@ -81,6 +83,10 @@ class LogNeuralCDE(eqx.Module):
             idx = jnp.searchsorted(ts, t) // self.intervals[1]
             logsig_t = logsig[idx]
             vf_out = jnp.reshape(self.vf(y), (self.width, self.hidden_dim))
+
+            if self.pairs is None:
+                return jnp.dot(logsig_t[1:], vf_out)
+
             jvps = jnp.reshape(
                 jax.vmap(lambda x: jax.jvp(self.vf, (y,), (x,))[1])(vf_out),
                 (self.width, self.width, self.hidden_dim),
