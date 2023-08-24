@@ -202,7 +202,10 @@ def create_dataset_model_and_train(
         name = str(v)
         if "(" in name:
             name = name.split("(", 1)[0]
-        output_dir += f"_{k}_" + name
+        if f"{k}" == "dt0":
+            output_dir += f"_{k}_{v:.2g}"
+        else:
+            output_dir += f"_{k}_" + name
         if name == "PIDController":
             output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"

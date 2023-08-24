@@ -2,7 +2,7 @@ import os
 import pathlib
 import shutil
 
-import optax
+import diffrax
 import submitit
 
 from train import create_dataset_model_and_train
@@ -34,8 +34,9 @@ def run_with_config(
         if not working_directory.is_dir():
             os.chdir(HOME_DIRECTORY)
             ignore_list = os.listdir(WORKING_DIRECTORY + "/data/processed/UEA/")
-            ignore_list.remove(run_config[0][2])
+            ignore_list.remove(run_config[0][3])
             ignore_list.append("results")
+            ignore_list.append("logs_slurm")
             if os.path.exists(working_directory):
                 shutil.rmtree(working_directory)
             shutil.copytree(
@@ -61,6 +62,7 @@ def run_experiments(
     model_name,
     dataset_name,
     data_dir,
+    use_presplit,
     T,
     num_steps,
     print_steps,
@@ -80,6 +82,7 @@ def run_experiments(
             [
                 seed,
                 data_dir,
+                use_presplit,
                 dataset_name,
                 T,
                 model_name,
@@ -118,6 +121,7 @@ def run(cfg):
 if __name__ == "__main__":
     # Spoken Arabic Digits has nan values in training data
     data_dir = WORKING_DIRECTORY + "/data"
+    use_presplit = True
     dataset_names = [
         "EigenWorms",
         "EthanolConcentration",
@@ -126,24 +130,26 @@ if __name__ == "__main__":
         "HandMovementDirection",
         "Handwriting",
         "Heartbeat",
+        "InsectWingbeat",
+        "JapaneseVowels",
         "Libras",
         "LSST",
-        "InsectWingbeat",
         "MotorImagery",
         "NATOPS",
+        "PEMS-SF",
         "PhonemeSpectra",
-        "RacketSports",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
-        "UWaveGestureLibrary",
     ]
 
-    model_names = ["rnn_lstm", "lru", "ssm"]
+    lengths = {"Heartbeat": 405, "SelfRegulationSCP2": 1152, "MotorImagery": 3000}
 
-    num_steps = 100000
-    print_steps = 1000
+    model_names = ["log_ncde"]
+
+    num_steps = 10000
+    print_steps = 100
     batch_size = 32
-    lr = 1e-3
+    lr = 1e-4
     lr_scheduler = lambda x: x
     T = 10
     dt0 = 0.1
@@ -152,92 +158,26 @@ if __name__ == "__main__":
     stepsize_controller = None
     stepsize = 4
     logsig_depth = 2
+    num_blocks = 1
+    ssm_dim = 128
+    ssm_blocks = 1
+    hidden_dim = 64
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for lr in [1e-3, 3e-4, 1e-4]:
-                for lr_scheduler in [
-                    lambda x: x,
-                    lambda x: optax.warmup_cosine_decay_schedule(
-                        init_value=1e-6,
-                        decay_steps=num_steps,
-                        peak_value=x,
-                        warmup_steps=int(num_steps / 100),
-                        end_value=1e-6,
-                    ),
-                ]:
-                    for hidden_dim in [8, 32, 128]:
-                        if model_name == "ssm" or model_name == "lru":
-                            for num_blocks in [2, 4, 6]:
-                                if model_name == "ssm":
-                                    for ssm_dim in [16, 64, 256]:
-                                        for ssm_blocks in [
-                                            ssm_dim // 2,
-                                            ssm_dim // 4,
-                                            ssm_dim // 8,
-                                        ]:
-                                            model_args = {
-                                                "num_blocks": num_blocks,
-                                                "hidden_dim": hidden_dim,
-                                                "vf_depth": 2,
-                                                "vf_width": 32,
-                                                "ssm_dim": ssm_dim,
-                                                "ssm_blocks": ssm_blocks,
-                                                "dt0": dt0,
-                                                "include_time": include_time,
-                                                "solver": solver,
-                                                "stepsize_controller": stepsize_controller,
-                                            }
-                                            run_experiments(
-                                                model_name,
-                                                dataset_name,
-                                                data_dir,
-                                                T,
-                                                num_steps,
-                                                print_steps,
-                                                lr,
-                                                lr_scheduler,
-                                                stepsize,
-                                                batch_size,
-                                                logsig_depth,
-                                                model_args,
-                                            )
-                                elif model_name == "lru":
-                                    model_args = {
-                                        "num_blocks": num_blocks,
-                                        "hidden_dim": hidden_dim,
-                                        "vf_depth": 2,
-                                        "vf_width": 32,
-                                        "ssm_dim": 32,
-                                        "ssm_blocks": 2,
-                                        "dt0": dt0,
-                                        "include_time": include_time,
-                                        "solver": solver,
-                                        "stepsize_controller": stepsize_controller,
-                                    }
-                                    run_experiments(
-                                        model_name,
-                                        dataset_name,
-                                        data_dir,
-                                        T,
-                                        num_steps,
-                                        print_steps,
-                                        lr,
-                                        lr_scheduler,
-                                        stepsize,
-                                        batch_size,
-                                        logsig_depth,
-                                        model_args,
-                                    )
-
-                        elif model_name == "rnn_lstm":
+            for stepsize in [8]:
+                for include_time in [True, False]:
+                    for T in [1]:
+                        for dt0 in [T / 1200]:
+                            solver = diffrax.Heun()
+                            stepsize_controller = diffrax.ConstantStepSize()
                             model_args = {
-                                "num_blocks": 6,
+                                "num_blocks": num_blocks,
                                 "hidden_dim": hidden_dim,
                                 "vf_depth": 2,
                                 "vf_width": 32,
-                                "ssm_dim": 32,
-                                "ssm_blocks": 2,
+                                "ssm_dim": ssm_dim,
+                                "ssm_blocks": ssm_blocks,
                                 "dt0": dt0,
                                 "include_time": include_time,
                                 "solver": solver,
@@ -247,6 +187,7 @@ if __name__ == "__main__":
                                 model_name,
                                 dataset_name,
                                 data_dir,
+                                use_presplit,
                                 T,
                                 num_steps,
                                 print_steps,
