@@ -131,7 +131,6 @@ def dataset_generator(
         "val": InMemoryDataloader(val_data, val_labels),
         "test": InMemoryDataloader(test_data, test_labels),
     }
-
     coeff_dataloaders = {
         "train": InMemoryDataloader(train_coeff_data, train_labels),
         "val": InMemoryDataloader(val_coeff_data, val_labels),
@@ -179,15 +178,15 @@ def create_uea_dataset(
         ts = (T / train_data.shape[1]) * jnp.repeat(
             jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
         )
-        train_data = jnp.concatenate([ts[:, :, None], train_data], axis=2)
+        train_data = jnp.concatenate([ts[:, :, None], train_data[:, :, 1:]], axis=2)
         ts = (T / val_data.shape[1]) * jnp.repeat(
             jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
         )
-        val_data = jnp.concatenate([ts[:, :, None], val_data], axis=2)
+        val_data = jnp.concatenate([ts[:, :, None], val_data[:, :, 1:]], axis=2)
         ts = (T / test_data.shape[1]) * jnp.repeat(
             jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
         )
-        test_data = jnp.concatenate([ts[:, :, None], test_data], axis=2)
+        test_data = jnp.concatenate([ts[:, :, None], test_data[:, :, 1:]], axis=2)
         data = (train_data, val_data, test_data)
         onehot_labels = (train_labels, val_labels, test_labels)
     else:
