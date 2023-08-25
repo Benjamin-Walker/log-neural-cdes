@@ -154,10 +154,21 @@ def train_model(
                             test_accuracy = jnp.mean(
                                 jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
                             )
+                            print(f"Test accuracy: {test_accuracy}")
                 running_loss = 0.0
                 all_train_acc.append(train_accuracy)
                 all_val_acc.append(val_accuracy)
                 all_time.append(total_time)
+                steps = jnp.arange(0, step + 1, print_steps)
+                all_train_acc_save = jnp.array(all_train_acc)
+                all_val_acc_save = jnp.array(all_val_acc)
+                all_time_save = jnp.array(all_time)
+                test_acc_save = jnp.array(test_accuracy)
+                jnp.save(output_dir + "/steps.npy", steps)
+                jnp.save(output_dir + "/all_train_acc.npy", all_train_acc_save)
+                jnp.save(output_dir + "/all_val_acc.npy", all_val_acc_save)
+                jnp.save(output_dir + "/all_time.npy", all_time_save)
+                jnp.save(output_dir + "/test_acc.npy", test_acc_save)
 
     print(f"Test accuracy: {test_accuracy}")
     steps = jnp.arange(0, num_steps + 1, print_steps)
@@ -201,7 +212,10 @@ def create_dataset_model_and_train(
         name = str(v)
         if "(" in name:
             name = name.split("(", 1)[0]
-        output_dir += f"_{k}_" + name
+        if name == "dt0":
+            output_dir += f"_{k}_" + f"{v:.2f}"
+        else:
+            output_dir += f"_{k}_" + name
         if name == "PIDController":
             output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"
@@ -261,13 +275,13 @@ if __name__ == "__main__":
     use_presplit = True
     output_parent_dir = ""
     seed = 1234
-    num_steps = 10001
-    print_steps = 200
+    num_steps = 10000
+    print_steps = 100
     batch_size = 32
     lr = 3e-4
     lr_scheduler = lambda lr: lr
-    T = 17984 / 30
-    dt0 = T / 2284
+    T = 500
+    dt0 = T / 4000
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
@@ -276,22 +290,23 @@ if __name__ == "__main__":
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         "EigenWorms",
-        "EthanolConcentration",
-        "FaceDetection",
-        "FingerMovements",
-        "HandMovementDirection",
-        "Handwriting",
-        "Heartbeat",
-        "Libras",
-        "LSST",
-        "InsectWingbeat",
-        "MotorImagery",
-        "NATOPS",
-        "PhonemeSpectra",
-        "RacketSports",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
-        "UWaveGestureLibrary",
+        # "EthanolConcentration",
+        # "FaceDetection",
+        # "FingerMovements",
+        # "HandMovementDirection",
+        # "Handwriting",
+        # "Heartbeat",
+        # "InsectWingbeat",
+        # "JapaneseVowels",
+        # "Libras",
+        # "LSST",
+        # "MotorImagery",
+        # "NATOPS",
+        # "PEMS-SF",
+        # "PhonemeSpectra",
+        # "RacketSports",
+        # "SelfRegulationSCP1",
+        # "SelfRegulationSCP2",
     ]
     model_names = ["log_ncde"]
 
