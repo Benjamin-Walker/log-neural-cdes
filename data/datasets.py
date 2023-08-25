@@ -87,33 +87,47 @@ def dataset_generator(
     test_coeffs = calc_coeffs(test_data, include_time, T)
 
     train_path_data = (
-        train_data[:, :, 0],
+        (T / train_data.shape[1])
+        * jnp.repeat(
+            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+        ),
         train_paths,
         train_data[:, 0, :],
     )
     train_coeff_data = (
-        train_data[:, :, 0],
+        (T / train_data.shape[1])
+        * jnp.repeat(
+            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+        ),
         train_coeffs,
         train_data[:, 0, :],
     )
     val_path_data = (
-        val_data[:, :, 0],
+        (T / val_data.shape[1])
+        * jnp.repeat(jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0),
         val_paths,
         val_data[:, 0, :],
     )
     val_coeff_data = (
-        val_data[:, :, 0],
+        (T / val_data.shape[1])
+        * jnp.repeat(jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0),
         val_coeffs,
         val_data[:, 0, :],
     )
     if idxs is None:
         test_path_data = (
-            test_data[:, :, 0],
+            (T / test_data.shape[1])
+            * jnp.repeat(
+                jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
+            ),
             test_paths,
             test_data[:, 0, :],
         )
         test_coeff_data = (
-            test_data[:, :, 0],
+            (T / test_data.shape[1])
+            * jnp.repeat(
+                jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
+            ),
             test_coeffs,
             test_data[:, 0, :],
         )
