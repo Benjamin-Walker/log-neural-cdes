@@ -22,7 +22,6 @@ class LogNeuralCDE(eqx.Module):
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
     max_steps: int
-    include_time: bool
     stateful: bool = False
     nondeterministic: bool = False
 
@@ -40,15 +39,12 @@ class LogNeuralCDE(eqx.Module):
         stepsize_controller,
         dt0,
         max_steps,
-        include_time,
         *,
         key,
         **kwargs,
     ):
         super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
-        if not include_time:
-            data_dim = data_dim - 1
         vf = VectorField(
             hidden_dim, hidden_dim * data_dim, vf_hidden_dim, vf_num_hidden, key=vf_key
         )
@@ -69,13 +65,10 @@ class LogNeuralCDE(eqx.Module):
         self.stepsize_controller = stepsize_controller
         self.dt0 = dt0
         self.max_steps = max_steps
-        self.include_time = include_time
 
     def __call__(self, X):
 
         ts, logsig, x0 = X
-        if not self.include_time:
-            x0 = x0[1:]
 
         y0 = self.linear1(x0)
 
