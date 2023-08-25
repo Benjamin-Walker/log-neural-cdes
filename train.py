@@ -202,7 +202,7 @@ def create_dataset_model_and_train(
     output_parent_dir="",
 ):
     output_parent_dir += "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"T_{T:.2f}_nsteps_{num_steps}_lr_{lr}"
+    output_dir = f"T_{T:.2f}_includetime_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if lr_scheduler(1) == 1:
         output_dir += "_schedule_False"
     else:
