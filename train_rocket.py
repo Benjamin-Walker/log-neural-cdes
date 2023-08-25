@@ -60,14 +60,14 @@ def train(num_kernels, X_train, y_train, X_val, y_val, X_test, y_test):
 
 if __name__ == "__main__":
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "FaceDetection",
-        "FingerMovements",
-        "HandMovementDirection",
-        "Handwriting",
-        "Heartbeat",
-        "InsectWingbeat",
+        # "EigenWorms",
+        # "EthanolConcentration",
+        # "FaceDetection",
+        # "FingerMovements",
+        # "HandMovementDirection",
+        # "Handwriting",
+        # "Heartbeat",
+        # "InsectWingbeat",
         "JapaneseVowels",
         "Libras",
         "LSST",
