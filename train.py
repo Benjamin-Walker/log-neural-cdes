@@ -106,6 +106,8 @@ def train_model(
             train_accuracy = jnp.mean(
                 jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
             )
+            predictions = []
+            labels = []
             for data in dataloaders["val"].loop_epoch(batch_size):
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
@@ -138,6 +140,8 @@ def train_model(
                     print("Saving model")
                     eqx.tree_serialise_leaves(model_file, model)
                     val_acc_for_best_model.append(val_accuracy)
+                    predictions = []
+                    labels = []
                     for data in dataloaders["test"].loop_epoch(batch_size):
                         stepkey, key = jr.split(key, 2)
                         inference_model = eqx.tree_inference(model, value=True)
