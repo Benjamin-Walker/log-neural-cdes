@@ -280,8 +280,8 @@ def create_dataset_model_and_train(
 
 
 if __name__ == "__main__":
-    data_dir = "data"
-    use_presplit = False
+    data_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data"
+    use_presplit = True
     output_parent_dir = ""
     seed = 1234
     num_steps = 10000
@@ -298,9 +298,8 @@ if __name__ == "__main__":
     logsig_depth = 1
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "toy"
         # "EigenWorms",
-        # "EthanolConcentration",
+        "EthanolConcentration",
         # "FaceDetection",
         # "FingerMovements",
         # "HandMovementDirection",
@@ -318,7 +317,7 @@ if __name__ == "__main__":
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
-    model_names = ["log_ncde"]
+    model_names = ["rnn_lstm"]
 
     model_args = {
         "num_blocks": 6,

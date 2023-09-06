@@ -2,7 +2,6 @@ import os
 import pathlib
 import shutil
 
-import diffrax
 import submitit
 
 from train import create_dataset_model_and_train
@@ -63,6 +62,7 @@ def run_experiments(
     dataset_name,
     data_dir,
     use_presplit,
+    include_time,
     T,
     num_steps,
     print_steps,
@@ -84,6 +84,7 @@ def run_experiments(
                 data_dir,
                 use_presplit,
                 dataset_name,
+                include_time,
                 T,
                 model_name,
                 stepsize,
@@ -109,7 +110,7 @@ def run_experiments(
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:20GB",
-        qos="priority",
+        # qos="priority",
         account="math-datasig",
     )
 
@@ -123,15 +124,13 @@ if __name__ == "__main__":
     data_dir = WORKING_DIRECTORY + "/data"
     use_presplit = True
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "FaceDetection",
-        "FingerMovements",
-        "HandMovementDirection",
-        "Handwriting",
+        # "EigenWorms",
+        # "EthanolConcentration",
+        # "FaceDetection",
+        # "FingerMovements",
+        # "HandMovementDirection",
+        # "Handwriting",
         "Heartbeat",
-        "InsectWingbeat",
-        "JapaneseVowels",
         "Libras",
         "LSST",
         "MotorImagery",
@@ -144,10 +143,10 @@ if __name__ == "__main__":
 
     lengths = {"Heartbeat": 405, "SelfRegulationSCP2": 1152, "MotorImagery": 3000}
 
-    model_names = ["log_ncde"]
+    model_names = ["rnn_lstm", "ssm", "lru"]
 
-    num_steps = 10000
-    print_steps = 100
+    num_steps = 100000
+    print_steps = 500
     batch_size = 32
     lr = 1e-4
     lr_scheduler = lambda x: x
@@ -165,36 +164,102 @@ if __name__ == "__main__":
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for stepsize in [8]:
-                for include_time in [True, False]:
-                    for T in [1]:
-                        for dt0 in [T / 1200]:
-                            solver = diffrax.Heun()
-                            stepsize_controller = diffrax.ConstantStepSize()
-                            model_args = {
-                                "num_blocks": num_blocks,
-                                "hidden_dim": hidden_dim,
-                                "vf_depth": 2,
-                                "vf_width": 32,
-                                "ssm_dim": ssm_dim,
-                                "ssm_blocks": ssm_blocks,
-                                "dt0": dt0,
-                                "include_time": include_time,
-                                "solver": solver,
-                                "stepsize_controller": stepsize_controller,
-                            }
-                            run_experiments(
-                                model_name,
-                                dataset_name,
-                                data_dir,
-                                use_presplit,
-                                T,
-                                num_steps,
-                                print_steps,
-                                lr,
-                                lr_scheduler,
-                                stepsize,
-                                batch_size,
-                                logsig_depth,
-                                model_args,
-                            )
+            for include_time in [True, False]:
+                for lr in [3e-4, 3e-5]:
+                    for lr_scheduler in [
+                        lambda x: x,
+                    ]:
+                        for hidden_dim in [8, 32, 128]:
+                            if model_name == "ssm" or model_name == "lru":
+                                for num_blocks in [2, 4, 6]:
+                                    if model_name == "ssm":
+                                        for ssm_dim in [16, 64, 256]:
+                                            for ssm_blocks in [
+                                                ssm_dim // 4,
+                                                ssm_dim // 8,
+                                                ssm_dim // 16,
+                                            ]:
+                                                model_args = {
+                                                    "num_blocks": num_blocks,
+                                                    "hidden_dim": hidden_dim,
+                                                    "vf_depth": 2,
+                                                    "vf_width": 32,
+                                                    "ssm_dim": ssm_dim,
+                                                    "ssm_blocks": ssm_blocks,
+                                                    "dt0": dt0,
+                                                    "solver": solver,
+                                                    "stepsize_controller": stepsize_controller,
+                                                }
+                                                run_experiments(
+                                                    model_name,
+                                                    dataset_name,
+                                                    data_dir,
+                                                    use_presplit,
+                                                    include_time,
+                                                    T,
+                                                    num_steps,
+                                                    print_steps,
+                                                    lr,
+                                                    lr_scheduler,
+                                                    stepsize,
+                                                    batch_size,
+                                                    logsig_depth,
+                                                    model_args,
+                                                )
+                                    elif model_name == "lru":
+                                        model_args = {
+                                            "num_blocks": num_blocks,
+                                            "hidden_dim": hidden_dim,
+                                            "vf_depth": 2,
+                                            "vf_width": 32,
+                                            "ssm_dim": 32,
+                                            "ssm_blocks": 2,
+                                            "dt0": dt0,
+                                            "solver": solver,
+                                            "stepsize_controller": stepsize_controller,
+                                        }
+                                        run_experiments(
+                                            model_name,
+                                            dataset_name,
+                                            data_dir,
+                                            use_presplit,
+                                            include_time,
+                                            T,
+                                            num_steps,
+                                            print_steps,
+                                            lr,
+                                            lr_scheduler,
+                                            stepsize,
+                                            batch_size,
+                                            logsig_depth,
+                                            model_args,
+                                        )
+
+                            elif model_name == "rnn_lstm":
+                                model_args = {
+                                    "num_blocks": 6,
+                                    "hidden_dim": hidden_dim,
+                                    "vf_depth": 2,
+                                    "vf_width": 32,
+                                    "ssm_dim": 32,
+                                    "ssm_blocks": 2,
+                                    "dt0": dt0,
+                                    "solver": solver,
+                                    "stepsize_controller": stepsize_controller,
+                                }
+                                run_experiments(
+                                    model_name,
+                                    dataset_name,
+                                    data_dir,
+                                    use_presplit,
+                                    include_time,
+                                    T,
+                                    num_steps,
+                                    print_steps,
+                                    lr,
+                                    lr_scheduler,
+                                    stepsize,
+                                    batch_size,
+                                    logsig_depth,
+                                    model_args,
+                                )
