@@ -73,12 +73,14 @@ class LogNeuralCDE(eqx.Module):
         y0 = self.linear1(x0)
 
         def func(t, y, args):
-            idx = jnp.searchsorted(ts, t) // self.intervals[1]
-            logsig_t = logsig[idx]
+            idx = jnp.searchsorted(self.intervals, t)
+            logsig_t = logsig[idx - 1]
             vf_out = jnp.reshape(self.vf(y), (self.width, self.hidden_dim))
 
             if self.pairs is None:
-                return jnp.dot(logsig_t[1:], vf_out)
+                return jnp.dot(logsig_t[1:], vf_out) / (
+                    self.intervals[idx] - self.intervals[idx - 1]
+                )
 
             jvps = jnp.reshape(
                 jax.vmap(lambda x: jax.jvp(self.vf, (y,), (x,))[1])(vf_out),
@@ -94,9 +96,10 @@ class LogNeuralCDE(eqx.Module):
                 jvps, self.pairs[self.width :]
             )
 
-            return jnp.dot(logsig_t[1 : self.width + 1], vf_out) + jnp.dot(
-                logsig_t[self.width + 1 :], lieout
-            )
+            return (
+                jnp.dot(logsig_t[1 : self.width + 1], vf_out)
+                + jnp.dot(logsig_t[self.width + 1 :], lieout)
+            ) / (self.intervals[idx] - self.intervals[idx - 1])
 
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)

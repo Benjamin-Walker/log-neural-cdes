@@ -81,6 +81,7 @@ def dataset_generator(
     test_paths = batch_calc_paths(test_data, stepsize, depth)
     intervals = jnp.arange(0, train_data.shape[1], stepsize)
     intervals = jnp.concatenate((intervals, jnp.array([train_data.shape[1]])))
+    intervals = intervals * (T / train_data.shape[1])
 
     train_coeffs = calc_coeffs(train_data, include_time, T)
     val_coeffs = calc_coeffs(val_data, include_time, T)
@@ -245,16 +246,13 @@ def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
         data = pickle.load(f)
     with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
         labels = pickle.load(f)
+    labels = ((jnp.sign(labels[3][:, 2, 5, 0, 3]) + 1) / 2).astype(int)  # 2,5,0,3
     onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     idxs = None
 
-    ts = data[:, :, 0]
-    ts = (T / ts[0, -1]) * ts
-    data = jnp.concatenate([ts[:, :, None], data[:, :, 1:]], axis=2)
-
     return dataset_generator(
-        "toy", data, onehot_labels, stepsize, depth, include_time, idxs, key=key
+        "toy", data, onehot_labels, stepsize, depth, include_time, T, idxs, key=key
     )
 
 

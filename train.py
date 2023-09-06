@@ -85,11 +85,9 @@ def train_model(
         model, state, value = make_step(model, X, y, state, opt, opt_state, stepkey)
         running_loss += value
         if (step + 1) % print_steps == 0:
-
-            for _, data in zip(
-                range(1),
-                dataloaders["train"].loop(dataloaders["train"].size, key=None),
-            ):
+            predictions = []
+            labels = []
+            for data in dataloaders["train"].loop_epoch(batch_size):
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
@@ -101,13 +99,16 @@ def train_model(
                     model.stateful,
                     model.nondeterministic,
                 )
-                train_accuracy = jnp.mean(
-                    jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
-                )
-            for _, data in zip(
-                range(1),
-                dataloaders["val"].loop(dataloaders["val"].size, key=None),
-            ):
+                predictions.append(prediction)
+                labels.append(y)
+            prediction = jnp.vstack(predictions)
+            y = jnp.vstack(labels)
+            train_accuracy = jnp.mean(
+                jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+            )
+            predictions = []
+            labels = []
+            for data in dataloaders["val"].loop_epoch(batch_size):
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
@@ -119,42 +120,48 @@ def train_model(
                     model.stateful,
                     model.nondeterministic,
                 )
-                val_accuracy = jnp.mean(
-                    jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
-                )
-                end = time.time()
-                total_time = end - start
-                print(
-                    f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
-                    f"Train accuracy: {train_accuracy}, "
-                    f"Validation accuracy: {val_accuracy}, Time: {total_time}"
-                )
-                start = time.time()
-                if step > 0:
-                    if val_accuracy >= max(val_acc_for_best_model):
-                        print("Saving model")
-                        eqx.tree_serialise_leaves(model_file, model)
-                        val_acc_for_best_model.append(val_accuracy)
-                        for _, data in zip(
-                            range(1),
-                            dataloaders["test"].loop(
-                                dataloaders["test"].size, key=None
-                            ),
-                        ):
-                            X, y = data
-                            stepkey, key = jr.split(key, 2)
-                            prediction, _ = calc_output(
-                                inference_model,
-                                X,
-                                state,
-                                stepkey,
-                                model.stateful,
-                                model.nondeterministic,
-                            )
-                            test_accuracy = jnp.mean(
-                                jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
-                            )
-                            print(f"Test accuracy: {test_accuracy}")
+                predictions.append(prediction)
+                labels.append(y)
+            prediction = jnp.vstack(predictions)
+            y = jnp.vstack(labels)
+            val_accuracy = jnp.mean(
+                jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+            )
+            end = time.time()
+            total_time = end - start
+            print(
+                f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
+                f"Train accuracy: {train_accuracy}, "
+                f"Validation accuracy: {val_accuracy}, Time: {total_time}"
+            )
+            start = time.time()
+            if step > 0:
+                if val_accuracy >= max(val_acc_for_best_model):
+                    print("Saving model")
+                    eqx.tree_serialise_leaves(model_file, model)
+                    val_acc_for_best_model.append(val_accuracy)
+                    predictions = []
+                    labels = []
+                    for data in dataloaders["test"].loop_epoch(batch_size):
+                        stepkey, key = jr.split(key, 2)
+                        inference_model = eqx.tree_inference(model, value=True)
+                        X, y = data
+                        prediction, _ = calc_output(
+                            inference_model,
+                            X,
+                            state,
+                            stepkey,
+                            model.stateful,
+                            model.nondeterministic,
+                        )
+                        predictions.append(prediction)
+                        labels.append(y)
+                    prediction = jnp.vstack(predictions)
+                    y = jnp.vstack(labels)
+                    test_accuracy = jnp.mean(
+                        jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
+                    )
+                    print(f"Test accuracy: {test_accuracy}")
                 running_loss = 0.0
                 all_train_acc.append(train_accuracy)
                 all_val_acc.append(val_accuracy)
@@ -274,7 +281,7 @@ def create_dataset_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
-    use_presplit = True
+    use_presplit = False
     output_parent_dir = ""
     seed = 1234
     num_steps = 10000
@@ -282,16 +289,17 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 3e-4
     lr_scheduler = lambda lr: lr
-    T = 500
-    dt0 = T / 4000
+    T = 1
+    dt0 = T / 100
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 8
-    logsig_depth = 2
+    stepsize = 1
+    logsig_depth = 1
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
+        "toy"
+        # "EigenWorms",
         # "EthanolConcentration",
         # "FaceDetection",
         # "FingerMovements",
