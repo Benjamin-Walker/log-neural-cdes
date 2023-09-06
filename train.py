@@ -280,7 +280,7 @@ def create_dataset_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
-    use_presplit = True
+    use_presplit = False
     output_parent_dir = ""
     seed = 1234
     num_steps = 10000
@@ -288,16 +288,17 @@ if __name__ == "__main__":
     batch_size = 32
     lr = 3e-4
     lr_scheduler = lambda lr: lr
-    T = 500
-    dt0 = T / 4000
+    T = 1
+    dt0 = T / 100
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 8
-    logsig_depth = 2
+    stepsize = 1
+    logsig_depth = 1
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
-        "EigenWorms",
+        "toy"
+        # "EigenWorms",
         # "EthanolConcentration",
         # "FaceDetection",
         # "FingerMovements",
