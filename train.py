@@ -287,51 +287,47 @@ if __name__ == "__main__":
     num_steps = 10000
     print_steps = 100
     batch_size = 32
-    lr = 3e-4
+    lr = 1e-4
     lr_scheduler = lambda lr: lr
-    T = 1
-    dt0 = T / 100
+    T = 36
+    dt0 = T / 1000
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 1
+    stepsize = 2
     logsig_depth = 1
-    # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         # "EigenWorms",
-        "EthanolConcentration",
+        # "EthanolConcentration",
         # "FaceDetection",
         # "FingerMovements",
         # "HandMovementDirection",
         # "Handwriting",
         # "Heartbeat",
-        # "InsectWingbeat",
-        # "JapaneseVowels",
         # "Libras",
-        # "LSST",
+        "LSST",
         # "MotorImagery",
         # "NATOPS",
         # "PEMS-SF",
         # "PhonemeSpectra",
-        # "RacketSports",
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
     model_names = ["rnn_lstm"]
 
-    model_args = {
-        "num_blocks": 6,
-        "hidden_dim": 64,
-        "vf_depth": 2,
-        "vf_width": 32,
-        "ssm_dim": 32,
-        "ssm_blocks": 2,
-        "dt0": dt0,
-        "solver": solver,
-        "stepsize_controller": stepsize_controller,
-    }
     for dataset_name in dataset_names:
         for model_name in model_names:
+            model_args = {
+                "num_blocks": 6,
+                "hidden_dim": 32,
+                "vf_depth": 3,
+                "vf_width": 64,
+                "ssm_dim": 32,
+                "ssm_blocks": 2,
+                "dt0": dt0,
+                "solver": solver,
+                "stepsize_controller": stepsize_controller,
+            }
             create_dataset_model_and_train(
                 seed,
                 data_dir,
