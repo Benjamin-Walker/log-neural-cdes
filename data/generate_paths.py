@@ -23,8 +23,11 @@ def calc_paths(data, stepsize, depth):
     which can be queried over any interval for the log-signature. Right now,
     it is necessary to specify the stepsize and depth ahead of time.
     """
-    hs = HallSet(data.shape[-1], depth)
-    t2l = hs.t2l_matrix(depth)
+    if depth == 2:
+        hs = HallSet(data.shape[-1], depth)
+        t2l = hs.t2l_matrix(depth)
+    else:
+        t2l = None
 
     prepend = lambda x: jnp.concatenate(
         (
