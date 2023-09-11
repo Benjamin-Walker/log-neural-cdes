@@ -27,6 +27,7 @@ def create_model(
     stepsize_controller=diffrax.ConstantStepSize(),
     dt0=1,
     max_steps=16**4,
+    scale=1.0,
     *,
     key,
 ):
@@ -51,6 +52,7 @@ def create_model(
                 stepsize_controller,
                 dt0,
                 max_steps,
+                scale,
                 key=key,
             ),
             None,

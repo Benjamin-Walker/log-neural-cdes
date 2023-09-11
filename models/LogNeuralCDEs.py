@@ -39,6 +39,7 @@ class LogNeuralCDE(eqx.Module):
         stepsize_controller,
         dt0,
         max_steps,
+        scale,
         *,
         key,
         **kwargs,
@@ -46,7 +47,12 @@ class LogNeuralCDE(eqx.Module):
         super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
         vf = VectorField(
-            hidden_dim, hidden_dim * data_dim, vf_hidden_dim, vf_num_hidden, key=vf_key
+            hidden_dim,
+            hidden_dim * data_dim,
+            vf_hidden_dim,
+            vf_num_hidden,
+            scale=scale,
+            key=vf_key,
         )
         self.vf = vf
         self.width = data_dim
