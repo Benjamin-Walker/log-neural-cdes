@@ -8,9 +8,9 @@ import jax.random as jr
 class VectorField(eqx.Module):
     mlp: eqx.nn.MLP
 
-    def __init__(self, in_size, out_size, width, depth, *, key, **kwargs):
+    def __init__(self, in_size, out_size, width, depth, *, key, scale=100, **kwargs):
         super().__init__(**kwargs)
-        self.mlp = eqx.nn.MLP(
+        mlp = eqx.nn.MLP(
             in_size=in_size,
             out_size=out_size,
             width_size=width,
@@ -19,6 +19,28 @@ class VectorField(eqx.Module):
             final_activation=jax.nn.tanh,
             key=key,
         )
+
+        def init_weight(model):
+            is_linear = lambda x: isinstance(x, eqx.nn.Linear)
+            get_weights = lambda m: [
+                x.weight
+                for x in jax.tree_util.tree_leaves(m, is_leaf=is_linear)
+                if is_linear(x)
+            ]
+            weights = get_weights(model)
+            new_weights = [weight / scale for weight in weights]
+            new_model = eqx.tree_at(get_weights, model, new_weights)
+            get_bias = lambda m: [
+                x.bias
+                for x in jax.tree_util.tree_leaves(m, is_leaf=is_linear)
+                if is_linear(x)
+            ]
+            biases = get_bias(model)
+            new_bias = [bias / scale for bias in biases]
+            new_model = eqx.tree_at(get_bias, new_model, new_bias)
+            return new_model
+
+        self.mlp = init_weight(mlp)
 
     def __call__(self, y):
         return self.mlp(y)
