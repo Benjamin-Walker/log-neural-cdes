@@ -28,6 +28,7 @@ def create_model(
     dt0=1,
     max_steps=16**4,
     scale=1.0,
+    lambd=0.0,
     *,
     key,
 ):
@@ -53,6 +54,7 @@ def create_model(
                 dt0,
                 max_steps,
                 scale,
+                lambd,
                 key=key,
             ),
             None,

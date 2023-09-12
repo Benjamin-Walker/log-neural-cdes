@@ -22,8 +22,10 @@ class LogNeuralCDE(eqx.Module):
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
     max_steps: int
+    lambd: float
     stateful: bool = False
     nondeterministic: bool = False
+    lip2: bool = True
 
     def __init__(
         self,
@@ -40,6 +42,7 @@ class LogNeuralCDE(eqx.Module):
         dt0,
         max_steps,
         scale,
+        lambd,
         *,
         key,
         **kwargs,
@@ -71,6 +74,7 @@ class LogNeuralCDE(eqx.Module):
         self.stepsize_controller = stepsize_controller
         self.dt0 = dt0
         self.max_steps = max_steps
+        self.lambd = lambd
 
     def __call__(self, X):
 
