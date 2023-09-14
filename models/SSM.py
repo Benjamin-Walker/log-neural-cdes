@@ -432,6 +432,8 @@ class S5(eqx.Module):
     linear_layer: eqx.nn.Linear
     stateful: bool = True
     nondeterministic: bool = True
+    lambd: float = 0.0
+    lip2: bool = True
 
     def __init__(
         self,
