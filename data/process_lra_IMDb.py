@@ -45,7 +45,6 @@ def get_imdb_dataset():
     valid_raw = data["test"]
     test_raw = data["test"]
     # use test set for validation because IMDb doesn't have val set.
-    # Print an example.
     logging.info("Data sample: %s", next(iter(tfds.as_numpy(train_raw.skip(4)))))
 
     def adapt_example(example):
