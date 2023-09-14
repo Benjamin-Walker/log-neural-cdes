@@ -171,9 +171,6 @@ def dataset_generator(
 def create_uea_dataset(
     data_dir, name, use_idxs, use_presplit, stepsize, depth, include_time, T, *, key
 ):
-    subfolders = [f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()]
-    if name not in subfolders:
-        raise ValueError(f"Dataset {name} not found in UEA folder")
 
     if use_presplit:
         idxs = None
@@ -241,6 +238,68 @@ def create_uea_dataset(
     )
 
 
+def create_lra_dataset(
+    data_dir, name, use_idxs, use_presplit, stepsize, depth, include_time, T, *, key
+):
+    if use_presplit:
+        idxs = None
+        with open(data_dir + f"/processed/LRA/{name}/X_train.pkl", "rb") as f:
+            train_data = pickle.load(f)
+        with open(data_dir + f"/processed/LRA/{name}/y_train.pkl", "rb") as f:
+            train_labels = pickle.load(f)
+        with open(data_dir + f"/processed/LRA/{name}/X_val.pkl", "rb") as f:
+            val_data = pickle.load(f)
+        with open(data_dir + f"/processed/LRA/{name}/y_val.pkl", "rb") as f:
+            val_labels = pickle.load(f)
+        with open(data_dir + f"/processed/LRA/{name}/X_test.pkl", "rb") as f:
+            test_data = pickle.load(f)
+        with open(data_dir + f"/processed/LRA/{name}/y_test.pkl", "rb") as f:
+            test_labels = pickle.load(f)
+        ts = (T / train_data.shape[1]) * jnp.repeat(
+            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+        )
+        train_data = jnp.concatenate([ts[:, :, None], train_data[:, :, 1:]], axis=2)
+        ts = (T / val_data.shape[1]) * jnp.repeat(
+            jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
+        )
+        val_data = jnp.concatenate([ts[:, :, None], val_data[:, :, 1:]], axis=2)
+        ts = (T / test_data.shape[1]) * jnp.repeat(
+            jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
+        )
+        test_data = jnp.concatenate([ts[:, :, None], test_data[:, :, 1:]], axis=2)
+        data = (train_data, val_data, test_data)
+        onehot_labels = (train_labels, val_labels, test_labels)
+    else:
+        with open(data_dir + f"/processed/LRA/{name}/data.pkl", "rb") as f:
+            data = pickle.load(f)
+        with open(data_dir + f"/processed/LRA/{name}/labels.pkl", "rb") as f:
+            labels = pickle.load(f)
+        onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
+        onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
+        ts = (T / data.shape[1]) * jnp.repeat(
+            jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0
+        )
+        data = jnp.concatenate([ts[:, :, None], data], axis=2)
+        if use_idxs:
+            with open(data_dir + f"/processed/LRA/{name}/original_idxs.pkl", "rb") as f:
+                idxs = pickle.load(f)
+        else:
+            idxs = None
+
+    return dataset_generator(
+        name,
+        data,
+        onehot_labels,
+        stepsize,
+        depth,
+        include_time,
+        T,
+        idxs,
+        use_presplit,
+        key=key,
+    )
+
+
 def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
     with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
         data = pickle.load(f)
@@ -262,8 +321,23 @@ def create_dataset(
     uea_subfolders = [
         f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
     ]
+    lra_subfolders = [
+        f.name for f in os.scandir(data_dir + "/processed/LRA") if f.is_dir()
+    ]
     if name in uea_subfolders:
         return create_uea_dataset(
+            data_dir,
+            name,
+            use_idxs,
+            use_presplit,
+            stepsize,
+            depth,
+            include_time,
+            T,
+            key=key,
+        )
+    elif name in lra_subfolders:
+        return create_lra_dataset(
             data_dir,
             name,
             use_idxs,

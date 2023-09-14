@@ -44,9 +44,7 @@ def create_data(
 
 
 def train(num_kernels, X_train, y_train, X_val, y_val, X_test, y_test):
-    clf = RocketClassifier(
-        num_kernels=num_kernels, n_jobs=-1, use_multivariate="yes", random_state=1
-    )
+    clf = RocketClassifier(num_kernels=num_kernels, n_jobs=-1, random_state=1)
     clf.fit(X_train, np.argmax(np.array(y_train), axis=1))
     y_pred_val = clf.predict(X_val)
     val_acc = (np.argmax(np.array(y_val), axis=1) == y_pred_val).sum() / len(y_pred_val)
@@ -60,23 +58,11 @@ def train(num_kernels, X_train, y_train, X_val, y_val, X_test, y_test):
 
 if __name__ == "__main__":
     dataset_names = [
-        # "EigenWorms",
-        # "EthanolConcentration",
-        # "FaceDetection",
-        # "FingerMovements",
-        # "HandMovementDirection",
-        # "Handwriting",
-        # "Heartbeat",
-        # "InsectWingbeat",
-        "JapaneseVowels",
-        "Libras",
-        "LSST",
-        "MotorImagery",
-        "NATOPS",
-        "PEMS-SF",
-        "PhonemeSpectra",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
+        "Cifar10",
+        "IMDb",
+        "Listops",
+        "Pathfinder",
+        # "Pathfinder-X",
     ]
     for datasetname in dataset_names:
         data_dir = "data"
@@ -97,6 +83,10 @@ if __name__ == "__main__":
         X_train = np.nan_to_num(X_train, nan=0.0)
         X_val = np.nan_to_num(X_val, nan=0.0)
         X_test = np.nan_to_num(X_test, nan=0.0)
+
+        X_train = X_train[:, 1, :]
+        X_val = X_val[:, 1, :]
+        X_test = X_test[:, 1, :]
 
         for num_kernels in [500, 2000, 10000, 40000]:
             print(f"Num kernels: {num_kernels}")
