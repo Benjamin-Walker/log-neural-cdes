@@ -1,5 +1,5 @@
 """Input pipeline for the imdb dataset."""
-import pdb
+import os
 import pickle
 
 import jax
@@ -38,25 +38,6 @@ def extract_data_from_tf_dataset(dataset):
     return data_list, targets_list
 
 
-def preprocess_dataset(file_path, batch_size):
-    """Preprocess dataset."""
-    tf.logging.info(file_path)
-    sel_cols = ["Source", "Target"]
-    col_defaults = [tf.string, tf.int32]
-    ds = tf.data.experimental.make_csv_dataset(
-        [file_path],
-        batch_size,
-        column_defaults=col_defaults,
-        select_columns=sel_cols,
-        field_delim=",",
-        header=True,
-        shuffle=False,
-        num_epochs=1,
-    )
-    ds = ds.unbatch()
-    return ds
-
-
 def get_imdb_dataset():
     """Get dataset from  imdb tfds. converts into src/tgt pairs."""
     data = tfds.load("imdb_reviews")
@@ -69,46 +50,6 @@ def get_imdb_dataset():
 
     def adapt_example(example):
         return {"Source": example["text"], "Target": example["label"]}
-
-    train = train_raw.map(adapt_example)
-    valid = valid_raw.map(adapt_example)
-    test = test_raw.map(adapt_example)
-
-    return train, valid, test
-
-
-def get_yelp_dataset():
-    """Get dataset from yelp tfds. converts into src/tgt pairs."""
-    data = tfds.load("yelp_polarity_reviews")
-    train_raw = data["train"]
-    valid_raw = data["test"]
-    test_raw = data["test"]
-    # use test set for validation because yelp doesn't have val set.
-    # Print an example.
-    logging.info("Data sample: %s", next(iter(tfds.as_numpy(train_raw.skip(4)))))
-
-    def adapt_example(example):
-        return {"Source": example["text"], "Target": example["label"]}
-
-    train = train_raw.map(adapt_example)
-    valid = valid_raw.map(adapt_example)
-    test = test_raw.map(adapt_example)
-
-    return train, valid, test
-
-
-def get_agnews_dataset():
-    """Get dataset from  agnews tfds. converts into src/tgt pairs."""
-    data = tfds.load("ag_news_subset")
-    train_raw = data["train"]
-    valid_raw = data["test"]
-    test_raw = data["test"]
-    # use test set for validation because agnews doesn't have val set.
-    # Print an example.
-    logging.info("Data sample: %s", next(iter(tfds.as_numpy(train_raw.skip(4)))))
-
-    def adapt_example(example):
-        return {"Source": example["description"], "Target": example["label"]}
 
     train = train_raw.map(adapt_example)
     valid = valid_raw.map(adapt_example)
@@ -135,18 +76,8 @@ def convert_tc_datasets(
 
     if task_name == "imdb_reviews":
         train_dataset, val_dataset, test_dataset = get_imdb_dataset()
-    elif task_name == "yelp_reviews":
-        train_dataset, val_dataset, test_dataset = get_yelp_dataset()
-    elif task_name == "agnews":
-        train_dataset, val_dataset, test_dataset = get_agnews_dataset()
     else:
-        train_path = data_dir + task_name + "_train.tsv"
-        val_path = data_dir + task_name + "_val.tsv"
-        test_path = data_dir + task_name + "_test.tsv"
-
-        train_dataset = preprocess_dataset(train_path, batch_size)
-        val_dataset = preprocess_dataset(val_path, batch_size)
-        test_dataset = preprocess_dataset(test_path, batch_size)
+        raise ValueError("Only support task_name as imdb_reviews")
 
     tf.logging.info("Finished preprocessing")
 
@@ -221,7 +152,7 @@ if __name__ == "__main__":
     max_length = 1000
 
     # Run the following command for downloading data from tensorflow_datasets
-    # ds = tfds.load(task_name, split='train', shuffle_files=True)
+    ds = tfds.load(task_name, split="train", shuffle_files=True)
 
     (
         train_data,
@@ -239,22 +170,21 @@ if __name__ == "__main__":
         max_length=max_length,
     )
 
-    pdb.set_trace()
-    # all_data = train_data + val_data + test_data
-    # all_targets = train_labels + val_labels + test_labels
-    #
-    # original_idxs = (
-    #     np.arange(0, len(train_data)),
-    #     np.arange(len(train_data), len(train_data)+len(val_data)),
-    #     np.arange(len(train_data) + len(val_data), len(all_data))
-    # )
-    # all_data = convert_data(all_data)
-    # all_targets = jnp.array(np.squeeze(np.vstack(all_targets)))
-    #
-    # if not os.path.exists(save_dir):
-    #     os.makedirs(save_dir)
-    #
-    # # Save data
-    # save_pickle(all_data, save_dir + "/data.pkl")
-    # save_pickle(all_targets, save_dir + "/labels.pkl")
-    # save_pickle(original_idxs, save_dir + "/original_idxs.pkl")
+    all_data = train_data + val_data + test_data
+    all_targets = train_labels + val_labels + test_labels
+
+    original_idxs = (
+        np.arange(0, len(train_data)),
+        np.arange(len(train_data), len(train_data) + len(val_data)),
+        np.arange(len(train_data) + len(val_data), len(all_data)),
+    )
+    all_data = convert_data(all_data)
+    all_targets = jnp.array(np.squeeze(np.vstack(all_targets)))
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    # Save data
+    save_pickle(all_data, save_dir + "/data.pkl")
+    save_pickle(all_targets, save_dir + "/labels.pkl")
+    save_pickle(original_idxs, save_dir + "/original_idxs.pkl")

@@ -1,3 +1,7 @@
+"""
+This file contains the processing code for Cifar10, Pathfinder, and PathfinderX
+"""
+
 import argparse
 import os
 import pickle

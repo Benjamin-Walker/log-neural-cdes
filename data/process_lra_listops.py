@@ -83,10 +83,6 @@ def convert_listops_file(file_path, data_name):
     val_path = os.path.join(data_dir, task_name + "_val.tsv")
     test_path = os.path.join(data_dir, task_name + "_test.tsv")
 
-    # train_data = read_csv_file(train_path) # (96000, 1)
-    # val_data = read_csv_file(val_path) # (2000, 1)
-    # test_data = read_csv_file(test_path) # (2000, 1)
-
     train_dataset = preprocess_dataset(train_path, batch_size)
     val_dataset = preprocess_dataset(val_path, batch_size)
     test_dataset = preprocess_dataset(test_path, batch_size)
