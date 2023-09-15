@@ -3,6 +3,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+from equinox._module import static_field
 
 from data.hall_set import HallSet
 from models.NeuralCDEs import VectorField
@@ -17,13 +18,15 @@ class LogNeuralCDE(eqx.Module):
     linear2: eqx.nn.Linear
     pairs: jnp.array
     classification: bool
-    intervals: jnp.ndarray
+    intervals: jnp.ndarray = static_field()
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
     max_steps: int
+    lambd: float
     stateful: bool = False
     nondeterministic: bool = False
+    lip2: bool = True
 
     def __init__(
         self,
@@ -39,6 +42,8 @@ class LogNeuralCDE(eqx.Module):
         stepsize_controller,
         dt0,
         max_steps,
+        scale,
+        lambd,
         *,
         key,
         **kwargs,
@@ -46,7 +51,12 @@ class LogNeuralCDE(eqx.Module):
         super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
         vf = VectorField(
-            hidden_dim, hidden_dim * data_dim, vf_hidden_dim, vf_num_hidden, key=vf_key
+            hidden_dim,
+            hidden_dim * data_dim,
+            vf_hidden_dim,
+            vf_num_hidden,
+            scale=scale,
+            key=vf_key,
         )
         self.vf = vf
         self.width = data_dim
@@ -65,6 +75,7 @@ class LogNeuralCDE(eqx.Module):
         self.stepsize_controller = stepsize_controller
         self.dt0 = dt0
         self.max_steps = max_steps
+        self.lambd = lambd
 
     def __call__(self, X):
 

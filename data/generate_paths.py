@@ -39,6 +39,9 @@ def calc_paths(data, stepsize, depth):
         axis=1,
     )
 
+    if stepsize > data.shape[1]:
+        stepsize = data.shape[1]
+
     if data.shape[1] % stepsize != 0:
         final_data = data[:, -(data.shape[1] % stepsize) - 1 :, ...]
         data = data[:, : -(data.shape[1] % stepsize), ...].reshape(

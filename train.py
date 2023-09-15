@@ -37,7 +37,17 @@ def classification_loss(model, X, y, state, key):
     pred_y, state = calc_output(
         model, X, state, key, model.stateful, model.nondeterministic
     )
-    return jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)), state
+    norm = 0
+    if model.lip2:
+        for layer in model.vf.mlp.layers:
+            norm += jnp.mean(
+                jnp.linalg.norm(layer.weight, axis=-1)
+                + jnp.linalg.norm(layer.bias, axis=-1)
+            )
+    return (
+        jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)) + model.lambd * norm,
+        state,
+    )
 
 
 @eqx.filter_jit
@@ -210,13 +220,9 @@ def create_dataset_model_and_train(
     output_parent_dir="",
 ):
     output_parent_dir += "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"T_{T:.2f}_includetime_{include_time}_nsteps_{num_steps}_lr_{lr}"
-    if lr_scheduler(1) == 1:
-        output_dir += "_schedule_False"
-    else:
-        output_dir += "_schedule_True"
+    output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize:.2f}_logsigdepth_{logsig_depth}"
+        output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
     for k, v in model_args.items():
         name = str(v)
         if "(" in name:
@@ -284,18 +290,20 @@ if __name__ == "__main__":
     use_presplit = True
     output_parent_dir = ""
     seed = 1234
-    num_steps = 10000
+    num_steps = 1000
     print_steps = 100
     batch_size = 32
-    lr = 1e-4
+    lr = 3e-4
     lr_scheduler = lambda lr: lr
-    T = 36
-    dt0 = T / 1000
-    include_time = False
+    T = 405
+    dt0 = T / 500
+    include_time = True
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 2
-    logsig_depth = 1
+    stepsize = 6
+    logsig_depth = 2
+    hidden_dim = 16
+    scale = T
     dataset_names = [
         # "EigenWorms",
         # "EthanolConcentration",
@@ -303,9 +311,9 @@ if __name__ == "__main__":
         # "FingerMovements",
         # "HandMovementDirection",
         # "Handwriting",
-        # "Heartbeat",
+        "Heartbeat",
         # "Libras",
-        "LSST",
+        # "LSST",
         # "MotorImagery",
         # "NATOPS",
         # "PEMS-SF",
@@ -317,32 +325,35 @@ if __name__ == "__main__":
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            model_args = {
-                "num_blocks": 6,
-                "hidden_dim": 32,
-                "vf_depth": 3,
-                "vf_width": 64,
-                "ssm_dim": 32,
-                "ssm_blocks": 2,
-                "dt0": dt0,
-                "solver": solver,
-                "stepsize_controller": stepsize_controller,
-            }
-            create_dataset_model_and_train(
-                seed,
-                data_dir,
-                use_presplit,
-                dataset_name,
-                include_time,
-                T,
-                model_name,
-                stepsize,
-                logsig_depth,
-                model_args,
-                num_steps,
-                print_steps,
-                lr,
-                lr_scheduler,
-                batch_size,
-                output_parent_dir,
-            )
+            for lambd in [1, 1e-2, 1e-4, 1e-6, 1e-8, 0.0]:
+                model_args = {
+                    "num_blocks": 6,
+                    "hidden_dim": hidden_dim,
+                    "vf_depth": 3,
+                    "vf_width": 128,
+                    "ssm_dim": 32,
+                    "ssm_blocks": 2,
+                    "dt0": dt0,
+                    "solver": solver,
+                    "stepsize_controller": stepsize_controller,
+                    "scale": scale,
+                    "lambd": lambd,
+                }
+                create_dataset_model_and_train(
+                    seed,
+                    data_dir,
+                    use_presplit,
+                    dataset_name,
+                    include_time,
+                    T,
+                    model_name,
+                    stepsize,
+                    logsig_depth,
+                    model_args,
+                    num_steps,
+                    print_steps,
+                    lr,
+                    lr_scheduler,
+                    batch_size,
+                    output_parent_dir,
+                )
