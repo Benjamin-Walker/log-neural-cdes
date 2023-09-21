@@ -3,6 +3,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+from equinox._module import static_field
 
 
 class VectorField(eqx.Module):
@@ -59,6 +60,7 @@ class NeuralCDE(eqx.Module):
     max_steps: int
     stateful: bool = False
     nondeterministic: bool = False
+    lip2: bool = False
 
     def __init__(
         self,
@@ -72,6 +74,7 @@ class NeuralCDE(eqx.Module):
         stepsize_controller,
         dt0,
         max_steps,
+        scale,
         *,
         key,
         **kwargs
@@ -79,7 +82,12 @@ class NeuralCDE(eqx.Module):
         super().__init__(**kwargs)
         vf_key, l1key, l2key = jr.split(key, 3)
         self.vf = VectorField(
-            hidden_dim, hidden_dim * data_dim, vf_hidden_dim, vf_num_hidden, key=vf_key
+            hidden_dim,
+            hidden_dim * data_dim,
+            vf_hidden_dim,
+            vf_num_hidden,
+            scale=scale,
+            key=vf_key,
         )
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
@@ -127,13 +135,14 @@ class NeuralRDE(eqx.Module):
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
-    intervals: jnp.ndarray
+    intervals: jnp.ndarray = static_field()
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
     max_steps: int
     stateful: bool = False
     nondeterministic: bool = False
+    lip2: bool = False
 
     def __init__(
         self,
@@ -149,6 +158,7 @@ class NeuralRDE(eqx.Module):
         stepsize_controller,
         dt0,
         max_steps,
+        scale,
         *,
         key,
         **kwargs
@@ -161,6 +171,7 @@ class NeuralRDE(eqx.Module):
             hidden_dim * self.logsig_dim,
             vf_hidden_dim,
             vf_num_hidden,
+            scale=scale,
             key=vf_key,
         )
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
