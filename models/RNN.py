@@ -77,6 +77,7 @@ class RNN(eqx.Module):
     classification: bool
     stateful: bool = False
     nondeterministic: bool = False
+    lip2: bool = False
 
     def __init__(self, cell, hidden_dim, label_dim, classification=True, *, key):
         self.cell = cell
