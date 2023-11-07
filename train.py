@@ -37,7 +37,18 @@ def classification_loss(model, X, y, state, key):
     pred_y, state = calc_output(
         model, X, state, key, model.stateful, model.nondeterministic
     )
-    return jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)), state
+    norm = 0
+    if model.lip2:
+        for layer in model.vf.mlp.layers:
+            norm += jnp.mean(
+                jnp.linalg.norm(layer.weight, axis=-1)
+                + jnp.linalg.norm(layer.bias, axis=-1)
+            )
+        norm *= model.lambd
+    return (
+        jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)) + norm,
+        state,
+    )
 
 
 @eqx.filter_jit
@@ -74,6 +85,7 @@ def train_model(
     all_val_acc = [0.0]
     all_train_acc = [0.0]
     val_acc_for_best_model = [0.0]
+    no_val_improvement = 0
     all_time = []
     start = time.time()
     for step, data in zip(
@@ -136,6 +148,12 @@ def train_model(
             )
             start = time.time()
             if step > 0:
+                if val_accuracy <= max(val_acc_for_best_model):
+                    no_val_improvement += 1
+                    if no_val_improvement > 10:
+                        break
+                else:
+                    no_val_improvement = 0
                 if val_accuracy >= max(val_acc_for_best_model):
                     print("Saving model")
                     eqx.tree_serialise_leaves(model_file, model)
@@ -209,13 +227,9 @@ def create_dataset_model_and_train(
     output_parent_dir="",
 ):
     output_parent_dir += "outputs/" + model_name + "/" + dataset_name
-    output_dir = f"T_{T:.2f}_includetime_{include_time}_nsteps_{num_steps}_lr_{lr}"
-    if lr_scheduler(1) == 1:
-        output_dir += "_schedule_False"
-    else:
-        output_dir += "_schedule_True"
+    output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize:.2f}_logsigdepth_{logsig_depth}"
+        output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
     for k, v in model_args.items():
         name = str(v)
         if "(" in name:
@@ -280,73 +294,73 @@ def create_dataset_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
-    use_presplit = False
+    use_presplit = True
     output_parent_dir = ""
     seed = 1234
     num_steps = 10000
     print_steps = 100
     batch_size = 32
-    lr = 3e-4
+    lr = 1e-4
     lr_scheduler = lambda lr: lr
     T = 1
-    dt0 = T / 100
-    include_time = False
-    solver = diffrax.Heun()
-    stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 1
-    logsig_depth = 1
-    # Spoken Arabic Digits has nan values in training data
+    dt0 = T / 10
+    include_time = True
+    solver = diffrax.Tsit5()
+    stepsize_controller = diffrax.PIDController(rtol=1e-3, atol=1e-3)
+    stepsize = 16
+    logsig_depth = 2
+    hidden_dim = 64
+    scale = T * 1000
+    lambd = 1e-6
     dataset_names = [
-        "toy"
-        # "EigenWorms",
+        "EigenWorms",
         # "EthanolConcentration",
-        # "FaceDetection",
-        # "FingerMovements",
         # "HandMovementDirection",
         # "Handwriting",
         # "Heartbeat",
-        # "InsectWingbeat",
-        # "JapaneseVowels",
         # "Libras",
         # "LSST",
         # "MotorImagery",
         # "NATOPS",
         # "PEMS-SF",
         # "PhonemeSpectra",
-        # "RacketSports",
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
     model_names = ["log_ncde"]
 
-    model_args = {
-        "num_blocks": 6,
-        "hidden_dim": 64,
-        "vf_depth": 2,
-        "vf_width": 32,
-        "ssm_dim": 32,
-        "ssm_blocks": 2,
-        "dt0": dt0,
-        "solver": solver,
-        "stepsize_controller": stepsize_controller,
-    }
     for dataset_name in dataset_names:
         for model_name in model_names:
-            create_dataset_model_and_train(
-                seed,
-                data_dir,
-                use_presplit,
-                dataset_name,
-                include_time,
-                T,
-                model_name,
-                stepsize,
-                logsig_depth,
-                model_args,
-                num_steps,
-                print_steps,
-                lr,
-                lr_scheduler,
-                batch_size,
-                output_parent_dir,
-            )
+            for include_time in [True, False]:
+                for hidden_dim in [64]:
+                    model_args = {
+                        "num_blocks": 6,
+                        "hidden_dim": hidden_dim,
+                        "vf_depth": 3,
+                        "vf_width": 64,
+                        "ssm_dim": 32,
+                        "ssm_blocks": 2,
+                        "dt0": dt0,
+                        "solver": solver,
+                        "stepsize_controller": stepsize_controller,
+                        "scale": scale,
+                        "lambd": lambd,
+                    }
+                    create_dataset_model_and_train(
+                        seed,
+                        data_dir,
+                        use_presplit,
+                        dataset_name,
+                        include_time,
+                        T,
+                        model_name,
+                        stepsize,
+                        logsig_depth,
+                        model_args,
+                        num_steps,
+                        print_steps,
+                        lr,
+                        lr_scheduler,
+                        batch_size,
+                        output_parent_dir,
+                    )
