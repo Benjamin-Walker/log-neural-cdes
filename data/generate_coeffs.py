@@ -6,7 +6,6 @@ import jax.numpy as jnp
 def calc_coeffs(data, include_time, T):
     if include_time:
         ts = data[:, :, 0]
-        data = data[:, :, 1:]
     else:
         ts = (T / data.shape[1]) * jnp.repeat(
             jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0

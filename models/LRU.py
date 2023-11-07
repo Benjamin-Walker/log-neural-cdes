@@ -127,6 +127,7 @@ class LRU(eqx.Module):
     linear_layer: eqx.nn.Linear
     stateful: bool = True
     nondeterministic: bool = True
+    lip2: bool = False
 
     def __init__(
         self,

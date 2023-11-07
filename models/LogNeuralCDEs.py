@@ -55,6 +55,7 @@ class LogNeuralCDE(eqx.Module):
             hidden_dim * data_dim,
             vf_hidden_dim,
             vf_num_hidden,
+            activation=jax.nn.silu,
             scale=scale,
             key=vf_key,
         )

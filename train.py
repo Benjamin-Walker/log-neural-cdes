@@ -44,8 +44,9 @@ def classification_loss(model, X, y, state, key):
                 jnp.linalg.norm(layer.weight, axis=-1)
                 + jnp.linalg.norm(layer.bias, axis=-1)
             )
+        norm *= model.lambd
     return (
-        jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)) + model.lambd * norm,
+        jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)) + norm,
         state,
     )
 
@@ -84,6 +85,7 @@ def train_model(
     all_val_acc = [0.0]
     all_train_acc = [0.0]
     val_acc_for_best_model = [0.0]
+    no_val_improvement = 0
     all_time = []
     start = time.time()
     for step, data in zip(
@@ -146,6 +148,12 @@ def train_model(
             )
             start = time.time()
             if step > 0:
+                if val_accuracy <= max(val_acc_for_best_model):
+                    no_val_improvement += 1
+                    if no_val_improvement > 10:
+                        break
+                else:
+                    no_val_improvement = 0
                 if val_accuracy >= max(val_acc_for_best_model):
                     print("Saving model")
                     eqx.tree_serialise_leaves(model_file, model)
@@ -290,28 +298,29 @@ if __name__ == "__main__":
     use_presplit = True
     output_parent_dir = ""
     seed = 1234
-    num_steps = 1000
+    num_steps = 10000
     print_steps = 100
     batch_size = 32
-    lr = 3e-4
+    lr = 1e-4
     lr_scheduler = lambda lr: lr
-    T = 405
-    dt0 = T / 500
+    T = 1
+    dt0 = T / 10
     include_time = True
-    solver = diffrax.Heun()
-    stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 6
+    solver = diffrax.Tsit5()
+    stepsize_controller = diffrax.PIDController(rtol=1e-3, atol=1e-3)
+    stepsize = 16
     logsig_depth = 2
-    hidden_dim = 16
-    scale = T
+    hidden_dim = 64
+    scale = T * 1000
+    lambd = 1e-6
     dataset_names = [
-        # "EigenWorms",
+        "EigenWorms",
         # "EthanolConcentration",
         # "FaceDetection",
         # "FingerMovements",
         # "HandMovementDirection",
         # "Handwriting",
-        "Heartbeat",
+        # "Heartbeat",
         # "Libras",
         # "LSST",
         # "MotorImagery",
@@ -325,35 +334,36 @@ if __name__ == "__main__":
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for lambd in [1, 1e-2, 1e-4, 1e-6, 1e-8, 0.0]:
-                model_args = {
-                    "num_blocks": 6,
-                    "hidden_dim": hidden_dim,
-                    "vf_depth": 3,
-                    "vf_width": 128,
-                    "ssm_dim": 32,
-                    "ssm_blocks": 2,
-                    "dt0": dt0,
-                    "solver": solver,
-                    "stepsize_controller": stepsize_controller,
-                    "scale": scale,
-                    "lambd": lambd,
-                }
-                create_dataset_model_and_train(
-                    seed,
-                    data_dir,
-                    use_presplit,
-                    dataset_name,
-                    include_time,
-                    T,
-                    model_name,
-                    stepsize,
-                    logsig_depth,
-                    model_args,
-                    num_steps,
-                    print_steps,
-                    lr,
-                    lr_scheduler,
-                    batch_size,
-                    output_parent_dir,
-                )
+            for include_time in [True, False]:
+                for hidden_dim in [64]:
+                    model_args = {
+                        "num_blocks": 6,
+                        "hidden_dim": hidden_dim,
+                        "vf_depth": 3,
+                        "vf_width": 64,
+                        "ssm_dim": 32,
+                        "ssm_blocks": 2,
+                        "dt0": dt0,
+                        "solver": solver,
+                        "stepsize_controller": stepsize_controller,
+                        "scale": scale,
+                        "lambd": lambd,
+                    }
+                    create_dataset_model_and_train(
+                        seed,
+                        data_dir,
+                        use_presplit,
+                        dataset_name,
+                        include_time,
+                        T,
+                        model_name,
+                        stepsize,
+                        logsig_depth,
+                        model_args,
+                        num_steps,
+                        print_steps,
+                        lr,
+                        lr_scheduler,
+                        batch_size,
+                        output_parent_dir,
+                    )
