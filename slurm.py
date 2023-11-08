@@ -111,7 +111,7 @@ def run_experiments(
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:20GB",
-        # qos="priority",
+        qos="priority",
         account="math-datasig",
     )
 
@@ -144,8 +144,8 @@ if __name__ == "__main__":
 
     model_names = ["log_ncde", "ncde", "nrde"]
 
-    num_steps = 10000
-    print_steps = 100
+    num_steps = 100
+    print_steps = 10
     batch_size = 32
     lr = 1e-4
     lr_scheduler = lambda x: x
@@ -159,26 +159,26 @@ if __name__ == "__main__":
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for lr in [1e-3, 1e-4, 1e-5]:
-                for include_time in [True, False]:
-                    for hidden_dim in [16, 64, 128]:
+            for lr in [1e-3]:  # , 1e-4, 1e-5]:
+                for include_time in [True]:  # , False]:
+                    for hidden_dim in [16]:  # , 64, 128]:
                         for solvercontroller in [
                             (diffrax.Heun(), diffrax.ConstantStepSize()),
                         ]:
                             solver = solvercontroller[0]
                             stepsize_controller = solvercontroller[1]
-                            for vf_dims in [(2, 32), (3, 64), (3, 128), (4, 128)]:
+                            for vf_dims in [(2, 32)]:  # , (3, 64), (3, 128), (4, 128)]:
                                 vf_depth = vf_dims[0]
                                 vf_width = vf_dims[1]
                                 length = lengths[dataset_name]
                                 if model_name == "log_ncde" or model_name == "nrde":
                                     for depthstep in [
                                         (1, 1),
-                                        (2, 2),
-                                        (2, 4),
-                                        (2, 8),
-                                        (2, 12),
-                                        (2, 16),
+                                        # (2, 2),
+                                        # (2, 4),
+                                        # (2, 8),
+                                        # (2, 12),
+                                        # (2, 16),
                                     ]:
                                         logsig_depth = depthstep[0]
                                         stepsize = depthstep[1]
@@ -187,7 +187,7 @@ if __name__ == "__main__":
                                         dt0 = T / n_steps
                                         if model_name == "log_ncde":
                                             scale = T * 1000
-                                            for lambd in [1e-3, 1e-6, 0]:
+                                            for lambd in [1e-3]:  # , 1e-6, 0]:
                                                 model_args = {
                                                     "num_blocks": num_blocks,
                                                     "hidden_dim": hidden_dim,
