@@ -33,7 +33,8 @@ def calc_output(model, X, state, key, stateful, nondeterministic):
 
 @eqx.filter_jit
 @eqx.filter_value_and_grad(has_aux=True)
-def classification_loss(model, X, y, state, key):
+def classification_loss(diff_model, static_model, X, y, state, key):
+    model = eqx.combine(diff_model, static_model)
     pred_y, state = calc_output(
         model, X, state, key, model.stateful, model.nondeterministic
     )
@@ -52,8 +53,11 @@ def classification_loss(model, X, y, state, key):
 
 
 @eqx.filter_jit
-def make_step(model, X, y, state, opt, opt_state, key):
-    (value, state), grads = classification_loss(model, X, y, state, key)
+def make_step(model, filter_spec, X, y, state, opt, opt_state, key):
+    diff_model, static_model = eqx.partition(model, filter_spec)
+    (value, state), grads = classification_loss(
+        diff_model, static_model, X, y, state, key
+    )
     updates, opt_state = opt.update(grads, opt_state)
     model = eqx.apply_updates(model, updates)
     return model, state, value
@@ -61,6 +65,7 @@ def make_step(model, X, y, state, opt, opt_state, key):
 
 def train_model(
     model,
+    filter_spec,
     state,
     dataloaders,
     num_steps,
@@ -94,7 +99,11 @@ def train_model(
     ):
         stepkey, key = jr.split(key, 2)
         X, y = data
-        model, state, value = make_step(model, X, y, state, opt, opt_state, stepkey)
+        model, state, value = make_step(
+            model, filter_spec, X, y, state, opt, opt_state, stepkey
+        )
+        print(model.intervals)
+        print(model.pairs)
         running_loss += value
         if (step + 1) % print_steps == 0:
             predictions = []
@@ -270,9 +279,17 @@ def create_dataset_model_and_train(
         **model_args,
         key=modelkey,
     )
-
+    print(model.intervals)
+    print(model.pairs)
+    filter_spec = jax.tree_util.tree_map(lambda _: True, model)
     if model_name == "nrde" or model_name == "log_ncde":
         dataloaders = dataset.path_dataloaders
+        if model_name == "log_ncde":
+            where = lambda model: (model.intervals, model.pairs)
+            filter_spec = eqx.tree_at(where, filter_spec, replace=(False, False))
+        elif model_name == "nrde":
+            where = lambda model: (model.intervals,)
+            filter_spec = eqx.tree_at(where, filter_spec, replace=(False,))
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders
     else:
@@ -280,6 +297,7 @@ def create_dataset_model_and_train(
 
     train_model(
         model,
+        filter_spec,
         state,
         dataloaders,
         num_steps,
@@ -313,7 +331,8 @@ if __name__ == "__main__":
     scale = T * 1000
     lambd = 1e-6
     dataset_names = [
-        "EigenWorms",
+        "toy",
+        # "EigenWorms",
         # "EthanolConcentration",
         # "HandMovementDirection",
         # "Handwriting",

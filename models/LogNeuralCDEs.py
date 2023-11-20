@@ -3,7 +3,6 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-from equinox._module import static_field
 
 from data.hall_set import HallSet
 from models.NeuralCDEs import VectorField
@@ -16,9 +15,9 @@ class LogNeuralCDE(eqx.Module):
     hidden_dim: int
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
-    pairs: jnp.array
+    pairs: jnp.ndarray
     classification: bool
-    intervals: jnp.ndarray = static_field()
+    intervals: jnp.ndarray
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
