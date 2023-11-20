@@ -102,8 +102,6 @@ def train_model(
         model, state, value = make_step(
             model, filter_spec, X, y, state, opt, opt_state, stepkey
         )
-        print(model.intervals)
-        print(model.pairs)
         running_loss += value
         if (step + 1) % print_steps == 0:
             predictions = []
@@ -279,8 +277,6 @@ def create_dataset_model_and_train(
         **model_args,
         key=modelkey,
     )
-    print(model.intervals)
-    print(model.pairs)
     filter_spec = jax.tree_util.tree_map(lambda _: True, model)
     if model_name == "nrde" or model_name == "log_ncde":
         dataloaders = dataset.path_dataloaders
