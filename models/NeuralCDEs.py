@@ -3,7 +3,6 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-from equinox._module import static_field
 
 
 class VectorField(eqx.Module):
@@ -135,7 +134,7 @@ class NeuralRDE(eqx.Module):
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
-    intervals: jnp.ndarray = static_field()
+    intervals: jnp.ndarray
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
