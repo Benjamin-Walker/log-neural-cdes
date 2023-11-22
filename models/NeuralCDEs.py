@@ -9,14 +9,15 @@ from equinox._module import static_field
 class VectorField(eqx.Module):
     mlp: eqx.nn.MLP
 
-    def __init__(self, in_size, out_size, width, depth, *, key, scale=100, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, in_size, out_size, width, depth, *, key, activation=jax.nn.relu, scale=100
+    ):
         mlp = eqx.nn.MLP(
             in_size=in_size,
             out_size=out_size,
             width_size=width,
             depth=depth,
-            activation=jax.nn.silu,
+            activation=activation,
             final_activation=jax.nn.tanh,
             key=key,
         )
