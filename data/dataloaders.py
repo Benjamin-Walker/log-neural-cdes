@@ -68,3 +68,53 @@ class InMemoryDataloader:
                         yield self.data[batch_perm], self.labels[batch_perm]
                     start = end
                     end = start + batch_size
+
+    def loop_epoch(self, batch_size):
+
+        if self.size == 0:
+            raise ValueError("This dataloader is empty")
+
+        if not isinstance(batch_size, int) & (batch_size > 0):
+            raise ValueError("Batch size must be a positive integer")
+
+        if batch_size > self.size:
+            raise ValueError("Batch size larger than dataset size")
+        elif batch_size == self.size:
+            yield self.data, self.labels
+        else:
+            indices = jnp.arange(self.size)
+            start = 0
+            end = batch_size
+            while end < self.size:
+                batch_indices = indices[start:end]
+                if self.data_is_coeffs:
+                    yield (
+                        self.data[0][batch_indices],
+                        tuple(data[batch_indices] for data in self.data[1]),
+                        self.data[2][batch_indices],
+                    ), self.labels[batch_indices]
+                elif self.data_is_logsig:
+                    yield (
+                        self.data[0][batch_indices],
+                        self.data[1][batch_indices],
+                        self.data[2][batch_indices],
+                    ), self.labels[batch_indices]
+                else:
+                    yield self.data[batch_indices], self.labels[batch_indices]
+                start = end
+                end = start + batch_size
+            batch_indices = indices[start:]
+            if self.data_is_coeffs:
+                yield (
+                    self.data[0][batch_indices],
+                    tuple(data[batch_indices] for data in self.data[1]),
+                    self.data[2][batch_indices],
+                ), self.labels[batch_indices]
+            elif self.data_is_logsig:
+                yield (
+                    self.data[0][batch_indices],
+                    self.data[1][batch_indices],
+                    self.data[2][batch_indices],
+                ), self.labels[batch_indices]
+            else:
+                yield self.data[batch_indices], self.labels[batch_indices]

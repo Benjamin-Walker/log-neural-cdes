@@ -3,6 +3,7 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
+from equinox._module import static_field
 
 from data.hall_set import HallSet
 from models.NeuralCDEs import VectorField
@@ -17,14 +18,15 @@ class LogNeuralCDE(eqx.Module):
     linear2: eqx.nn.Linear
     pairs: jnp.array
     classification: bool
-    intervals: jnp.ndarray
+    intervals: jnp.ndarray = static_field()
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
     max_steps: int
-    include_time: bool
+    lambd: float
     stateful: bool = False
     nondeterministic: bool = False
+    lip2: bool = True
 
     def __init__(
         self,
@@ -40,17 +42,22 @@ class LogNeuralCDE(eqx.Module):
         stepsize_controller,
         dt0,
         max_steps,
-        include_time,
+        scale,
+        lambd,
         *,
         key,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
-        if not include_time:
-            data_dim = data_dim - 1
         vf = VectorField(
-            hidden_dim, hidden_dim * data_dim, vf_hidden_dim, vf_num_hidden, key=vf_key
+            hidden_dim,
+            hidden_dim * data_dim,
+            vf_hidden_dim,
+            vf_num_hidden,
+            activation=jax.nn.silu,
+            scale=scale,
+            key=vf_key,
         )
         self.vf = vf
         self.width = data_dim
@@ -59,45 +66,50 @@ class LogNeuralCDE(eqx.Module):
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
         hs = HallSet(self.width, self.depth)
-        self.pairs = jnp.asarray(hs.data[1:])
+        if self.depth == 1:
+            self.pairs = None
+        else:
+            self.pairs = jnp.asarray(hs.data[1:])
         self.classification = classification
         self.intervals = intervals
         self.solver = solver
         self.stepsize_controller = stepsize_controller
         self.dt0 = dt0
         self.max_steps = max_steps
-        self.include_time = include_time
+        self.lambd = lambd
 
     def __call__(self, X):
 
         ts, logsig, x0 = X
 
-        if not self.include_time:
-            x0 = x0[1:]
-
         y0 = self.linear1(x0)
 
         def func(t, y, args):
-            idx = jnp.searchsorted(ts, t) // self.intervals[1]
-            logsig_t = logsig[idx]
+            idx = jnp.searchsorted(self.intervals, t)
+            logsig_t = logsig[idx - 1]
             vf_out = jnp.reshape(self.vf(y), (self.width, self.hidden_dim))
+
+            if self.pairs is None:
+                return jnp.dot(logsig_t[1:], vf_out) / (
+                    self.intervals[idx] - self.intervals[idx - 1]
+                )
+
             jvps = jnp.reshape(
                 jax.vmap(lambda x: jax.jvp(self.vf, (y,), (x,))[1])(vf_out),
                 (self.width, self.width, self.hidden_dim),
             )
 
             def liebracket(jvps, pair):
-                return (
-                    jvps[pair[1] - 1, (pair[0] - 1)] - jvps[pair[0] - 1, (pair[1] - 1)]
-                )
+                return jvps[pair[0] - 1, pair[1] - 1] - jvps[pair[1] - 1, pair[0] - 1]
 
             lieout = jax.vmap(liebracket, in_axes=(None, 0))(
                 jvps, self.pairs[self.width :]
             )
 
-            return jnp.dot(logsig_t[1 : self.width + 1], vf_out) + jnp.dot(
-                logsig_t[self.width + 1 :], lieout
-            )
+            return (
+                jnp.dot(logsig_t[1 : self.width + 1], vf_out)
+                + jnp.dot(logsig_t[self.width + 1 :], lieout)
+            ) / (self.intervals[idx] - self.intervals[idx - 1])
 
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
