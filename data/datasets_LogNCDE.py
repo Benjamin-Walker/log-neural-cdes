@@ -276,10 +276,6 @@ def create_lra_dataset(
             labels = pickle.load(f)
         onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
         onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
-        ts = (T / data.shape[1]) * jnp.repeat(
-            jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0
-        )
-        data = jnp.concatenate([ts[:, :, None], data], axis=2)
         if use_idxs:
             with open(data_dir + f"/processed/LRA/{name}/original_idxs.pkl", "rb") as f:
                 idxs = pickle.load(f)
@@ -301,9 +297,9 @@ def create_lra_dataset(
 
 
 def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
-    with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
+    with open(data_dir + "/processed/toy_signature/data.pkl", "rb") as f:
         data = pickle.load(f)
-    with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
+    with open(data_dir + "/processed/toy_signature/labels.pkl", "rb") as f:
         labels = pickle.load(f)
     labels = ((jnp.sign(labels[3][:, 2, 5, 0, 3]) + 1) / 2).astype(int)  # 2,5,0,3
     onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
