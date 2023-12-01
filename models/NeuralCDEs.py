@@ -10,9 +10,8 @@ class VectorField(eqx.Module):
     mlp: eqx.nn.MLP
 
     def __init__(
-        self, in_size, out_size, width, depth, activation, *, key, scale=100, **kwargs
+        self, in_size, out_size, width, depth, *, key, activation=jax.nn.relu, scale=100
     ):
-        super().__init__(**kwargs)
         mlp = eqx.nn.MLP(
             in_size=in_size,
             out_size=out_size,
@@ -88,7 +87,6 @@ class NeuralCDE(eqx.Module):
             hidden_dim * data_dim,
             vf_hidden_dim,
             vf_num_hidden,
-            activation=jax.nn.relu,
             scale=scale,
             key=vf_key,
         )
@@ -174,7 +172,6 @@ class NeuralRDE(eqx.Module):
             hidden_dim * self.logsig_dim,
             vf_hidden_dim,
             vf_num_hidden,
-            activation=jax.nn.relu,
             scale=scale,
             key=vf_key,
         )

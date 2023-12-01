@@ -310,6 +310,12 @@ def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     idxs = None
 
+    if include_time:
+        ts = (T / data.shape[1]) * jnp.repeat(
+            jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0
+        )
+        data = jnp.concatenate([ts[:, :, None], data], axis=2)
+
     return dataset_generator(
         "toy", data, onehot_labels, stepsize, depth, include_time, T, idxs, key=key
     )

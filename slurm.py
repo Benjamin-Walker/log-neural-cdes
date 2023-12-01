@@ -121,14 +121,13 @@ def run(cfg):
 
 
 if __name__ == "__main__":
-    # Spoken Arabic Digits has nan values in training data
     data_dir = WORKING_DIRECTORY + "/data"
     use_presplit = True
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "Heartbeat",
-        "MotorImagery",
+        # "EigenWorms",
+        # "EthanolConcentration",
+        # "Heartbeat",
+        # "MotorImagery",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
     ]

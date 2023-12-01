@@ -100,9 +100,7 @@ class LogNeuralCDE(eqx.Module):
             )
 
             def liebracket(jvps, pair):
-                return (
-                    jvps[pair[1] - 1, (pair[0] - 1)] - jvps[pair[0] - 1, (pair[1] - 1)]
-                )
+                return jvps[pair[0] - 1, pair[1] - 1] - jvps[pair[1] - 1, pair[0] - 1]
 
             lieout = jax.vmap(liebracket, in_axes=(None, 0))(
                 jvps, self.pairs[self.width :]

@@ -206,7 +206,6 @@ def train_model(
     jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
     jnp.save(output_dir + "/all_time.npy", all_time)
     jnp.save(output_dir + "/test_acc.npy", test_acc)
-    jnp.save(output_dir + "/test_acc.npy", test_accuracy)
 
 
 def create_dataset_model_and_train(
@@ -235,8 +234,8 @@ def create_dataset_model_and_train(
         name = str(v)
         if "(" in name:
             name = name.split("(", 1)[0]
-        if f"{k}" == "dt0":
-            output_dir += f"_{k}_{v:.2g}"
+        if name == "dt0":
+            output_dir += f"_{k}_" + f"{v:.2f}"
         else:
             output_dir += f"_{k}_" + name
         if name == "PIDController":
