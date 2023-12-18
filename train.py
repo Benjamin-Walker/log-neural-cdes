@@ -157,7 +157,7 @@ def train_model(
             if step > 0:
                 if val_accuracy <= max(val_acc_for_best_model):
                     no_val_improvement += 1
-                    if no_val_improvement > 10:
+                    if no_val_improvement > 1000:
                         break
                 else:
                     no_val_improvement = 0
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     use_presplit = True
     output_parent_dir = ""
     seed = 1234
-    num_steps = 10000
+    num_steps = 100000
     print_steps = 100
     batch_size = 32
     lr = 1e-4
@@ -342,11 +342,11 @@ if __name__ == "__main__":
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
-    model_names = ["log_ncde"]
+    model_names = ["lru"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for include_time in [True, False]:
+            for include_time in [True]:
                 for hidden_dim in [64]:
                     model_args = {
                         "num_blocks": 6,
