@@ -76,6 +76,25 @@ def dataset_generator(
         val_data, val_labels = data[idxs[1]], labels[idxs[1]]
         test_data, test_labels = None, None
 
+    train_zero = jr.choice(
+        jr.PRNGKey(0), jnp.arange(1, train_data.shape[2]), shape=(len(train_data),)
+    )
+    val_zero = jr.choice(
+        jr.PRNGKey(0), jnp.arange(1, val_data.shape[2]), shape=(len(val_data),)
+    )
+
+    for i in range(len(train_data)):
+        train_data = train_data.at[i, :, train_zero[i]].set(0)
+    for i in range(len(val_data)):
+        val_data = val_data.at[i, :, val_zero[i]].set(0)
+
+    if test_data is not None:
+        test_zero = jr.choice(
+            jr.PRNGKey(0), jnp.arange(1, test_data.shape[2]), shape=(len(test_data),)
+        )
+        for i in range(len(test_data)):
+            test_data = test_data.at[i, :, test_zero[i]].set(0)
+
     train_paths = batch_calc_paths(train_data, stepsize, depth)
     val_paths = batch_calc_paths(val_data, stepsize, depth)
     test_paths = batch_calc_paths(test_data, stepsize, depth)
