@@ -110,7 +110,7 @@ def run_experiments(
         time=TIME,
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
-        # constraint="gpu_mem:20GB",
+        constraint="gpu_mem:32GB",
         # qos="priority",
         account="math-datasig",
     )
@@ -144,27 +144,30 @@ if __name__ == "__main__":
     model_names = ["log_ncde", "ncde", "nrde", "ssm", "rnn_lstm", "lru"]
 
     num_steps = 100000
-    print_steps = 1000
     batch_size = 32
 
     repeat_experiments = True
 
     if repeat_experiments:
 
-        args = open("best_hyperparameters.txt", "r")
+        args = open("best_hyperparameters_nrde.txt", "r")
         experiments = args.read().split("\n")
 
         for experiment in experiments:
             experiment = experiment.split(" ")
-            dataset_name = experiment[0]
-            model_name = experiment[1]
+            model_name = experiment[0]
+            if model_name == "log_ncde" or model_name == "ncde" or model_name == "nrde":
+                print_steps = 100
+            else:
+                print_steps = 1000
+            dataset_name = experiment[1]
             T = float(experiment[3])
             include_time = True if experiment[5] == "True" else False
             lr = float(experiment[9])
             if model_name == "log_ncde" or model_name == "nrde":
-                stepsize = float(experiment[11])
+                stepsize = int(float(experiment[11]))
                 logsig_depth = int(experiment[13])
-                idx = 3
+                idx = 4
             else:
                 stepsize = 1
                 logsig_depth = 1
@@ -186,13 +189,14 @@ if __name__ == "__main__":
                 "vf_depth": vf_depth,
                 "vf_width": vf_width,
                 "ssm_dim": ssm_dim,
-                "ssm_blocks": num_blocks,
+                "ssm_blocks": ssm_blocks,
                 "dt0": dt0,
                 "solver": solver,
                 "stepsize_controller": stepsize_controller,
                 "scale": scale,
                 "lambd": lambd,
             }
+            print(model_name, print_steps)
             run_experiments(
                 model_name,
                 dataset_name,
@@ -209,7 +213,6 @@ if __name__ == "__main__":
                 logsig_depth,
                 model_args,
             )
-        breakpoint()
     else:
         lr = 1e-4
         lr_scheduler = lambda x: x
