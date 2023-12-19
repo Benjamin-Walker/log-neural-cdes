@@ -124,10 +124,10 @@ if __name__ == "__main__":
     data_dir = WORKING_DIRECTORY + "/data"
     use_presplit = True
     dataset_names = [
-        # "EigenWorms",
-        # "EthanolConcentration",
-        # "Heartbeat",
-        # "MotorImagery",
+        "EigenWorms",
+        "EthanolConcentration",
+        "Heartbeat",
+        "MotorImagery",
         "SelfRegulationSCP1",
         "SelfRegulationSCP2",
     ]
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     if repeat_experiments:
 
-        args = open("best_hyperparameters_nrde.txt", "r")
+        args = open("best_hyperparameters.txt", "r")
         experiments = args.read().split("\n")
 
         for experiment in experiments:
@@ -161,6 +161,8 @@ if __name__ == "__main__":
             else:
                 print_steps = 1000
             dataset_name = experiment[1]
+            # if (model_name == "ssm" and dataset_name == "EigenWorms") \
+            # or (model_name == "nrde" and dataset_name == "MotorImagery"):
             T = float(experiment[3])
             include_time = True if experiment[5] == "True" else False
             lr = float(experiment[9])
