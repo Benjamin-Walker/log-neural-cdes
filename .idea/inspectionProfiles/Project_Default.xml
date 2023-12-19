@@ -1,0 +1,57 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyAbstractClassInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="28">
+            <item index="0" class="java.lang.String" itemvalue="pytest-shutil" />
+            <item index="1" class="java.lang.String" itemvalue="numpy" />
+            <item index="2" class="java.lang.String" itemvalue="xgboost" />
+            <item index="3" class="java.lang.String" itemvalue="pathspec" />
+            <item index="4" class="java.lang.String" itemvalue="threadpoolctl" />
+            <item index="5" class="java.lang.String" itemvalue="json5" />
+            <item index="6" class="java.lang.String" itemvalue="cffi" />
+            <item index="7" class="java.lang.String" itemvalue="mypy-extensions" />
+            <item index="8" class="java.lang.String" itemvalue="executing" />
+            <item index="9" class="java.lang.String" itemvalue="requests" />
+            <item index="10" class="java.lang.String" itemvalue="ipython-genutils" />
+            <item index="11" class="java.lang.String" itemvalue="seaborn" />
+            <item index="12" class="java.lang.String" itemvalue="stack-data" />
+            <item index="13" class="java.lang.String" itemvalue="send2trash" />
+            <item index="14" class="java.lang.String" itemvalue="certifi" />
+            <item index="15" class="java.lang.String" itemvalue="urllib3" />
+            <item index="16" class="java.lang.String" itemvalue="jupyterlab" />
+            <item index="17" class="java.lang.String" itemvalue="nb-black" />
+            <item index="18" class="java.lang.String" itemvalue="torch" />
+            <item index="19" class="java.lang.String" itemvalue="fastjsonschema" />
+            <item index="20" class="java.lang.String" itemvalue="mistune" />
+            <item index="21" class="java.lang.String" itemvalue="pandas" />
+            <item index="22" class="java.lang.String" itemvalue="asttokens" />
+            <item index="23" class="java.lang.String" itemvalue="matplotlib" />
+            <item index="24" class="java.lang.String" itemvalue="resampy" />
+            <item index="25" class="java.lang.String" itemvalue="charset-normalizer" />
+            <item index="26" class="java.lang.String" itemvalue="librosa" />
+            <item index="27" class="java.lang.String" itemvalue="webencodings" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyPep8Inspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="W605" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="object.transform" />
+          <option value="object.score" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
