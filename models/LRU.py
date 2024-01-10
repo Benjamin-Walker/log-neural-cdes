@@ -24,8 +24,8 @@ class GLU(eqx.Module):
     def __init__(self, input_dim, output_dim, key):
         """Initialize GLU."""
         w1_key, w2_key = jr.split(key, 2)
-        self.w1 = eqx.nn.Linear(input_dim, output_dim, use_bias=False, key=w1_key)
-        self.w2 = eqx.nn.Linear(input_dim, output_dim, use_bias=False, key=w2_key)
+        self.w1 = eqx.nn.Linear(input_dim, output_dim, use_bias=True, key=w1_key)
+        self.w2 = eqx.nn.Linear(input_dim, output_dim, use_bias=True, key=w2_key)
 
     def __call__(self, x):
         """Compute GLU."""
@@ -74,7 +74,6 @@ class LRULayer(eqx.Module):
             jnp.exp(self.gamma_log), axis=-1
         )
         C = self.C_re + 1j * self.C_im
-
         # Running the LRU + output projection
         Lambda_elements = jnp.repeat(Lambda[None, ...], x.shape[0], axis=0)
         Bu_elements = jax.vmap(lambda u: B_norm @ u)(x)
@@ -82,7 +81,7 @@ class LRULayer(eqx.Module):
         _, inner_states = jax.lax.associative_scan(
             binary_operator_diag, elements
         )  # all x_k
-        y = jax.vmap(lambda z, u: (C @ z).real + (self.D @ u))(inner_states, x)
+        y = jax.vmap(lambda z, u: (C @ z).real + (self.D * u))(inner_states, x)
 
         return y
 
@@ -95,14 +94,14 @@ class LRUBlock(eqx.Module):
     glu: GLU
     drop: eqx.nn.Dropout
 
-    def __init__(self, H, r_min=0, r_max=1, max_phase=6.28, drop_rate=0.1, *, key):
+    def __init__(self, N, H, r_min=0, r_max=1, max_phase=6.28, drop_rate=0.1, *, key):
         """Initialize LRU block."""
         lrukey, glukey = jr.split(key, 2)
         self.norm = eqx.nn.BatchNorm(
             input_size=H, axis_name="batch", channelwise_affine=False
         )
-        self.lru = LRULayer(H, H, r_min, r_max, max_phase, key=lrukey)
-        self.glu = jax.vmap(GLU(H, H, key=glukey))
+        self.lru = LRULayer(N, H, r_min, r_max, max_phase, key=lrukey)
+        self.glu = GLU(H, H, key=glukey)
         self.drop = eqx.nn.Dropout(p=drop_rate)
 
     def __call__(self, x, state, *, key):
@@ -113,7 +112,7 @@ class LRUBlock(eqx.Module):
         x = x.T
         x = self.lru(x)
         x = self.drop(jax.nn.gelu(x), key=dropkey1)
-        x = self.glu(x)
+        x = jax.vmap(self.glu)(x)
         x = self.drop(x, key=dropkey2)
         x = skip + x
         return x, state
@@ -132,6 +131,7 @@ class LRU(eqx.Module):
     def __init__(
         self,
         num_blocks,
+        data_dim,
         N,
         H,
         output_dim,
@@ -146,9 +146,9 @@ class LRU(eqx.Module):
         linear_encoder_key, *block_keys, linear_layer_key = jr.split(
             key, num_blocks + 2
         )
-        self.linear_encoder = jax.vmap(eqx.nn.Linear(N, H, key=linear_encoder_key))
+        self.linear_encoder = eqx.nn.Linear(data_dim, H, key=linear_encoder_key)
         self.blocks = [
-            LRUBlock(H, r_min, r_max, max_phase, drop_rate, key=key)
+            LRUBlock(N, H, r_min, r_max, max_phase, drop_rate, key=key)
             for key in block_keys
         ]
         self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
@@ -156,7 +156,7 @@ class LRU(eqx.Module):
     def __call__(self, x, state, key):
         """Compute LRU."""
         dropkeys = jr.split(key, len(self.blocks))
-        x = self.linear_encoder(x)
+        x = jax.vmap(self.linear_encoder)(x)
         for block, key in zip(self.blocks, dropkeys):
             x, state = block(x, state, key=key)
         x = jnp.mean(x, axis=0)

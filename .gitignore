@@ -242,3 +242,6 @@ fabric.properties
 
 .idea/deployment.xml
 .idea/webServers.xml
+
+# No Images
+*.png
