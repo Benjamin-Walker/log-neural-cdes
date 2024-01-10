@@ -77,32 +77,36 @@ def dataset_generator(
         val_data, val_labels = data[idxs[1]], labels[idxs[1]]
         test_data, test_labels = None, None
 
-    n_channels = max(1, math.floor(0.1 * train_data.shape[-1]))
+    zero_channels_out = False
 
-    train_zero = jr.choice(
-        jr.PRNGKey(0),
-        jnp.arange(1, train_data.shape[2]),
-        shape=(len(train_data), n_channels),
-    )
-    val_zero = jr.choice(
-        jr.PRNGKey(0),
-        jnp.arange(1, val_data.shape[2]),
-        shape=(len(val_data), n_channels),
-    )
+    if zero_channels_out:
+        n_channels = max(1, math.floor(0.15 * train_data.shape[-1]))
 
-    for i in range(len(train_data)):
-        train_data = train_data.at[i, :, train_zero[i]].set(0)
-    for i in range(len(val_data)):
-        val_data = val_data.at[i, :, val_zero[i]].set(0)
-
-    if test_data is not None:
-        test_zero = jr.choice(
-            jr.PRNGKey(0),
-            jnp.arange(1, test_data.shape[2]),
-            shape=(len(test_data), n_channels),
+        train_key, val_key, test_key, key = jr.split(key, 4)
+        train_all_zero = jr.choice(
+            train_key,
+            jnp.arange(1, train_data.shape[2]),
+            shape=(len(train_data), n_channels),
         )
-        for i in range(len(test_data)):
-            test_data = test_data.at[i, :, test_zero[i]].set(0)
+        val_all_zero = jr.choice(
+            val_key,
+            jnp.arange(1, val_data.shape[2]),
+            shape=(len(val_data), n_channels),
+        )
+
+        for i in range(len(train_data)):
+            train_data = train_data.at[i, :, train_all_zero[i]].set(0)
+        for i in range(len(val_data)):
+            val_data = val_data.at[i, :, val_all_zero[i]].set(0)
+
+        if test_data is not None:
+            test_all_zero = jr.choice(
+                test_key,
+                jnp.arange(1, test_data.shape[2]),
+                shape=(len(test_data), n_channels),
+            )
+            for i in range(len(test_data)):
+                test_data = test_data.at[i, :, test_all_zero[i]].set(0)
 
     train_paths = batch_calc_paths(train_data, stepsize, depth)
     val_paths = batch_calc_paths(val_data, stepsize, depth)
