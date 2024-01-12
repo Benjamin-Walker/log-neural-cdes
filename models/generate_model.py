@@ -104,7 +104,7 @@ def create_model(
     elif model_name == "lru":
         if num_blocks is None:
             raise ValueError("Must specify num_blocks for LRU.")
-        lru = LRU(num_blocks, data_dim, hidden_dim, label_dim, key=key)
+        lru = LRU(num_blocks, data_dim, ssm_dim, hidden_dim, label_dim, key=key)
         state = eqx.nn.State(lru)
         return lru, state
     elif model_name == "ssm":
@@ -123,10 +123,10 @@ def create_model(
             label_dim,
             "lecun_normal",
             True,
-            False,
+            True,
             "zoh",
+            0.001,
             0.1,
-            1.0,
             1.0,
             key=key,
         )

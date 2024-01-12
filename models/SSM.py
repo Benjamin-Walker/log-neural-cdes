@@ -305,10 +305,11 @@ class S5Layer(eqx.Module):
         Vinv = block_diag(*([Vc] * blocks))
 
         self.H = H
+        self.P = P
         if conj_sym:
-            self.P = 2 * P
+            local_P = 2 * P
         else:
-            self.P = P
+            local_P = P
 
         self.Lambda_re = Lambda.real
         self.Lambda_im = Lambda.imag
@@ -317,7 +318,7 @@ class S5Layer(eqx.Module):
 
         self.clip_eigs = clip_eigs
 
-        self.B = init_VinvB(lecun_normal(), B_key, (self.P, self.H), Vinv)
+        self.B = init_VinvB(lecun_normal(), B_key, (local_P, self.H), Vinv)
 
         # Initialize state to output (C) matrix
         if C_init in ["trunc_standard_normal"]:
@@ -330,14 +331,14 @@ class S5Layer(eqx.Module):
             raise NotImplementedError("C_init method {} not implemented".format(C_init))
 
         if C_init in ["complex_normal"]:
-            self.C = C_init(C_key, (self.H, P, 2))
+            self.C = C_init(C_key, (self.H, 2 * self.P, 2))
         else:
-            self.C = init_CV(C_init, C_key, (self.H, self.P, 2), V)
+            self.C = init_CV(C_init, C_key, (self.H, local_P, 2), V)
 
         self.D = normal(stddev=1.0)(D_key, (self.H,))
 
         # Initialize learnable discretisation timescale value
-        self.log_step = init_log_steps(step_key, (P, dt_min, dt_max))
+        self.log_step = init_log_steps(step_key, (self.P, dt_min, dt_max))
 
         self.step_rescale = step_rescale
         self.discretisation = discretisation
@@ -389,10 +390,11 @@ class S5Block(eqx.Module):
         dt_min,
         dt_max,
         step_rescale,
-        drop_rate=0.1,
+        drop_rate=0.05,
         *,
         key
     ):
+        ssmkey, glukey = jr.split(key, 2)
         self.norm = eqx.nn.BatchNorm(
             input_size=H, axis_name="batch", channelwise_affine=False
         )
@@ -407,9 +409,9 @@ class S5Block(eqx.Module):
             dt_min,
             dt_max,
             step_rescale,
-            key=key,
+            key=ssmkey,
         )
-        self.glu = jax.vmap(GLU(H, H, key=key))
+        self.glu = GLU(H, H, key=glukey)
         self.drop = eqx.nn.Dropout(p=drop_rate)
 
     def __call__(self, x, state, *, key):
@@ -420,7 +422,7 @@ class S5Block(eqx.Module):
         x = x.T
         x = self.ssm(x)
         x = self.drop(jax.nn.gelu(x), key=dropkey1)
-        x = self.glu(x)
+        x = jax.vmap(self.glu)(x)
         x = self.drop(x, key=dropkey2)
         x = skip + x
         return x, state
@@ -456,7 +458,7 @@ class S5(eqx.Module):
         linear_encoder_key, *block_keys, linear_layer_key, weightkey = jr.split(
             key, num_blocks + 3
         )
-        self.linear_encoder = jax.vmap(eqx.nn.Linear(N, H, key=linear_encoder_key))
+        self.linear_encoder = eqx.nn.Linear(N, H, key=linear_encoder_key)
         self.blocks = [
             S5Block(
                 ssm_size,
@@ -473,55 +475,14 @@ class S5(eqx.Module):
             )
             for key in block_keys
         ]
-        linear = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
-        new_weight = jr.normal(weightkey, linear.weight.shape) / 1000
-        where = lambda l: l.weight
-        self.linear_layer = eqx.tree_at(where, linear, new_weight)
+        self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
 
     def __call__(self, x, state, key):
         """Compute S5."""
         dropkeys = jr.split(key, len(self.blocks))
-        x = self.linear_encoder(x)
+        x = jax.vmap(self.linear_encoder)(x)
         for block, key in zip(self.blocks, dropkeys):
             x, state = block(x, state, key=key)
         x = jnp.mean(x, axis=0)
         x = jax.nn.softmax(self.linear_layer(x), axis=0)
         return x, state
-
-
-if __name__ == "__main__":
-    d = 3
-    output_dim = 5
-    conj_sym = False
-    ssm_size = 1000
-    ssm_blocks = 10
-    num_blocks = 6
-    H = 100
-
-    S5 = S5(
-        num_blocks,
-        d,
-        ssm_size,
-        ssm_blocks,
-        H,
-        output_dim,
-        "lecun_normal",
-        conj_sym,
-        False,
-        "zoh",
-        0.1,
-        0.5,
-        1.0,
-        key=jr.PRNGKey(0),
-    )
-
-    key = jr.PRNGKey(1)
-    x = jr.normal(key=key, shape=(32, 100, d))
-    state = eqx.nn.State(S5)
-    batch_S5 = jax.vmap(
-        S5, axis_name="batch", in_axes=(0, None, None), out_axes=(0, None)
-    )
-
-    y, state = batch_S5(x, state, key)
-
-    breakpoint()
