@@ -3,7 +3,6 @@ import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
-from equinox._module import static_field
 
 
 class VectorField(eqx.Module):
@@ -133,10 +132,11 @@ class NeuralRDE(eqx.Module):
     data_dim: int
     logsig_dim: int
     hidden_dim: int
+    mlp_linear: eqx.nn.Linear
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
-    intervals: jnp.ndarray = static_field()
+    intervals: jnp.ndarray
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
@@ -164,16 +164,19 @@ class NeuralRDE(eqx.Module):
         key,
         **kwargs
     ):
-        vf_key, l1key, l2key = jr.split(key, 3)
+        vf_key, mlplkey, l1key, l2key = jr.split(key, 4)
         # Exclude first element as always zero
         self.logsig_dim = logsig_dim - 1
         self.vf = VectorField(
             hidden_dim,
-            hidden_dim * self.logsig_dim,
             vf_hidden_dim,
-            vf_num_hidden,
+            vf_hidden_dim,
+            vf_num_hidden - 1,
             scale=scale,
             key=vf_key,
+        )
+        self.mlp_linear = eqx.nn.Linear(
+            vf_hidden_dim, hidden_dim * self.logsig_dim, key=mlplkey
         )
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
@@ -192,7 +195,9 @@ class NeuralRDE(eqx.Module):
         def func(t, y, args):
             idx = jnp.searchsorted(self.intervals, t)
             return jnp.dot(
-                jnp.reshape(self.vf(y), (self.hidden_dim, self.logsig_dim)),
+                jnp.reshape(
+                    self.mlp_linear(self.vf(y)), (self.hidden_dim, self.logsig_dim)
+                ),
                 logsig[idx][1:],
             )
 

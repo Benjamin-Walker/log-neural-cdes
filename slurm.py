@@ -110,7 +110,7 @@ def run_experiments(
         time=TIME,
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
-        constraint="gpu_mem:32GB",
+        # constraint="gpu_mem:32GB",
         # qos="priority",
         account="math-datasig",
     )
@@ -125,11 +125,11 @@ if __name__ == "__main__":
     use_presplit = True
     dataset_names = [
         "EigenWorms",
-        "EthanolConcentration",
-        "Heartbeat",
-        "MotorImagery",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
+        # "EthanolConcentration",
+        # "Heartbeat",
+        # "MotorImagery",
+        # "SelfRegulationSCP1",
+        # "SelfRegulationSCP2",
     ]
 
     lengths = {
@@ -141,8 +141,10 @@ if __name__ == "__main__":
         "SelfRegulationSCP2": 1152,
     }
 
-    model_names = ["log_ncde", "ncde", "nrde", "ssm", "rnn_lstm", "lru"]
-
+    model_names = [
+        "ssm",
+        "lru",
+    ]
     num_steps = 100000
     batch_size = 32
 
@@ -150,7 +152,7 @@ if __name__ == "__main__":
 
     if repeat_experiments:
 
-        args = open("best_hyperparameters.txt", "r")
+        args = open("hyperparameters_lambd_0.txt", "r")
         experiments = args.read().split("\n")
 
         for experiment in experiments:
@@ -161,8 +163,8 @@ if __name__ == "__main__":
             else:
                 print_steps = 1000
             dataset_name = experiment[1]
-            # if (model_name == "ssm" and dataset_name == "EigenWorms") \
-            # or (model_name == "nrde" and dataset_name == "MotorImagery"):
+            # if model_name == "ssm" or model_name == "lru":
+            # if dataset_name != "EigenWorms":
             T = float(experiment[3])
             include_time = True if experiment[5] == "True" else False
             lr = float(experiment[9])
