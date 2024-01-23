@@ -26,6 +26,7 @@ def calc_paths(data, stepsize, depth):
     data = jnp.concatenate(
         (jnp.zeros((data.shape[0], 1, data.shape[-1])), data), axis=1
     )
+    breakpoint()
 
     if depth == 2:
         hs = HallSet(data.shape[-1], depth)
