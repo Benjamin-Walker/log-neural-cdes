@@ -297,9 +297,9 @@ def create_lra_dataset(
 
 
 def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
-    with open(data_dir + "/processed/toy_signature/data.pkl", "rb") as f:
+    with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
         data = pickle.load(f)
-    with open(data_dir + "/processed/toy_signature/labels.pkl", "rb") as f:
+    with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
         labels = pickle.load(f)
     labels = ((jnp.sign(labels[3][:, 2, 5, 0, 3]) + 1) / 2).astype(int)  # 2,5,0,3
     onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))

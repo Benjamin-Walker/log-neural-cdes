@@ -233,7 +233,7 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_toy_final/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -247,7 +247,7 @@ def create_dataset_model_and_train(
             output_dir += f"_{k}_" + name
         if name == "PIDController":
             output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
-    output_dir += f"_seed_{seed}"
+    output_dir += f"_seed_{seed}_4"
 
     key = jr.PRNGKey(seed)
 
@@ -311,24 +311,23 @@ if __name__ == "__main__":
     use_presplit = True
     output_parent_dir = ""
     seed = 1234
-    num_steps = 100000
-    print_steps = 100
     batch_size = 32
-    lr = 1e-3
+    lr = 1e-4
     lr_scheduler = lambda lr: lr
     T = 1
-    dt0 = 0.0008888888888888889
-    include_time = True
+    dt0 = 0.01
+    include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 16
+    stepsize = 4
     logsig_depth = 2
-    hidden_dim = 16
-    scale = T * 1000
-    lambd = 1e-3
+    hidden_dim = 64
+    scale = T
+    lambd = 0.0
     dataset_names = [
-        # "toy",
-        "EigenWorms",
+        # "mimic",
+        "toy",
+        # "EigenWorms",
         # "EthanolConcentration",
         # "HandMovementDirection",
         # "Handwriting",
@@ -342,16 +341,22 @@ if __name__ == "__main__":
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
-    model_names = ["lru"]
+    model_names = ["ssm", "lru", "log_ncde", "ncde", "nrde"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
+            if model_name == "log_ncde" or model_name == "nrde" or model_name == "ncde":
+                num_steps = 10000
+                print_steps = 100
+            else:
+                num_steps = 100000
+                print_steps = 1000
             model_args = {
                 "num_blocks": 6,
                 "hidden_dim": hidden_dim,
                 "vf_depth": 3,
                 "vf_width": 128,
-                "ssm_dim": 32,
+                "ssm_dim": 64,
                 "ssm_blocks": 2,
                 "dt0": dt0,
                 "solver": solver,
