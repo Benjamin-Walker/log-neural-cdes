@@ -282,7 +282,9 @@ def create_dataset_model_and_train(
         dataloaders = dataset.path_dataloaders
         if model_name == "log_ncde":
             where = lambda model: (model.intervals, model.pairs)
-            filter_spec = eqx.tree_at(where, filter_spec, replace=(False, False))
+            filter_spec = eqx.tree_at(
+                where, filter_spec, replace=(False, False), is_leaf=lambda x: x is None
+            )
         elif model_name == "nrde":
             where = lambda model: (model.intervals,)
             filter_spec = eqx.tree_at(where, filter_spec, replace=(False,))
@@ -319,8 +321,8 @@ if __name__ == "__main__":
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 4
-    logsig_depth = 2
+    stepsize = 1
+    logsig_depth = 1
     hidden_dim = 64
     scale = T
     lambd = 0.0
@@ -341,7 +343,7 @@ if __name__ == "__main__":
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
-    model_names = ["ssm", "lru", "log_ncde", "ncde", "nrde"]
+    model_names = ["log_ncde", "nrde"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
