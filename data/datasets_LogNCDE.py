@@ -140,6 +140,15 @@ def dataset_generator(
         label_dim = train_labels.shape[-1]
     logsig_dim = train_paths.shape[-1]
 
+    # train_path_data = None
+    # train_coeff_data = None
+    # val_path_data = None
+    # val_coeff_data = None
+    # test_path_data = None
+    # test_coeff_data = None
+    # intervals = None
+    # logsig_dim = None
+
     raw_dataloaders = {
         "train": InMemoryDataloader(train_data, train_labels),
         "val": InMemoryDataloader(val_data, val_labels),
@@ -223,6 +232,39 @@ def create_uea_dataset(
                 jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0
             )
             data = jnp.concatenate([ts[:, :, None], data], axis=2)
+
+    return dataset_generator(
+        name,
+        data,
+        onehot_labels,
+        stepsize,
+        depth,
+        include_time,
+        T,
+        idxs,
+        use_presplit,
+        key=key,
+    )
+
+
+def create_fex_dataset(
+    data_dir, name, use_presplit, stepsize, depth, include_time, T, *, key
+):
+    if use_presplit:
+        raise ValueError("FEX datasets do not have presplit data")
+
+    with open(data_dir + f"/processed/FEX/{name}/data.pkl", "rb") as f:
+        data = jnp.array(pickle.load(f))
+    with open(data_dir + f"/processed/FEX/{name}/labels.pkl", "rb") as f:
+        labels = jnp.array(pickle.load(f))
+    idxs = jnp.arange(len(data))
+    key, subkey = jr.split(key)
+    shuffle = jr.permutation(subkey, idxs, independent=True)
+    data = data[shuffle]
+    labels = labels[shuffle]
+    onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
+    onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
+    idxs = None
 
     return dataset_generator(
         name,
@@ -326,6 +368,9 @@ def create_dataset(
     lra_subfolders = [
         f.name for f in os.scandir(data_dir + "/processed/LRA") if f.is_dir()
     ]
+    fex_subfolders = [
+        f.name for f in os.scandir(data_dir + "/processed/FEX") if f.is_dir()
+    ]
     if name in uea_subfolders:
         return create_uea_dataset(
             data_dir,
@@ -343,6 +388,17 @@ def create_dataset(
             data_dir,
             name,
             use_idxs,
+            use_presplit,
+            stepsize,
+            depth,
+            include_time,
+            T,
+            key=key,
+        )
+    elif name in fex_subfolders:
+        return create_fex_dataset(
+            data_dir,
+            name,
             use_presplit,
             stepsize,
             depth,
