@@ -233,7 +233,7 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_toy_final/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -310,7 +310,7 @@ def create_dataset_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "data"
-    use_presplit = True
+    use_presplit = False
     output_parent_dir = ""
     seed = 1234
     batch_size = 32
@@ -326,24 +326,8 @@ if __name__ == "__main__":
     hidden_dim = 64
     scale = T
     lambd = 0.0
-    dataset_names = [
-        # "mimic",
-        "toy",
-        # "EigenWorms",
-        # "EthanolConcentration",
-        # "HandMovementDirection",
-        # "Handwriting",
-        # "Heartbeat",
-        # "Libras",
-        # "LSST",
-        # "MotorImagery",
-        # "NATOPS",
-        # "PEMS-SF",
-        # "PhonemeSpectra",
-        # "SelfRegulationSCP1",
-        # "SelfRegulationSCP2",
-    ]
-    model_names = ["log_ncde", "nrde"]
+    dataset_names = ["daily"]
+    model_names = ["rnn_lstm"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
