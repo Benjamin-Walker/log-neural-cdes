@@ -201,40 +201,46 @@ def dataset_generator(
 
 
 def create_uea_dataset(
-    data_dir, name, use_idxs, use_presplit, stepsize, depth, include_time, T, *, key
+    data_dir,
+    name,
+    use_idxs,
+    use_presplit,
+    stepsize,
+    depth,
+    include_time,
+    T,
+    seed,
+    *,
+    key,
 ):
 
     if use_presplit:
         idxs = None
-        with open(data_dir + f"/processed/UEA/{name}/X_train.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_train.pkl", "rb") as f:
             train_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/y_train.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_train.pkl", "rb") as f:
             train_labels = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/X_val.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_val.pkl", "rb") as f:
             val_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/y_val.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_val.pkl", "rb") as f:
             val_labels = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/X_test.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_test.pkl", "rb") as f:
             test_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/y_test.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_test.pkl", "rb") as f:
             test_labels = pickle.load(f)
         if include_time:
             ts = (T / train_data.shape[1]) * jnp.repeat(
                 jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
             )
-            train_data = jnp.concatenate([ts[:, :, None], train_data[:, :, 1:]], axis=2)
+            train_data = jnp.concatenate([ts[:, :, None], train_data], axis=2)
             ts = (T / val_data.shape[1]) * jnp.repeat(
                 jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
             )
-            val_data = jnp.concatenate([ts[:, :, None], val_data[:, :, 1:]], axis=2)
+            val_data = jnp.concatenate([ts[:, :, None], val_data], axis=2)
             ts = (T / test_data.shape[1]) * jnp.repeat(
                 jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
             )
-            test_data = jnp.concatenate([ts[:, :, None], test_data[:, :, 1:]], axis=2)
-        else:
-            train_data = train_data[:, :, 1:]
-            val_data = val_data[:, :, 1:]
-            test_data = test_data[:, :, 1:]
+            test_data = jnp.concatenate([ts[:, :, None], test_data], axis=2)
         data = (train_data, val_data, test_data)
         onehot_labels = (train_labels, val_labels, test_labels)
     else:
@@ -350,7 +356,17 @@ def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
 
 
 def create_dataset(
-    data_dir, name, use_idxs, use_presplit, stepsize, depth, include_time, T, *, key
+    data_dir,
+    name,
+    use_idxs,
+    use_presplit,
+    stepsize,
+    depth,
+    include_time,
+    T,
+    seed,
+    *,
+    key,
 ):
     uea_subfolders = [
         f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
@@ -368,6 +384,7 @@ def create_dataset(
             depth,
             include_time,
             T,
+            seed,
             key=key,
         )
     elif name in lra_subfolders:

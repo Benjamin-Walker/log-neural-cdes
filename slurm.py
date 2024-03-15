@@ -122,14 +122,14 @@ def run(cfg):
 
 if __name__ == "__main__":
     data_dir = WORKING_DIRECTORY + "/data"
-    use_presplit = True
+    use_presplit = False
     dataset_names = [
         "EigenWorms",
-        # "EthanolConcentration",
-        # "Heartbeat",
-        # "MotorImagery",
-        # "SelfRegulationSCP1",
-        # "SelfRegulationSCP2",
+        "EthanolConcentration",
+        "Heartbeat",
+        "MotorImagery",
+        "SelfRegulationSCP1",
+        "SelfRegulationSCP2",
     ]
 
     lengths = {
@@ -142,17 +142,16 @@ if __name__ == "__main__":
     }
 
     model_names = [
-        "ssm",
-        "lru",
+        "log_ncde",
     ]
     num_steps = 100000
     batch_size = 32
 
-    repeat_experiments = True
+    repeat_experiments = False
 
     if repeat_experiments:
 
-        args = open("hyperparameters_lambd_0.txt", "r")
+        args = open("best_hyperparameters.txt", "r")
         experiments = args.read().split("\n")
 
         for experiment in experiments:
@@ -163,60 +162,58 @@ if __name__ == "__main__":
             else:
                 print_steps = 1000
             dataset_name = experiment[1]
-            # if model_name == "ssm" or model_name == "lru":
-            # if dataset_name != "EigenWorms":
-            T = float(experiment[3])
-            include_time = True if experiment[5] == "True" else False
-            lr = float(experiment[9])
-            if model_name == "log_ncde" or model_name == "nrde":
-                stepsize = int(float(experiment[11]))
-                logsig_depth = int(experiment[13])
-                idx = 4
-            else:
-                stepsize = 1
-                logsig_depth = 1
-                idx = 0
-            num_blocks = int(experiment[12 + idx])
-            hidden_dim = int(experiment[15 + idx])
-            vf_depth = int(experiment[18 + idx])
-            vf_width = int(experiment[21 + idx])
-            ssm_dim = int(experiment[24 + idx])
-            ssm_blocks = int(experiment[27 + idx])
-            dt0 = float(experiment[29 + idx])
-            solver = diffrax.Heun()
-            stepsize_controller = diffrax.ConstantStepSize()
-            scale = float(experiment[36 + idx])
-            lambd = float(experiment[38 + idx])
-            model_args = {
-                "num_blocks": num_blocks,
-                "hidden_dim": hidden_dim,
-                "vf_depth": vf_depth,
-                "vf_width": vf_width,
-                "ssm_dim": ssm_dim,
-                "ssm_blocks": ssm_blocks,
-                "dt0": dt0,
-                "solver": solver,
-                "stepsize_controller": stepsize_controller,
-                "scale": scale,
-                "lambd": lambd,
-            }
-            print(model_name, print_steps)
-            run_experiments(
-                model_name,
-                dataset_name,
-                data_dir,
-                use_presplit,
-                include_time,
-                T,
-                num_steps,
-                print_steps,
-                lr,
-                lambda x: x,
-                stepsize,
-                batch_size,
-                logsig_depth,
-                model_args,
-            )
+            if dataset_name in dataset_names:
+                T = float(experiment[3])
+                include_time = True if experiment[5] == "True" else False
+                lr = float(experiment[9])
+                if model_name == "log_ncde" or model_name == "nrde":
+                    stepsize = int(float(experiment[11]))
+                    logsig_depth = int(experiment[13])
+                    idx = 4
+                else:
+                    stepsize = 1
+                    logsig_depth = 1
+                    idx = 0
+                num_blocks = int(experiment[12 + idx])
+                hidden_dim = int(experiment[15 + idx])
+                vf_depth = int(experiment[18 + idx])
+                vf_width = int(experiment[21 + idx])
+                ssm_dim = int(experiment[24 + idx])
+                ssm_blocks = int(experiment[27 + idx])
+                dt0 = float(experiment[29 + idx])
+                solver = diffrax.Heun()
+                stepsize_controller = diffrax.ConstantStepSize()
+                scale = float(experiment[36 + idx])
+                lambd = float(experiment[38 + idx])
+                model_args = {
+                    "num_blocks": num_blocks,
+                    "hidden_dim": hidden_dim,
+                    "vf_depth": vf_depth,
+                    "vf_width": vf_width,
+                    "ssm_dim": ssm_dim,
+                    "ssm_blocks": ssm_blocks,
+                    "dt0": dt0,
+                    "solver": solver,
+                    "stepsize_controller": stepsize_controller,
+                    "scale": scale,
+                    "lambd": lambd,
+                }
+                run_experiments(
+                    model_name,
+                    dataset_name,
+                    data_dir,
+                    use_presplit,
+                    include_time,
+                    T,
+                    num_steps,
+                    print_steps,
+                    lr,
+                    lambda x: x,
+                    stepsize,
+                    batch_size,
+                    logsig_depth,
+                    model_args,
+                )
     else:
         lr = 1e-4
         lr_scheduler = lambda x: x
@@ -227,6 +224,7 @@ if __name__ == "__main__":
         ssm_blocks = 1
         lambd = 0.0
         T = 1
+        print_steps = 100
 
         for dataset_name in dataset_names:
             for model_name in model_names:

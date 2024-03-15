@@ -233,9 +233,7 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += (
-        "outputs_logncde_lambd0_repeats/" + model_name + "/" + dataset_name
-    )
+    output_parent_dir += "outputs_repeat_fixed_data/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -265,6 +263,7 @@ def create_dataset_model_and_train(
         T=T,
         use_idxs=False,
         use_presplit=use_presplit,
+        seed=seed,
         key=datasetkey,
     )
 
@@ -312,7 +311,7 @@ if __name__ == "__main__":
     data_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data"
     use_presplit = True
     output_parent_dir = ""
-    seed = 1234
+    seed = 2345
     num_steps = 10000
     print_steps = 100
     batch_size = 32
@@ -349,7 +348,7 @@ if __name__ == "__main__":
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for include_time in [True, False]:
+            for include_time in [True]:
                 for hidden_dim in [64]:
                     model_args = {
                         "num_blocks": 6,
