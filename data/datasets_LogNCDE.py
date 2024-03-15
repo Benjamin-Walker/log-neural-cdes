@@ -5,8 +5,9 @@ from typing import Dict
 
 import jax.numpy as jnp
 import jax.random as jr
+import numpy as np
 
-from data.dataloaders import InMemoryDataloader
+from data.dataloaders import Dataloader
 from data.generate_coeffs import calc_coeffs
 from data.generate_paths import calc_paths
 
@@ -14,29 +15,75 @@ from data.generate_paths import calc_paths
 @dataclass
 class Dataset:
     name: str
-    raw_dataloaders: Dict[str, InMemoryDataloader]
-    coeff_dataloaders: Dict[str, InMemoryDataloader]
-    path_dataloaders: Dict[str, InMemoryDataloader]
+    raw_dataloaders: Dict[str, Dataloader]
+    coeff_dataloaders: Dict[str, Dataloader]
+    path_dataloaders: Dict[str, Dataloader]
     data_dim: int
     logsig_dim: int
     intervals: jnp.ndarray
     label_dim: int
 
 
-def batch_calc_paths(data, stepsize, depth):
+def batch_calc_paths(data, stepsize, depth, inmemory=True):
     N = len(data)
     batchsize = 128
     num_batches = N // batchsize
     remainder = N % batchsize
     path_data = []
+    if inmemory:
+        out_func = lambda x: x
+        in_func = lambda x: x
+    else:
+        out_func = lambda x: np.array(x)
+        in_func = lambda x: jnp.array(x)
     for i in range(num_batches):
         path_data.append(
-            calc_paths(data[i * batchsize : (i + 1) * batchsize], stepsize, depth)
+            out_func(
+                calc_paths(
+                    in_func(data[i * batchsize : (i + 1) * batchsize]), stepsize, depth
+                )
+            )
         )
     if remainder > 0:
-        path_data.append(calc_paths(data[-remainder:], stepsize, depth))
-    path_data = jnp.concatenate(path_data)
+        path_data.append(
+            out_func(calc_paths(in_func(data[-remainder:]), stepsize, depth))
+        )
+    if inmemory:
+        path_data = jnp.concatenate(path_data)
+    else:
+        path_data = np.concatenate(path_data)
     return path_data
+
+
+def batch_calc_coeffs(data, include_time, T, inmemory=True):
+    N = len(data)
+    batchsize = 128
+    num_batches = N // batchsize
+    remainder = N % batchsize
+    coeffs = []
+    if inmemory:
+        out_func = lambda x: x
+        in_func = lambda x: x
+    else:
+        out_func = lambda x: np.array(x)
+        in_func = lambda x: jnp.array(x)
+    for i in range(num_batches):
+        coeffs.append(
+            out_func(
+                calc_coeffs(
+                    in_func(data[i * batchsize : (i + 1) * batchsize]), include_time, T
+                )
+            )
+        )
+    if remainder > 0:
+        coeffs.append(
+            out_func(calc_coeffs(in_func(data[-remainder:]), include_time, T))
+        )
+    if inmemory:
+        coeffs = jnp.concatenate(coeffs)
+    else:
+        coeffs = np.concatenate(coeffs)
+    return coeffs
 
 
 def dataset_generator(
@@ -47,6 +94,8 @@ def dataset_generator(
     depth,
     include_time,
     T,
+    inmemory=True,
+    coeffs_needed=True,
     idxs=None,
     use_presplit=False,
     *,
@@ -83,9 +132,39 @@ def dataset_generator(
     intervals = jnp.concatenate((intervals, jnp.array([train_data.shape[1]])))
     intervals = intervals * (T / train_data.shape[1])
 
-    train_coeffs = calc_coeffs(train_data, include_time, T)
-    val_coeffs = calc_coeffs(val_data, include_time, T)
-    test_coeffs = calc_coeffs(test_data, include_time, T)
+    if coeffs_needed:
+        train_coeffs = batch_calc_coeffs(train_data, include_time, T, inmemory)
+        val_coeffs = batch_calc_coeffs(val_data, include_time, T, inmemory)
+        test_coeffs = batch_calc_coeffs(test_data, include_time, T, inmemory)
+        train_coeff_data = (
+            (T / train_data.shape[1])
+            * jnp.repeat(
+                jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+            ),
+            train_coeffs,
+            train_data[:, 0, :],
+        )
+        val_coeff_data = (
+            (T / val_data.shape[1])
+            * jnp.repeat(
+                jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
+            ),
+            val_coeffs,
+            val_data[:, 0, :],
+        )
+        if idxs is None:
+            test_coeff_data = (
+                (T / test_data.shape[1])
+                * jnp.repeat(
+                    jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
+                ),
+                test_coeffs,
+                test_data[:, 0, :],
+            )
+    else:
+        train_coeff_data = None
+        val_coeff_data = None
+        test_coeff_data = None
 
     train_path_data = (
         (T / train_data.shape[1])
@@ -95,24 +174,10 @@ def dataset_generator(
         train_paths,
         train_data[:, 0, :],
     )
-    train_coeff_data = (
-        (T / train_data.shape[1])
-        * jnp.repeat(
-            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
-        ),
-        train_coeffs,
-        train_data[:, 0, :],
-    )
     val_path_data = (
         (T / val_data.shape[1])
         * jnp.repeat(jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0),
         val_paths,
-        val_data[:, 0, :],
-    )
-    val_coeff_data = (
-        (T / val_data.shape[1])
-        * jnp.repeat(jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0),
-        val_coeffs,
         val_data[:, 0, :],
     )
     if idxs is None:
@@ -124,14 +189,6 @@ def dataset_generator(
             test_paths,
             test_data[:, 0, :],
         )
-        test_coeff_data = (
-            (T / test_data.shape[1])
-            * jnp.repeat(
-                jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
-            ),
-            test_coeffs,
-            test_data[:, 0, :],
-        )
 
     data_dim = train_data.shape[-1]
     if len(train_labels.shape) == 1:
@@ -140,30 +197,21 @@ def dataset_generator(
         label_dim = train_labels.shape[-1]
     logsig_dim = train_paths.shape[-1]
 
-    # train_path_data = None
-    # train_coeff_data = None
-    # val_path_data = None
-    # val_coeff_data = None
-    # test_path_data = None
-    # test_coeff_data = None
-    # intervals = None
-    # logsig_dim = None
-
     raw_dataloaders = {
-        "train": InMemoryDataloader(train_data, train_labels),
-        "val": InMemoryDataloader(val_data, val_labels),
-        "test": InMemoryDataloader(test_data, test_labels),
+        "train": Dataloader(train_data, train_labels, inmemory),
+        "val": Dataloader(val_data, val_labels, inmemory),
+        "test": Dataloader(test_data, test_labels, inmemory),
     }
     coeff_dataloaders = {
-        "train": InMemoryDataloader(train_coeff_data, train_labels),
-        "val": InMemoryDataloader(val_coeff_data, val_labels),
-        "test": InMemoryDataloader(test_coeff_data, test_labels),
+        "train": Dataloader(train_coeff_data, train_labels, inmemory),
+        "val": Dataloader(val_coeff_data, val_labels, inmemory),
+        "test": Dataloader(test_coeff_data, test_labels, inmemory),
     }
 
     path_dataloaders = {
-        "train": InMemoryDataloader(train_path_data, train_labels),
-        "val": InMemoryDataloader(val_path_data, val_labels),
-        "test": InMemoryDataloader(test_path_data, test_labels),
+        "train": Dataloader(train_path_data, train_labels, inmemory),
+        "val": Dataloader(val_path_data, val_labels, inmemory),
+        "test": Dataloader(test_path_data, test_labels, inmemory),
     }
     return Dataset(
         name,
@@ -359,6 +407,17 @@ def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
     )
 
 
+def create_speech_dataset(data_dir, stepsize, depth, include_time, T, *, key):
+    with open(data_dir + "/processed/speech/data.pkl", "rb") as f:
+        data = pickle.load(f)
+    with open(data_dir + "/processed/speech/labels.pkl", "rb") as f:
+        labels = pickle.load(f)
+
+    return dataset_generator(
+        "speech", data, labels, stepsize, depth, include_time, T, False, False, key=key
+    )
+
+
 def create_dataset(
     data_dir, name, use_idxs, use_presplit, stepsize, depth, include_time, T, *, key
 ):
@@ -408,5 +467,9 @@ def create_dataset(
         )
     elif name == "toy":
         return create_toy_dataset(data_dir, stepsize, depth, include_time, T, key=key)
+    elif name == "speech":
+        return create_speech_dataset(
+            data_dir, stepsize, depth, include_time, T, key=key
+        )
     else:
         raise ValueError(f"Dataset {name} not found in UEA folder and not toy dataset")
