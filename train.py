@@ -247,7 +247,7 @@ def create_dataset_model_and_train(
             output_dir += f"_{k}_" + name
         if name == "PIDController":
             output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
-    output_dir += f"_seed_{seed}_4"
+    output_dir += f"_seed_{seed}"
 
     key = jr.PRNGKey(seed)
 
@@ -313,29 +313,29 @@ if __name__ == "__main__":
     use_presplit = False
     output_parent_dir = ""
     seed = 1234
-    batch_size = 32
-    lr = 1e-4
+    batch_size = 4
+    lr = 3e-5
     lr_scheduler = lambda lr: lr
     T = 1
     dt0 = 0.01
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 1
-    logsig_depth = 1
+    stepsize = 1000
+    logsig_depth = 2
     hidden_dim = 64
     scale = T
     lambd = 0.0
-    dataset_names = ["daily"]
-    model_names = ["rnn_lstm"]
+    dataset_names = ["speech"]
+    model_names = ["nrde"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
             if model_name == "log_ncde" or model_name == "nrde" or model_name == "ncde":
-                num_steps = 10000
-                print_steps = 100
-            else:
                 num_steps = 100000
+                print_steps = 1000
+            else:
+                num_steps = 250000
                 print_steps = 1000
             model_args = {
                 "num_blocks": 6,
