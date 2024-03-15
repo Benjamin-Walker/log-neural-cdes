@@ -157,7 +157,7 @@ def train_model(
             if step > 0:
                 if val_accuracy <= max(val_acc_for_best_model):
                     no_val_improvement += 1
-                    if no_val_improvement > 10:
+                    if no_val_improvement > 1000:
                         break
                 else:
                     no_val_improvement = 0
@@ -283,7 +283,9 @@ def create_dataset_model_and_train(
         dataloaders = dataset.path_dataloaders
         if model_name == "log_ncde":
             where = lambda model: (model.intervals, model.pairs)
-            filter_spec = eqx.tree_at(where, filter_spec, replace=(False, False))
+            filter_spec = eqx.tree_at(
+                where, filter_spec, replace=(False, False), is_leaf=lambda x: x is None
+            )
         elif model_name == "nrde":
             where = lambda model: (model.intervals,)
             filter_spec = eqx.tree_at(where, filter_spec, replace=(False,))
@@ -309,75 +311,61 @@ def create_dataset_model_and_train(
 
 if __name__ == "__main__":
     data_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data"
-    use_presplit = True
+    use_presplit = False
     output_parent_dir = ""
-    seed = 2345
-    num_steps = 10000
-    print_steps = 100
-    batch_size = 32
-    lr = 1e-4
+    seed = 1234
+    batch_size = 4
+    lr = 3e-5
     lr_scheduler = lambda lr: lr
     T = 1
-    dt0 = T / 10
-    include_time = True
-    solver = diffrax.Tsit5()
-    stepsize_controller = diffrax.PIDController(rtol=1e-3, atol=1e-3)
-    stepsize = 16
+    dt0 = 0.01
+    include_time = False
+    solver = diffrax.Heun()
+    stepsize_controller = diffrax.ConstantStepSize()
+    stepsize = 1000
     logsig_depth = 2
     hidden_dim = 64
-    scale = T * 1000
-    lambd = 1e-6
-    dataset_names = [
-        "EigenWorms",
-        # "EthanolConcentration",
-        # "FaceDetection",
-        # "FingerMovements",
-        # "HandMovementDirection",
-        # "Handwriting",
-        # "Heartbeat",
-        # "Libras",
-        # "LSST",
-        # "MotorImagery",
-        # "NATOPS",
-        # "PEMS-SF",
-        # "PhonemeSpectra",
-        # "SelfRegulationSCP1",
-        # "SelfRegulationSCP2",
-    ]
-    model_names = ["rnn_lstm"]
+    scale = T
+    lambd = 0.0
+    dataset_names = ["speech"]
+    model_names = ["nrde"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
-            for include_time in [True]:
-                for hidden_dim in [64]:
-                    model_args = {
-                        "num_blocks": 6,
-                        "hidden_dim": hidden_dim,
-                        "vf_depth": 3,
-                        "vf_width": 64,
-                        "ssm_dim": 32,
-                        "ssm_blocks": 2,
-                        "dt0": dt0,
-                        "solver": solver,
-                        "stepsize_controller": stepsize_controller,
-                        "scale": scale,
-                        "lambd": lambd,
-                    }
-                    create_dataset_model_and_train(
-                        seed,
-                        data_dir,
-                        use_presplit,
-                        dataset_name,
-                        include_time,
-                        T,
-                        model_name,
-                        stepsize,
-                        logsig_depth,
-                        model_args,
-                        num_steps,
-                        print_steps,
-                        lr,
-                        lr_scheduler,
-                        batch_size,
-                        output_parent_dir,
-                    )
+            if model_name == "log_ncde" or model_name == "nrde" or model_name == "ncde":
+                num_steps = 100000
+                print_steps = 1000
+            else:
+                num_steps = 250000
+                print_steps = 1000
+            model_args = {
+                "num_blocks": 6,
+                "hidden_dim": hidden_dim,
+                "vf_depth": 3,
+                "vf_width": 128,
+                "ssm_dim": 64,
+                "ssm_blocks": 2,
+                "dt0": dt0,
+                "solver": solver,
+                "stepsize_controller": stepsize_controller,
+                "scale": scale,
+                "lambd": lambd,
+            }
+            create_dataset_model_and_train(
+                seed,
+                data_dir,
+                use_presplit,
+                dataset_name,
+                include_time,
+                T,
+                model_name,
+                stepsize,
+                logsig_depth,
+                model_args,
+                num_steps,
+                print_steps,
+                lr,
+                lr_scheduler,
+                batch_size,
+                output_parent_dir,
+            )
