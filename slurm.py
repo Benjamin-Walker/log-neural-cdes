@@ -130,6 +130,7 @@ if __name__ == "__main__":
     print_steps = 1000
     batch_size = 32
     lr = 1e-3
+
     # Spoken Arabic Digits has nan values in training data
     dataset_names = [
         # "EigenWorms",
