@@ -124,6 +124,7 @@ class LRU(eqx.Module):
     linear_encoder: eqx.nn.Linear
     blocks: List[LRUBlock]
     linear_layer: eqx.nn.Linear
+    classification: bool
     stateful: bool = True
     nondeterministic: bool = True
     lip2: bool = False
@@ -135,6 +136,7 @@ class LRU(eqx.Module):
         N,
         H,
         output_dim,
+        classification,
         r_min=0,
         r_max=1,
         max_phase=6.28,
@@ -152,6 +154,7 @@ class LRU(eqx.Module):
             for key in block_keys
         ]
         self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
+        self.classification = classification
 
     def __call__(self, x, state, key):
         """Compute LRU."""
@@ -159,6 +162,10 @@ class LRU(eqx.Module):
         x = jax.vmap(self.linear_encoder)(x)
         for block, key in zip(self.blocks, dropkeys):
             x, state = block(x, state, key=key)
-        x = jnp.mean(x, axis=0)
-        x = jax.nn.softmax(self.linear_layer(x), axis=0)
+        if self.classification:
+            x = jnp.mean(x, axis=0)
+            x = jax.nn.softmax(self.linear_layer(x), axis=0)
+        else:
+            x = x[127::128]
+            x = jax.nn.tanh(jax.vmap(self.linear_layer)(x))
         return x, state
