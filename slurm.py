@@ -34,7 +34,7 @@ def run_with_config(
         if not working_directory.is_dir():
             os.chdir(HOME_DIRECTORY)
             ignore_list = os.listdir(WORKING_DIRECTORY + "/data/processed/UEA/")
-            ignore_list.remove(run_config[0][3])
+            # ignore_list.remove(run_config[0][3])
             ignore_list.append("results")
             ignore_list.append("logs_slurm")
             if os.path.exists(working_directory):
@@ -74,7 +74,8 @@ def run_experiments(
     logsig_depth,
     model_args,
 ):
-    SEEDS = [2345, 3456, 4567, 5678, 6789]
+    # SEEDS = [2345, 3456, 4567, 5678, 6789]
+    SEEDS = [1234]
 
     cfg_list = []
 
@@ -106,12 +107,13 @@ def run_experiments(
         WORKING_DIRECTORY,
         parallel=PARALLEL,
         array_parallelism=500,
-        job_name=JOB_NAME + f"_{dataset_name}",
+        job_name=JOB_NAME + f"_{dataset_name}_no_duplicates",
         time=TIME,
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
-        # constraint="gpu_mem:32GB",
-        # qos="priority",
+        constraint="gpu_mem:32GB",
+        # mem="3000G",
+        qos="priority",
         account="math-datasig",
     )
 
@@ -122,28 +124,9 @@ def run(cfg):
 
 if __name__ == "__main__":
     data_dir = WORKING_DIRECTORY + "/data"
-    use_presplit = False
-    dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "Heartbeat",
-        "MotorImagery",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
-    ]
+    use_presplit = True
 
-    lengths = {
-        "EigenWorms": 17984,
-        "EthanolConcentration": 1751,
-        "Heartbeat": 405,
-        "MotorImagery": 3000,
-        "SelfRegulationSCP1": 896,
-        "SelfRegulationSCP2": 1152,
-    }
-
-    model_names = [
-        "log_ncde",
-    ]
+    model_names = ["log_ncde", "ncde", "nrde", "ssm", "lru"]
     num_steps = 100000
     batch_size = 32
 
@@ -151,18 +134,22 @@ if __name__ == "__main__":
 
     if repeat_experiments:
 
-        args = open("best_hyperparameters.txt", "r")
+        args = open("best_hyperparameters_final.txt", "r")
         experiments = args.read().split("\n")
 
         for experiment in experiments:
             experiment = experiment.split(" ")
             model_name = experiment[0]
-            if model_name == "log_ncde" or model_name == "ncde" or model_name == "nrde":
-                print_steps = 100
-            else:
-                print_steps = 1000
-            dataset_name = experiment[1]
-            if dataset_name in dataset_names:
+            if model_name in model_names:
+                if (
+                    model_name == "log_ncde"
+                    or model_name == "ncde"
+                    or model_name == "nrde"
+                ):
+                    print_steps = 100
+                else:
+                    print_steps = 1000
+                dataset_name = experiment[1]
                 T = float(experiment[3])
                 include_time = True if experiment[5] == "True" else False
                 lr = float(experiment[9])
@@ -215,7 +202,33 @@ if __name__ == "__main__":
                     model_args,
                 )
     else:
-        lr = 1e-4
+        use_presplit = True
+
+        dataset_names = [
+            "EigenWorms",
+            # "EthanolConcentration",
+            # "Heartbeat",
+            # "MotorImagery",
+            # "SelfRegulationSCP1",
+            # "SelfRegulationSCP2",
+        ]
+
+        lengths = {
+            "EigenWorms": 17984,
+            "EthanolConcentration": 1751,
+            "Heartbeat": 405,
+            "MotorImagery": 3000,
+            "SelfRegulationSCP1": 896,
+            "SelfRegulationSCP2": 1152,
+        }
+
+        model_names = [
+            "log_ncde",
+            "ncde",
+            "nrde",
+            "ssm",
+            "lru",
+        ]
         lr_scheduler = lambda x: x
         stepsize = 1
         logsig_depth = 1
@@ -224,48 +237,93 @@ if __name__ == "__main__":
         ssm_blocks = 1
         lambd = 0.0
         T = 1
-        print_steps = 100
 
         for dataset_name in dataset_names:
             for model_name in model_names:
                 for lr in [1e-3, 1e-4, 1e-5]:
                     for include_time in [True, False]:
                         for hidden_dim in [16, 64, 128]:
-                            for solvercontroller in [
-                                (diffrax.Heun(), diffrax.ConstantStepSize()),
-                            ]:
-                                solver = solvercontroller[0]
-                                stepsize_controller = solvercontroller[1]
-                                for vf_dims in [(2, 32), (3, 64), (3, 128), (4, 128)]:
-                                    vf_depth = vf_dims[0]
-                                    vf_width = vf_dims[1]
-                                    length = lengths[dataset_name]
-                                    if model_name == "log_ncde" or model_name == "nrde":
-                                        for depthstep in [
-                                            (1, 1),
-                                            (2, 2),
-                                            (2, 4),
-                                            (2, 8),
-                                            (2, 12),
-                                            (2, 16),
-                                        ]:
-                                            logsig_depth = depthstep[0]
-                                            stepsize = depthstep[1]
-                                            n_steps = max(
-                                                500, 1 + int(length / stepsize)
-                                            )
-                                            print(n_steps)
-                                            dt0 = T / n_steps
-                                            if model_name == "log_ncde":
-                                                scale = T * 1000
-                                                for lambd in [1e-3, 1e-6, 0]:
+                            if (
+                                model_name == "log_ncde"
+                                or model_name == "nrde"
+                                or model_name == "ncde"
+                            ):
+                                num_steps = 10000
+                                print_steps = 100
+                                for solvercontroller in [
+                                    (diffrax.Heun(), diffrax.ConstantStepSize()),
+                                ]:
+                                    solver = solvercontroller[0]
+                                    stepsize_controller = solvercontroller[1]
+                                    for vf_dims in [
+                                        (2, 32),
+                                        (3, 64),
+                                        (3, 128),
+                                        (4, 128),
+                                    ]:
+                                        vf_depth = vf_dims[0]
+                                        vf_width = vf_dims[1]
+                                        length = lengths[dataset_name]
+                                        if (
+                                            model_name == "log_ncde"
+                                            or model_name == "nrde"
+                                        ):
+                                            for depthstep in [
+                                                (1, 1),
+                                                (2, 2),
+                                                (2, 4),
+                                                (2, 8),
+                                                (2, 12),
+                                                (2, 16),
+                                            ]:
+                                                logsig_depth = depthstep[0]
+                                                stepsize = depthstep[1]
+                                                n_steps = max(
+                                                    500, 1 + int(length / stepsize)
+                                                )
+                                                print(n_steps)
+                                                dt0 = T / n_steps
+                                                if model_name == "log_ncde":
+                                                    scale = T * 1000
+                                                    for lambd in [1e-3, 1e-6, 0]:
+                                                        model_args = {
+                                                            "num_blocks": num_blocks,
+                                                            "hidden_dim": hidden_dim,
+                                                            "vf_depth": vf_depth,
+                                                            "vf_width": vf_width,
+                                                            "ssm_dim": ssm_dim,
+                                                            "ssm_blocks": ssm_blocks,
+                                                            "dt0": dt0,
+                                                            "solver": solver,
+                                                            "stepsize_controller": stepsize_controller,
+                                                            "scale": scale,
+                                                            "lambd": lambd,
+                                                        }
+                                                        run_experiments(
+                                                            model_name,
+                                                            dataset_name,
+                                                            data_dir,
+                                                            use_presplit,
+                                                            include_time,
+                                                            T,
+                                                            num_steps,
+                                                            print_steps,
+                                                            lr,
+                                                            lr_scheduler,
+                                                            stepsize,
+                                                            batch_size,
+                                                            logsig_depth,
+                                                            model_args,
+                                                        )
+                                                elif model_name == "nrde":
+                                                    scale = T
                                                     model_args = {
                                                         "num_blocks": num_blocks,
                                                         "hidden_dim": hidden_dim,
                                                         "vf_depth": vf_depth,
                                                         "vf_width": vf_width,
                                                         "ssm_dim": ssm_dim,
-                                                        "ssm_blocks": num_blocks,
+                                                        "ssm_blocks": ssm_blocks,
                                                         "dt0": dt0,
                                                         "solver": solver,
                                                         "stepsize_controller": stepsize_controller,
@@ -288,20 +346,59 @@ if __name__ == "__main__":
                                                         logsig_depth,
                                                         model_args,
                                                     )
-                                            elif model_name == "nrde":
-                                                scale = T
+                                        elif model_name == "ncde":
+                                            scale = T
+                                            n_steps = max(500, 1 + length)
+                                            print(n_steps)
+                                            dt0 = T / n_steps
+                                            model_args = {
+                                                "num_blocks": num_blocks,
+                                                "hidden_dim": hidden_dim,
+                                                "vf_depth": vf_depth,
+                                                "vf_width": vf_width,
+                                                "ssm_dim": ssm_dim,
+                                                "ssm_blocks": ssm_blocks,
+                                                "dt0": dt0,
+                                                "solver": solver,
+                                                "stepsize_controller": stepsize_controller,
+                                                "scale": scale,
+                                                "lambd": lambd,
+                                            }
+                                            run_experiments(
+                                                model_name,
+                                                dataset_name,
+                                                data_dir,
+                                                use_presplit,
+                                                include_time,
+                                                T,
+                                                num_steps,
+                                                print_steps,
+                                                lr,
+                                                lr_scheduler,
+                                                stepsize,
+                                                batch_size,
+                                                logsig_depth,
+                                                model_args,
+                                            )
+                            else:
+                                num_steps = 100000
+                                print_steps = 1000
+                                for num_blocks in [2, 4, 6]:
+                                    for ssm_dim in [16, 64, 256]:
+                                        if model_name == "ssm":
+                                            for ssm_blocks in [2, 4, 8]:
                                                 model_args = {
                                                     "num_blocks": num_blocks,
                                                     "hidden_dim": hidden_dim,
-                                                    "vf_depth": vf_depth,
-                                                    "vf_width": vf_width,
+                                                    "vf_depth": 1,
+                                                    "vf_width": 1,
                                                     "ssm_dim": ssm_dim,
-                                                    "ssm_blocks": num_blocks,
-                                                    "dt0": dt0,
-                                                    "solver": solver,
-                                                    "stepsize_controller": stepsize_controller,
-                                                    "scale": scale,
-                                                    "lambd": lambd,
+                                                    "ssm_blocks": ssm_blocks,
+                                                    "dt0": 1,
+                                                    "solver": diffrax.Heun(),
+                                                    "stepsize_controller": diffrax.ConstantStepSize(),
+                                                    "scale": 1,
+                                                    "lambd": 0,
                                                 }
                                                 run_experiments(
                                                     model_name,
@@ -319,37 +416,33 @@ if __name__ == "__main__":
                                                     logsig_depth,
                                                     model_args,
                                                 )
-                                    elif model_name == "ncde":
-                                        scale = T
-                                        n_steps = max(500, 1 + length)
-                                        print(n_steps)
-                                        dt0 = T / n_steps
-                                        model_args = {
-                                            "num_blocks": num_blocks,
-                                            "hidden_dim": hidden_dim,
-                                            "vf_depth": vf_depth,
-                                            "vf_width": vf_width,
-                                            "ssm_dim": ssm_dim,
-                                            "ssm_blocks": num_blocks,
-                                            "dt0": dt0,
-                                            "solver": solver,
-                                            "stepsize_controller": stepsize_controller,
-                                            "scale": scale,
-                                            "lambd": lambd,
-                                        }
-                                        run_experiments(
-                                            model_name,
-                                            dataset_name,
-                                            data_dir,
-                                            use_presplit,
-                                            include_time,
-                                            T,
-                                            num_steps,
-                                            print_steps,
-                                            lr,
-                                            lr_scheduler,
-                                            stepsize,
-                                            batch_size,
-                                            logsig_depth,
-                                            model_args,
-                                        )
+                                        elif model_name == "lru":
+                                            model_args = {
+                                                "num_blocks": num_blocks,
+                                                "hidden_dim": hidden_dim,
+                                                "vf_depth": 1,
+                                                "vf_width": 1,
+                                                "ssm_dim": ssm_dim,
+                                                "ssm_blocks": ssm_blocks,
+                                                "dt0": 1,
+                                                "solver": diffrax.Heun(),
+                                                "stepsize_controller": diffrax.ConstantStepSize(),
+                                                "scale": 1,
+                                                "lambd": 0,
+                                            }
+                                            run_experiments(
+                                                model_name,
+                                                dataset_name,
+                                                data_dir,
+                                                use_presplit,
+                                                include_time,
+                                                T,
+                                                num_steps,
+                                                print_steps,
+                                                lr,
+                                                lr_scheduler,
+                                                stepsize,
+                                                batch_size,
+                                                logsig_depth,
+                                                model_args,
+                                            )

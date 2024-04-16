@@ -233,7 +233,7 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_repeat_fixed_data/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_EW/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -322,19 +322,19 @@ if __name__ == "__main__":
     include_time = False
     solver = diffrax.Heun()
     stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 1000
-    logsig_depth = 2
+    stepsize = 100000
+    logsig_depth = 1
     hidden_dim = 64
     scale = T
     lambd = 0.0
     dataset_names = ["speech"]
-    model_names = ["nrde"]
+    model_names = ["log_ncde"]
 
     for dataset_name in dataset_names:
         for model_name in model_names:
             if model_name == "log_ncde" or model_name == "nrde" or model_name == "ncde":
                 num_steps = 100000
-                print_steps = 1000
+                print_steps = 100
             else:
                 num_steps = 250000
                 print_steps = 1000

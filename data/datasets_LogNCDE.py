@@ -164,39 +164,32 @@ def dataset_generator(
     intervals = jnp.concatenate((intervals, jnp.array([train_data.shape[1]])))
     intervals = intervals * (T / train_data.shape[1])
 
-    if coeffs_needed:
-        train_coeffs = batch_calc_coeffs(train_data, include_time, T, inmemory)
-        val_coeffs = batch_calc_coeffs(val_data, include_time, T, inmemory)
-        test_coeffs = batch_calc_coeffs(test_data, include_time, T, inmemory)
-        train_coeff_data = (
-            (T / train_data.shape[1])
+    train_coeffs = calc_coeffs(train_data, include_time, T)
+    val_coeffs = calc_coeffs(val_data, include_time, T)
+    test_coeffs = calc_coeffs(test_data, include_time, T)
+    train_coeff_data = (
+        (T / train_data.shape[1])
+        * jnp.repeat(
+            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+        ),
+        train_coeffs,
+        train_data[:, 0, :],
+    )
+    val_coeff_data = (
+        (T / val_data.shape[1])
+        * jnp.repeat(jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0),
+        val_coeffs,
+        val_data[:, 0, :],
+    )
+    if idxs is None:
+        test_coeff_data = (
+            (T / test_data.shape[1])
             * jnp.repeat(
-                jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+                jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
             ),
-            train_coeffs,
-            train_data[:, 0, :],
+            test_coeffs,
+            test_data[:, 0, :],
         )
-        val_coeff_data = (
-            (T / val_data.shape[1])
-            * jnp.repeat(
-                jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
-            ),
-            val_coeffs,
-            val_data[:, 0, :],
-        )
-        if idxs is None:
-            test_coeff_data = (
-                (T / test_data.shape[1])
-                * jnp.repeat(
-                    jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
-                ),
-                test_coeffs,
-                test_data[:, 0, :],
-            )
-    else:
-        train_coeff_data = None
-        val_coeff_data = None
-        test_coeff_data = None
 
     train_path_data = (
         (T / train_data.shape[1])
@@ -273,17 +266,17 @@ def create_uea_dataset(
 
     if use_presplit:
         idxs = None
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_train.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/X_train.pkl", "rb") as f:
             train_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_train.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/y_train.pkl", "rb") as f:
             train_labels = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_val.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/X_val.pkl", "rb") as f:
             val_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_val.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/y_val.pkl", "rb") as f:
             val_labels = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_test.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/X_test.pkl", "rb") as f:
             test_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_test.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/y_test.pkl", "rb") as f:
             test_labels = pickle.load(f)
         if include_time:
             ts = (T / train_data.shape[1]) * jnp.repeat(
@@ -328,7 +321,7 @@ def create_uea_dataset(
         include_time,
         T,
         idxs,
-        use_presplit,
+        use_presplit=use_presplit,
         key=key,
     )
 
@@ -446,10 +439,13 @@ def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
 
 
 def create_speech_dataset(data_dir, stepsize, depth, include_time, T, *, key):
-    with open(data_dir + "/processed/speech/data.pkl", "rb") as f:
-        data = pickle.load(f)
-    with open(data_dir + "/processed/speech/labels.pkl", "rb") as f:
-        labels = pickle.load(f)
+    data = []
+    labels = []
+    for i in range(2):
+        data.append(np.load(data_dir + f"/processed/speech/data_{i}.npy"))
+        labels.append(np.load(data_dir + f"/processed/speech/labels_{i}.npy"))
+    data = np.concatenate(data)
+    labels = np.concatenate(labels)
 
     return dataset_generator(
         "speech", data, labels, stepsize, depth, include_time, T, False, False, key=key

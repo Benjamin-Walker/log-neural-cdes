@@ -195,9 +195,11 @@ class NeuralRDE(eqx.Module):
         def func(t, y, args):
             idx = jnp.searchsorted(self.intervals, t)
             return jnp.dot(
-                jnp.reshape(self.vf(y), (self.hidden_dim, self.logsig_dim)),
+                jnp.reshape(
+                    self.mlp_linear(self.vf(y)), (self.hidden_dim, self.logsig_dim)
+                ),
                 logsig[idx - 1][1:],
-            ) / (self.intervals[idx] - self.intervals[idx - 1])
+            )
 
         y0 = self.linear1(x0)
         if self.classification:
