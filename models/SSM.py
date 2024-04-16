@@ -432,6 +432,7 @@ class S5(eqx.Module):
     linear_encoder: eqx.nn.Linear
     blocks: List[S5Block]
     linear_layer: eqx.nn.Linear
+    classification: bool
     stateful: bool = True
     nondeterministic: bool = True
     lip2: bool = False
@@ -444,6 +445,7 @@ class S5(eqx.Module):
         ssm_blocks,
         H,
         output_dim,
+        classification,
         C_init,
         conj_sym,
         clip_eigs,
@@ -476,6 +478,7 @@ class S5(eqx.Module):
             for key in block_keys
         ]
         self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
+        self.classification = classification
 
     def __call__(self, x, state, key):
         """Compute S5."""
@@ -483,6 +486,10 @@ class S5(eqx.Module):
         x = jax.vmap(self.linear_encoder)(x)
         for block, key in zip(self.blocks, dropkeys):
             x, state = block(x, state, key=key)
-        x = jnp.mean(x, axis=0)
-        x = jax.nn.softmax(self.linear_layer(x), axis=0)
+        if self.classification:
+            x = jnp.mean(x, axis=0)
+            x = jax.nn.softmax(self.linear_layer(x), axis=0)
+        else:
+            x = x[127::128]
+            x = jax.nn.tanh(jax.vmap(self.linear_layer)(x))
         return x, state

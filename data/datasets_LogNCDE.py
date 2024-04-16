@@ -96,7 +96,6 @@ def dataset_generator(
     include_time,
     T,
     inmemory=True,
-    coeffs_needed=True,
     idxs=None,
     use_presplit=False,
     *,
@@ -320,7 +319,7 @@ def create_uea_dataset(
         depth,
         include_time,
         T,
-        idxs,
+        idxs=idxs,
         use_presplit=use_presplit,
         key=key,
     )
@@ -353,8 +352,8 @@ def create_fex_dataset(
         depth,
         include_time,
         T,
-        idxs,
-        use_presplit,
+        idxs=idxs,
+        use_presplit=use_presplit,
         key=key,
     )
 
@@ -411,8 +410,8 @@ def create_lra_dataset(
         depth,
         include_time,
         T,
-        idxs,
-        use_presplit,
+        idxs=idxs,
+        use_presplit=use_presplit,
         key=key,
     )
 
@@ -448,7 +447,47 @@ def create_speech_dataset(data_dir, stepsize, depth, include_time, T, *, key):
     labels = np.concatenate(labels)
 
     return dataset_generator(
-        "speech", data, labels, stepsize, depth, include_time, T, False, False, key=key
+        "speech",
+        data,
+        labels,
+        stepsize,
+        depth,
+        include_time,
+        T,
+        inmemory=False,
+        use_presplit=False,
+        key=key,
+    )
+
+
+def create_ppg_dataset(data_dir, stepsize, depth, include_time, T, *, key):
+    with open(data_dir + "/processed/PPG/X_train.pkl", "rb") as f:
+        train_data = pickle.load(f)
+    with open(data_dir + "/processed/PPG/y_train.pkl", "rb") as f:
+        train_labels = pickle.load(f)
+    with open(data_dir + "/processed/PPG/X_val.pkl", "rb") as f:
+        val_data = pickle.load(f)
+    with open(data_dir + "/processed/PPG/y_val.pkl", "rb") as f:
+        val_labels = pickle.load(f)
+    with open(data_dir + "/processed/PPG/X_test.pkl", "rb") as f:
+        test_data = pickle.load(f)
+    with open(data_dir + "/processed/PPG/y_test.pkl", "rb") as f:
+        test_labels = pickle.load(f)
+
+    data = (train_data, val_data, test_data)
+    labels = (train_labels, val_labels, test_labels)
+
+    return dataset_generator(
+        "speech",
+        data,
+        labels,
+        stepsize,
+        depth,
+        include_time,
+        T,
+        inmemory=False,
+        use_presplit=True,
+        key=key,
     )
 
 
@@ -516,5 +555,7 @@ def create_dataset(
         return create_speech_dataset(
             data_dir, stepsize, depth, include_time, T, key=key
         )
+    elif name == "ppg":
+        return create_ppg_dataset(data_dir, stepsize, depth, include_time, T, key=key)
     else:
         raise ValueError(f"Dataset {name} not found in UEA folder and not toy dataset")

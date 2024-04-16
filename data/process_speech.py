@@ -1,7 +1,6 @@
 import os
 
 import numpy as np
-from process_uea import save_pickle
 from scipy.io.wavfile import read
 
 
@@ -56,5 +55,8 @@ for type in zip(["speech", "song"], ["01", "02"]):
                             i += 1
 
 data = data / 32768
-save_pickle(data, "data/processed/speech/data.pkl")
-save_pickle(labels, "data/processed/speech/labels.pkl")
+for i in range(10):
+    np.save(f"data/processed/speech/data_{i}.npy", data[i * 246 : (i + 1) * 246])
+    np.save(f"data/processed/speech/labels_{i}.npy", labels[i * 246 : (i + 1) * 246])
+# save_pickle(data, "data/processed/speech/data.pkl")
+# save_pickle(labels, "data/processed/speech/labels.pkl")

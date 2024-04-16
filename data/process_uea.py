@@ -62,7 +62,7 @@ def convert_all_files(data_dir):
         test_file = arff_folder + "/{}/{}_TEST.arff".format(ds_name, ds_name)
 
         # Ready save dir
-        save_dir = data_dir + "/processed/UEA/{}".format(ds_name)
+        save_dir = data_dir + "_repeat/processed/UEA/{}".format(ds_name)
 
         # If files don't exist, skip.
         if any(
@@ -85,6 +85,13 @@ def convert_all_files(data_dir):
             # Compile train and test data together
             data = jnp.concatenate([train_data, test_data])
             labels = jnp.concatenate([train_labels, test_labels])
+
+            for i in range(len(data)):
+                for j in range(i, len(data)):
+                    if (data[i] == data[j]).all():
+                        if i != j:
+                            print(i, j)
+                            breakpoint()
 
             # Save original train test indexes in case we wish to use original splits
             original_idxs = (

@@ -129,7 +129,6 @@ if __name__ == "__main__":
     model_names = ["log_ncde", "ncde", "nrde", "ssm", "lru"]
     num_steps = 100000
     batch_size = 32
-
     repeat_experiments = False
 
     if repeat_experiments:
