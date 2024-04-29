@@ -445,6 +445,8 @@ def create_ppg_dataset(data_dir, stepsize, depth, include_time, T, *, key):
     with open(data_dir + "/processed/PPG/y_test.pkl", "rb") as f:
         test_labels = pickle.load(f)
 
+    breakpoint()
+
     data = (train_data, val_data, test_data)
     labels = (train_labels, val_labels, test_labels)
 
@@ -472,9 +474,6 @@ def create_dataset(
     lra_subfolders = [
         f.name for f in os.scandir(data_dir + "/processed/LRA") if f.is_dir()
     ]
-    fex_subfolders = [
-        f.name for f in os.scandir(data_dir + "/processed/FEX") if f.is_dir()
-    ]
     if name in uea_subfolders:
         return create_uea_dataset(
             data_dir,
@@ -492,17 +491,6 @@ def create_dataset(
             data_dir,
             name,
             use_idxs,
-            use_presplit,
-            stepsize,
-            depth,
-            include_time,
-            T,
-            key=key,
-        )
-    elif name in fex_subfolders:
-        return create_fex_dataset(
-            data_dir,
-            name,
             use_presplit,
             stepsize,
             depth,
