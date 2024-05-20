@@ -115,13 +115,13 @@ def create_model(
         )
         state = eqx.nn.State(lru)
         return lru, state
-    elif model_name == "ssm":
+    elif model_name == "S5":
         if num_blocks is None:
-            raise ValueError("Must specify num_blocks for SSM.")
+            raise ValueError("Must specify num_blocks for S5.")
         if ssm_dim is None:
-            raise ValueError("Must specify ssm_dim for SSM.")
+            raise ValueError("Must specify ssm_dim for S5.")
         if ssm_blocks is None:
-            raise ValueError("Must specify ssm_blocks for SSM.")
+            raise ValueError("Must specify ssm_blocks for S5.")
         ssm = S5(
             num_blocks,
             data_dim,
