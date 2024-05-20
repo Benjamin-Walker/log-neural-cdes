@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from data.datasets_LogNCDE import create_dataset
+from data.datasets import create_dataset
 from models.generate_model import create_model
 
 

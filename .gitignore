@@ -2,7 +2,8 @@
 data/raw/
 .DS_Store
 data/processed/
-old_outputs/
+results/old_outputs/
+*.npz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
