@@ -2,7 +2,7 @@
 data/raw/
 .DS_Store
 data/processed/
-outputs/
+old_outputs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

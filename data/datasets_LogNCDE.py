@@ -191,7 +191,7 @@ def dataset_generator(
         )
 
     data_dim = train_data.shape[-1]
-    if len(train_labels.shape) == 1:
+    if len(train_labels.shape) == 1 or name == "ppg":
         label_dim = 1
     else:
         label_dim = train_labels.shape[-1]
