@@ -295,103 +295,19 @@ def create_uea_dataset(
     )
 
 
-def create_fex_dataset(
-    data_dir, name, use_presplit, stepsize, depth, include_time, T, *, key
-):
-    if use_presplit:
-        raise ValueError("FEX datasets do not have presplit data")
-
-    with open(data_dir + f"/processed/FEX/{name}/data.pkl", "rb") as f:
-        data = jnp.array(pickle.load(f))
-    with open(data_dir + f"/processed/FEX/{name}/labels.pkl", "rb") as f:
-        labels = jnp.array(pickle.load(f))
-    idxs = jnp.arange(len(data))
-    key, subkey = jr.split(key)
-    shuffle = jr.permutation(subkey, idxs, independent=True)
-    data = data[shuffle]
-    labels = labels[shuffle]
-    onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
-    onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
-    idxs = None
-
-    return dataset_generator(
-        name,
-        data,
-        onehot_labels,
-        stepsize,
-        depth,
-        include_time,
-        T,
-        idxs=idxs,
-        use_presplit=use_presplit,
-        key=key,
-    )
-
-
-def create_lra_dataset(
-    data_dir, name, use_idxs, use_presplit, stepsize, depth, include_time, T, *, key
-):
-    if use_presplit:
-        idxs = None
-        with open(data_dir + f"/processed/LRA/{name}/X_train.pkl", "rb") as f:
-            train_data = pickle.load(f)
-        with open(data_dir + f"/processed/LRA/{name}/y_train.pkl", "rb") as f:
-            train_labels = pickle.load(f)
-        with open(data_dir + f"/processed/LRA/{name}/X_val.pkl", "rb") as f:
-            val_data = pickle.load(f)
-        with open(data_dir + f"/processed/LRA/{name}/y_val.pkl", "rb") as f:
-            val_labels = pickle.load(f)
-        with open(data_dir + f"/processed/LRA/{name}/X_test.pkl", "rb") as f:
-            test_data = pickle.load(f)
-        with open(data_dir + f"/processed/LRA/{name}/y_test.pkl", "rb") as f:
-            test_labels = pickle.load(f)
-        ts = (T / train_data.shape[1]) * jnp.repeat(
-            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
-        )
-        train_data = jnp.concatenate([ts[:, :, None], train_data[:, :, 1:]], axis=2)
-        ts = (T / val_data.shape[1]) * jnp.repeat(
-            jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
-        )
-        val_data = jnp.concatenate([ts[:, :, None], val_data[:, :, 1:]], axis=2)
-        ts = (T / test_data.shape[1]) * jnp.repeat(
-            jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
-        )
-        test_data = jnp.concatenate([ts[:, :, None], test_data[:, :, 1:]], axis=2)
-        data = (train_data, val_data, test_data)
-        onehot_labels = (train_labels, val_labels, test_labels)
-    else:
-        with open(data_dir + f"/processed/LRA/{name}/data.pkl", "rb") as f:
-            data = pickle.load(f)
-        with open(data_dir + f"/processed/LRA/{name}/labels.pkl", "rb") as f:
-            labels = pickle.load(f)
-        onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
-        onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
-        if use_idxs:
-            with open(data_dir + f"/processed/LRA/{name}/original_idxs.pkl", "rb") as f:
-                idxs = pickle.load(f)
-        else:
-            idxs = None
-
-    return dataset_generator(
-        name,
-        data,
-        onehot_labels,
-        stepsize,
-        depth,
-        include_time,
-        T,
-        idxs=idxs,
-        use_presplit=use_presplit,
-        key=key,
-    )
-
-
-def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
-    with open(data_dir + "/processed/toy/data.pkl", "rb") as f:
+def create_toy_dataset(data_dir, name, stepsize, depth, include_time, T, *, key):
+    with open(data_dir + "/processed/toy/signature/data.pkl", "rb") as f:
         data = pickle.load(f)
-    with open(data_dir + "/processed/toy/labels.pkl", "rb") as f:
+    with open(data_dir + "/processed/toy/signature/labels.pkl", "rb") as f:
         labels = pickle.load(f)
-    labels = ((jnp.sign(labels[3][:, 2, 5, 0, 3]) + 1) / 2).astype(int)  # 2,5,0,3
+    if name == "signature1":
+        labels = ((jnp.sign(labels[0][:, 2]) + 1) / 2).astype(int)
+    elif name == "signature2":
+        labels = ((jnp.sign(labels[1][:, 2, 5]) + 1) / 2).astype(int)
+    elif name == "signature3":
+        labels = ((jnp.sign(labels[2][:, 2, 5, 0]) + 1) / 2).astype(int)
+    elif name == "signature4":
+        labels = ((jnp.sign(labels[3][:, 2, 5, 0, 3]) + 1) / 2).astype(int)
     onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
     onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
     idxs = None
@@ -404,30 +320,6 @@ def create_toy_dataset(data_dir, stepsize, depth, include_time, T, *, key):
 
     return dataset_generator(
         "toy", data, onehot_labels, stepsize, depth, include_time, T, idxs, key=key
-    )
-
-
-def create_speech_dataset(data_dir, stepsize, depth, include_time, T, *, key):
-    data = []
-    labels = []
-    for i in range(10):
-        data.append(np.load(data_dir + f"/processed/speech/data_{i}.npy"))
-        labels.append(np.load(data_dir + f"/processed/speech/labels_{i}.npy"))
-    data = np.concatenate(data)
-    labels = np.concatenate(labels)
-
-    return dataset_generator(
-        "speech",
-        data,
-        labels,
-        stepsize,
-        depth,
-        include_time,
-        T,
-        inmemory=False,
-        coeffs_needed=False,
-        use_presplit=False,
-        key=key,
     )
 
 
@@ -444,8 +336,6 @@ def create_ppg_dataset(data_dir, stepsize, depth, include_time, T, *, key):
         test_data = pickle.load(f)
     with open(data_dir + "/processed/PPG/y_test.pkl", "rb") as f:
         test_labels = pickle.load(f)
-
-    breakpoint()
 
     data = (train_data, val_data, test_data)
     labels = (train_labels, val_labels, test_labels)
@@ -471,9 +361,7 @@ def create_dataset(
     uea_subfolders = [
         f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
     ]
-    lra_subfolders = [
-        f.name for f in os.scandir(data_dir + "/processed/LRA") if f.is_dir()
-    ]
+
     if name in uea_subfolders:
         return create_uea_dataset(
             data_dir,
@@ -486,23 +374,9 @@ def create_dataset(
             T,
             key=key,
         )
-    elif name in lra_subfolders:
-        return create_lra_dataset(
-            data_dir,
-            name,
-            use_idxs,
-            use_presplit,
-            stepsize,
-            depth,
-            include_time,
-            T,
-            key=key,
-        )
-    elif name == "toy":
-        return create_toy_dataset(data_dir, stepsize, depth, include_time, T, key=key)
-    elif name == "speech":
-        return create_speech_dataset(
-            data_dir, stepsize, depth, include_time, T, key=key
+    elif data_dir == "toy":
+        return create_toy_dataset(
+            data_dir, name, stepsize, depth, include_time, T, key=key
         )
     elif name == "ppg":
         return create_ppg_dataset(data_dir, stepsize, depth, include_time, T, key=key)
