@@ -3,7 +3,7 @@ Applying the Log-ODE method to improve the training and performance of Neural CD
 
 ## Data
 
-The data folder contains the scripts for downloading data, preprocessing the data, 
+The data_dir folder contains the scripts for downloading data, preprocessing the data, 
 generating path objects and creating dataloaders and datasets. Raw data should be 
 downloaded into the data/raw folder. Processed data should be saved into the data/processed
 in the following format: 

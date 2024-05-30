@@ -4,7 +4,7 @@ from signax.signature import signature
 from signax.signature_flattened import flatten
 from signax.tensor_ops import log
 
-from data.hall_set import HallSet
+from data_dir.hall_set import HallSet
 
 
 def hall_basis_logsig(x, depth, t2l):

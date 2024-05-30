@@ -16,7 +16,7 @@ for i in range(1, 16):
 
     print(i)
 
-    with open(f"data/raw/PPG_FieldStudy/S{i}/S{i}.pkl", "rb") as f:
+    with open(f"data_dir/raw/PPG_FieldStudy/S{i}/S{i}.pkl", "rb") as f:
         data = pickle.load(f, encoding="latin1")
 
     ACC = np.repeat(data["signal"]["wrist"]["ACC"], 2, axis=0)

@@ -7,9 +7,9 @@ import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
 
-from data.dataloaders import Dataloader
-from data.generate_coeffs import calc_coeffs
-from data.generate_paths import calc_paths
+from data_dir.dataloaders import Dataloader
+from data_dir.generate_coeffs import calc_coeffs
+from data_dir.generate_paths import calc_paths
 
 
 @dataclass
@@ -337,11 +337,25 @@ def create_ppg_dataset(data_dir, stepsize, depth, include_time, T, *, key):
     with open(data_dir + "/processed/PPG/y_test.pkl", "rb") as f:
         test_labels = pickle.load(f)
 
+    if include_time:
+        ts = (T / train_data.shape[1]) * jnp.repeat(
+            jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
+        )
+        train_data = jnp.concatenate([ts[:, :, None], train_data], axis=2)
+        ts = (T / val_data.shape[1]) * jnp.repeat(
+            jnp.arange(val_data.shape[1])[None, :], val_data.shape[0], axis=0
+        )
+        val_data = jnp.concatenate([ts[:, :, None], val_data], axis=2)
+        ts = (T / test_data.shape[1]) * jnp.repeat(
+            jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
+        )
+        test_data = jnp.concatenate([ts[:, :, None], test_data], axis=2)
+
     data = (train_data, val_data, test_data)
     labels = (train_labels, val_labels, test_labels)
 
     return dataset_generator(
-        "speech",
+        "ppg",
         data,
         labels,
         stepsize,

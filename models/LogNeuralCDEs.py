@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 
-from data.hall_set import HallSet
+from data_dir.hall_set import HallSet
 from models.NeuralCDEs import VectorField
 
 

@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 
 import diffrax
@@ -8,7 +9,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from data.datasets import create_dataset
+from data_dir.datasets import create_dataset
 from models.generate_model import create_model
 
 
@@ -69,7 +70,7 @@ def regression_loss(diff_model, static_model, X, y, state, key):
             )
         norm *= model.lambd
     return (
-        jnp.mean(jnp.mean((pred_y[:, 3:] - y[:, 3:]) ** 2, axis=1)) + norm,
+        jnp.mean(jnp.mean((pred_y - y) ** 2, axis=1)) + norm,
         state,
     )
 
@@ -110,10 +111,18 @@ def train_model(
         raise ValueError(f"Unknown metric: {metric}")
 
     if os.path.isdir(output_dir):
-        raise ValueError(f"Warning: Output directory {output_dir} already exists")
+        user_input = input(
+            f"Warning: Output directory {output_dir} already exists. Do you want to delete it? (yes/no): "
+        )
+        if user_input.lower() == "yes":
+            shutil.rmtree(output_dir)
+            os.makedirs(output_dir)
+            print(f"Directory {output_dir} has been deleted and recreated.")
+        else:
+            raise ValueError(f"Directory {output_dir} already exists. Exiting.")
     else:
         os.makedirs(output_dir)
-    model_file = output_dir + "/model.checkpoint.npz"
+        print(f"Directory {output_dir} has been created.")
 
     batchkey, key = jr.split(key, 2)
     opt = optax.adam(learning_rate=lr_scheduler(lr))
@@ -213,8 +222,6 @@ def train_model(
                 else:
                     no_val_improvement = 0
                 if operator_improv(val_metric, best_val(val_metric_for_best_model)):
-                    print("Saving model")
-                    eqx.tree_serialise_leaves(model_file, model)
                     val_metric_for_best_model.append(val_metric)
                     predictions = []
                     labels = []
@@ -243,7 +250,7 @@ def train_model(
                         test_metric = jnp.mean(
                             jnp.mean((prediction - y) ** 2, axis=1), axis=0
                         )
-                    print(f"Test mse: {test_metric}")
+                    print(f"Test metric: {test_metric}")
                 running_loss = 0.0
                 all_train_metric.append(train_metric)
                 all_val_metric.append(val_metric)
@@ -270,6 +277,8 @@ def train_model(
     jnp.save(output_dir + "/all_val_metric.npy", all_val_metric)
     jnp.save(output_dir + "/all_time.npy", all_time)
     jnp.save(output_dir + "/test_metric.npy", test_metric)
+
+    return model
 
 
 def create_dataset_model_and_train(
@@ -323,7 +332,6 @@ def create_dataset_model_and_train(
             T=T,
             use_idxs=False,
             use_presplit=use_presplit,
-            seed=seed,
             key=datasetkey,
         )
 
@@ -356,7 +364,7 @@ def create_dataset_model_and_train(
     else:
         dataloaders = dataset.raw_dataloaders
 
-    train_model(
+    return train_model(
         model,
         metric,
         filter_spec,
@@ -373,7 +381,7 @@ def create_dataset_model_and_train(
 
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "data_dir"
     output_parent_dir = ""
     lr_scheduler = lambda lr: lr
     use_presplit = False
@@ -386,36 +394,32 @@ if __name__ == "__main__":
     if experiment == "ppg":
         model_name = "log_ncde"
         dataset_name = "ppg"
-        T = 0.5
-        include_time = True
         lr = 0.001
-        stepsize = 1
+        use_presplit = True
+        classification = False
+        include_time = True
+        T = 1
+        stepsize = 10
         logsig_depth = 1
-        num_blocks = 1
         hidden_dim = 64
-        vf_depth = 1
-        vf_width = 64
-        ssm_dim = 64
-        ssm_blocks = 1
-        dt0 = 0.1
+        vf_depth = 4
+        vf_width = 128
+        dt0 = 1 / 4.993
+        scale = 1000
+        lambd = 1e-6
         solver = diffrax.Heun()
         stepsize_controller = diffrax.ConstantStepSize()
-        scale = 1.0
-        lambd = 0.0
         model_args = {
-            "num_blocks": num_blocks,
             "hidden_dim": hidden_dim,
             "vf_depth": vf_depth,
             "vf_width": vf_width,
-            "ssm_dim": ssm_dim,
-            "ssm_blocks": ssm_blocks,
             "dt0": dt0,
             "solver": solver,
             "stepsize_controller": stepsize_controller,
             "scale": scale,
             "lambd": lambd,
         }
-        for seed in [2345, 3456, 4567, 5678, 6789]:
+        for seed in [2345]:
             create_dataset_model_and_train(
                 seed,
                 data_dir,
@@ -429,7 +433,7 @@ if __name__ == "__main__":
                 logsig_depth,
                 model_args,
                 num_steps,
-                1000,
+                100,
                 lr,
                 lr_scheduler,
                 batch_size,
