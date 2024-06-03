@@ -332,6 +332,7 @@ def create_dataset_model_and_train(
             T=T,
             use_idxs=False,
             use_presplit=use_presplit,
+            seed=seed,
             key=datasetkey,
         )
 

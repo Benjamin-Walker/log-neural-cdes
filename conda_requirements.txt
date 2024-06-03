@@ -1,5 +1,5 @@
-pre-commit=3.3.1
-sktime=0.17.2
-jaxlib=0.4.7
-jax=0.4.9
-tqdm=4.65.0
+pre-commit
+sktime
+jaxlib
+jax
+tqdm
