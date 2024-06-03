@@ -1,4 +1,3 @@
-import math
 import os
 import pickle
 from dataclasses import dataclass
@@ -125,37 +124,6 @@ def dataset_generator(
         val_data, val_labels = data[idxs[1]], labels[idxs[1]]
         test_data, test_labels = None, None
 
-    zero_channels_out = False
-
-    if zero_channels_out:
-        n_channels = max(1, math.floor(0.15 * train_data.shape[-1]))
-
-        train_key, val_key, test_key, key = jr.split(key, 4)
-        train_all_zero = jr.choice(
-            train_key,
-            jnp.arange(1, train_data.shape[2]),
-            shape=(len(train_data), n_channels),
-        )
-        val_all_zero = jr.choice(
-            val_key,
-            jnp.arange(1, val_data.shape[2]),
-            shape=(len(val_data), n_channels),
-        )
-
-        for i in range(len(train_data)):
-            train_data = train_data.at[i, :, train_all_zero[i]].set(0)
-        for i in range(len(val_data)):
-            val_data = val_data.at[i, :, val_all_zero[i]].set(0)
-
-        if test_data is not None:
-            test_all_zero = jr.choice(
-                test_key,
-                jnp.arange(1, test_data.shape[2]),
-                shape=(len(test_data), n_channels),
-            )
-            for i in range(len(test_data)):
-                test_data = test_data.at[i, :, test_all_zero[i]].set(0)
-
     train_paths = batch_calc_paths(train_data, stepsize, depth)
     val_paths = batch_calc_paths(val_data, stepsize, depth)
     test_paths = batch_calc_paths(test_data, stepsize, depth)
@@ -258,24 +226,23 @@ def create_uea_dataset(
     depth,
     include_time,
     T,
-    seed,
     *,
     key,
 ):
 
     if use_presplit:
         idxs = None
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_train.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/X_train.pkl", "rb") as f:
             train_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_train.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/y_train.pkl", "rb") as f:
             train_labels = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_val.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/X_val.pkl", "rb") as f:
             val_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_val.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/y_val.pkl", "rb") as f:
             val_labels = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/X_test.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/X_test.pkl", "rb") as f:
             test_data = pickle.load(f)
-        with open(data_dir + f"/processed/UEA/{name}/{seed}/y_test.pkl", "rb") as f:
+        with open(data_dir + f"/processed/UEA/{name}/y_test.pkl", "rb") as f:
             test_labels = pickle.load(f)
         onehot_train_labels = jnp.zeros(
             (len(train_labels), len(jnp.unique(train_labels)))
@@ -372,15 +339,15 @@ def create_ppg_dataset(
 ):
     with open(data_dir + "/processed/PPG/X_train.pkl", "rb") as f:
         train_data = pickle.load(f)
-    with open(data_dir + "/processed/PPG/ppg/y_train.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/y_train.pkl", "rb") as f:
         train_labels = pickle.load(f)
-    with open(data_dir + "/processed/PPG/ppg/X_val.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/X_val.pkl", "rb") as f:
         val_data = pickle.load(f)
-    with open(data_dir + "/processed/PPG/ppg/y_val.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/y_val.pkl", "rb") as f:
         val_labels = pickle.load(f)
-    with open(data_dir + "/processed/PPG/ppg/X_test.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/X_test.pkl", "rb") as f:
         test_data = pickle.load(f)
-    with open(data_dir + "/processed/PPG/ppg/y_test.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/y_test.pkl", "rb") as f:
         test_labels = pickle.load(f)
 
     if include_time:
@@ -427,7 +394,6 @@ def create_dataset(
     depth,
     include_time,
     T,
-    seed,
     *,
     key,
 ):
@@ -445,7 +411,6 @@ def create_dataset(
             depth,
             include_time,
             T,
-            seed,
             key=key,
         )
     elif data_dir == "toy":

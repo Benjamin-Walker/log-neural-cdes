@@ -200,7 +200,7 @@ class NeuralRDE(eqx.Module):
                     self.mlp_linear(self.vf(y)), (self.hidden_dim, self.logsig_dim)
                 ),
                 logsig[idx - 1][1:],
-            )
+            ) / (self.intervals[idx] - self.intervals[idx - 1])
 
         y0 = self.linear1(x0)
         if self.classification:
