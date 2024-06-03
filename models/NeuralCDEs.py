@@ -109,7 +109,8 @@ class NeuralCDE(eqx.Module):
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            saveat = diffrax.SaveAt(ts=ts)
+            times = jnp.arange(1.0 / 390, 1.0, 1.0 / 390)
+            saveat = diffrax.SaveAt(ts=times, t1=True)
         solution = diffrax.diffeqsolve(
             terms=diffrax.ControlTerm(func, control).to_ode(),
             solver=self.solver,
@@ -124,7 +125,7 @@ class NeuralCDE(eqx.Module):
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
         else:
-            return jax.vmap(self.linear2)(solution.ys)
+            return jax.nn.tanh(jax.vmap(self.linear2)(solution.ys))
 
 
 class NeuralRDE(eqx.Module):
