@@ -8,14 +8,15 @@ import jax.random as jr
 class VectorField(eqx.Module):
     mlp: eqx.nn.MLP
 
-    def __init__(self, in_size, out_size, width, depth, *, key, scale=100, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, in_size, out_size, width, depth, *, key, activation=jax.nn.relu, scale=100
+    ):
         mlp = eqx.nn.MLP(
             in_size=in_size,
             out_size=out_size,
             width_size=width,
             depth=depth,
-            activation=jax.nn.silu,
+            activation=activation,
             final_activation=jax.nn.tanh,
             key=key,
         )
@@ -108,7 +109,8 @@ class NeuralCDE(eqx.Module):
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            saveat = diffrax.SaveAt(ts=ts)
+            times = jnp.arange(1.0 / 390, 1.0, 1.0 / 390)
+            saveat = diffrax.SaveAt(ts=times, t1=True)
         solution = diffrax.diffeqsolve(
             terms=diffrax.ControlTerm(func, control).to_ode(),
             solver=self.solver,
@@ -123,7 +125,7 @@ class NeuralCDE(eqx.Module):
         if self.classification:
             return jax.nn.softmax(self.linear2(solution.ys[-1]))
         else:
-            return jax.vmap(self.linear2)(solution.ys)
+            return jax.nn.tanh(jax.vmap(self.linear2)(solution.ys))
 
 
 class NeuralRDE(eqx.Module):
@@ -131,6 +133,7 @@ class NeuralRDE(eqx.Module):
     data_dim: int
     logsig_dim: int
     hidden_dim: int
+    mlp_linear: eqx.nn.Linear
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
@@ -162,16 +165,19 @@ class NeuralRDE(eqx.Module):
         key,
         **kwargs
     ):
-        vf_key, l1key, l2key = jr.split(key, 3)
+        vf_key, mlplkey, l1key, l2key = jr.split(key, 4)
         # Exclude first element as always zero
         self.logsig_dim = logsig_dim - 1
         self.vf = VectorField(
             hidden_dim,
-            hidden_dim * self.logsig_dim,
             vf_hidden_dim,
-            vf_num_hidden,
+            vf_hidden_dim,
+            vf_num_hidden - 1,
             scale=scale,
             key=vf_key,
+        )
+        self.mlp_linear = eqx.nn.Linear(
+            vf_hidden_dim, hidden_dim * self.logsig_dim, key=mlplkey
         )
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
@@ -190,9 +196,11 @@ class NeuralRDE(eqx.Module):
         def func(t, y, args):
             idx = jnp.searchsorted(self.intervals, t)
             return jnp.dot(
-                jnp.reshape(self.vf(y), (self.hidden_dim, self.logsig_dim)),
+                jnp.reshape(
+                    self.mlp_linear(self.vf(y)), (self.hidden_dim, self.logsig_dim)
+                ),
                 logsig[idx - 1][1:],
-            ) / (self.intervals[idx] - self.intervals[idx - 1])
+            )
 
         y0 = self.linear1(x0)
         if self.classification:

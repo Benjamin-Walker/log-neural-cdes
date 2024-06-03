@@ -1,0 +1,5 @@
+log_ncde ppg T 1.00 time True nsteps 100000 lr 0.001 stepsize 10.00 depth 1 num blocks 1 hidden dim 64 vf depth 4 vf width 128 ssm dim 128 ssm blocks 1 dt0 0.0002002803925495694 solver Heun stepsize controller ConstantStepSize scale 1000 lambd 1e-06 seed 1234
+nrde ppg T 1.00 time True nsteps 100000 lr 0.001 stepsize 1000.00 depth 2 num blocks 1 hidden dim 16 vf depth 4 vf width 128 ssm dim 128 ssm blocks 1 dt0 0.002 solver Heun stepsize controller ConstantStepSize scale 1 lambd 0 seed 1234
+ncde ppg T 1.00 time True nsteps 100000 lr 0.001 num blocks 1 hidden dim 16 vf depth 3 vf width 128 ssm dim 128 ssm blocks 1 dt0 2.0031650007011078e-05 solver Heun stepsize controller ConstantStepSize scale 1 lambd 0.0 seed 1234
+ssm ppg T 1.00 time True nsteps 100000 lr 0.001 num blocks 6 hidden dim 16 vf depth 1 vf width 1 ssm dim 256 ssm blocks 8 dt0 1 solver Heun stepsize controller ConstantStepSize scale 1 lambd 0 seed 1234
+lru ppg T 1.00 time True nsteps 100000 lr 0.001 num blocks 6 hidden dim 16 vf depth 1 vf width 1 ssm dim 256 ssm blocks 8 dt0 1 solver Heun stepsize controller ConstantStepSize scale 1 lambd 0 seed 1234

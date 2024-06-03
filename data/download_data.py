@@ -32,7 +32,7 @@ def download_and_unzip(url, save_dir, zipname):
 
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "data/math-datasig/shug6778/Log-Neural-CDEs/data"
     url = (
         "http://www.timeseriesclassification.com/ClassificationDownloads/Archives"
         "/Multivariate2018_arff.zip"

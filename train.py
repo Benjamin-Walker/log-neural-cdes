@@ -114,7 +114,7 @@ def train_model(
     running_loss = 0.0
     all_val_acc = [0.0]
     all_train_acc = [0.0]
-    val_acc_for_best_model = [100000.0]
+    val_acc_for_best_model = [1000000.0]
     no_val_improvement = 0
     all_time = []
     start = time.time()
@@ -275,7 +275,7 @@ def create_dataset_model_and_train(
     dataset=None,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_ppg/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_ppg_random_repeats/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -306,6 +306,7 @@ def create_dataset_model_and_train(
             T=T,
             use_idxs=False,
             use_presplit=use_presplit,
+            seed=seed,
             key=datasetkey,
         )
 
@@ -353,10 +354,10 @@ def create_dataset_model_and_train(
 
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data"
     use_presplit = False
     output_parent_dir = ""
-    seed = 1234
+    seed = 6789
     batch_size = 1
     lr = 3e-5
     lr_scheduler = lambda lr: lr
@@ -371,6 +372,7 @@ if __name__ == "__main__":
     scale = T
     lambd = 1e-6
     dataset_names = ["ppg"]
+    # dataset_names = ["EigenWorms"]
     model_names = ["lru", "ssm", "nrde"]
 
     for dataset_name in dataset_names:
@@ -385,6 +387,7 @@ if __name__ == "__main__":
             use_idxs=False,
             use_presplit=use_presplit,
             key=jr.PRNGKey(0),
+            seed=seed,
         )
         for model_name in model_names:
             if model_name == "log_ncde" or model_name == "nrde":
