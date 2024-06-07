@@ -46,108 +46,44 @@ for i, model in enumerate(model_order):
         f"& {av_total_time[i]:.2f} \\\\"
     )
 
+
+def plot_matrix(data, matrix, fignum, cmp, title, filename):
+    fig_size = (7, 6)
+    plt.figure(figsize=fig_size)
+    plt.matshow(matrix, norm=colors.LogNorm(), fignum=fignum, cmap=cmp)
+    for i in range(len(data)):
+        for j in range(len(data["S5"])):
+            plt.text(
+                j,
+                i,
+                str(round(data[list(data.keys())[i]][list(data["S5"].keys())[j]])),
+                ha="center",
+                va="center",
+                color="white",
+            )
+    plt.colorbar()
+    plt.xticks(range(len(data["S5"])), [short_name[x] for x in list(data["S5"].keys())])
+    plt.gca().xaxis.tick_bottom()
+    plt.yticks(range(len(data)), [model_name[x] for x in list(data.keys())])
+    plt.xlabel("Dataset")
+    plt.ylabel("Model")
+    plt.title(title)
+    os.makedirs("results/images", exist_ok=True)
+    plt.savefig(f"results/images/{filename}.png", dpi=300, bbox_inches="tight")
+
+
 viridis = colormaps["viridis"]
 newcolors = viridis(np.linspace(0, 0.95, 256))
 newcmp = colors.LinearSegmentedColormap.from_list("Viridis", newcolors)
-
-fig_size = (7, 6)
-
-plt.figure(figsize=fig_size)
-plt.matshow(memory_matrix, norm=colors.LogNorm(), fignum=1, cmap=newcmp)
-for i in range(len(memory)):
-    for j in range(len(memory["S5"])):
-        plt.text(
-            j,
-            i,
-            round(memory[list(memory.keys())[i]][list(memory["S5"].keys())[j]]),
-            ha="center",
-            va="center",
-            color="white",
-        )
-plt.colorbar()
-plt.xticks(range(len(memory["S5"])), [short_name[x] for x in list(time["S5"].keys())])
-plt.gca().xaxis.tick_bottom()
-plt.yticks(range(len(memory)), [model_name[x] for x in list(memory.keys())])
-plt.xlabel("Dataset")
-plt.ylabel("Model")
-plt.title("Memory Usage (MB)")
-os.makedirs("results/images", exist_ok=True)
-plt.savefig("results/images/memory.png", dpi=300, bbox_inches="tight")
-
-plt.figure(figsize=fig_size)
-plt.matshow(time_matrix, norm=colors.LogNorm(), fignum=2, cmap=newcmp)
-for i in range(len(time)):
-    for j in range(len(time["S5"])):
-        plt.text(
-            j,
-            i,
-            round(time[list(time.keys())[i]][list(time["S5"].keys())[j]]),
-            ha="center",
-            va="center",
-            color="white",
-        )
-plt.colorbar()
-plt.xticks(range(len(time["S5"])), [short_name[x] for x in list(time["S5"].keys())])
-plt.gca().xaxis.tick_bottom()
-plt.yticks(range(len(memory)), [model_name[x] for x in list(memory.keys())])
-plt.xlabel("Dataset")
-plt.ylabel("Model")
-plt.title("Time for 1000 Steps (s)")
-plt.savefig("results/images/time.png", dpi=300, bbox_inches="tight")
-
-plt.figure(figsize=fig_size)
-plt.matshow(num_steps_matrix, norm=colors.LogNorm(), fignum=3, cmap=newcmp)
-for i in range(len(num_steps)):
-    for j in range(len(num_steps["S5"])):
-        plt.text(
-            j,
-            i,
-            round(
-                num_steps[list(num_steps.keys())[i]][list(num_steps["S5"].keys())[j]]
-            ),
-            ha="center",
-            va="center",
-            color="white",
-        )
-plt.colorbar()
-plt.xticks(
-    range(len(num_steps["S5"])), [short_name[x] for x in list(num_steps["S5"].keys())]
-)
-plt.gca().xaxis.tick_bottom()
-plt.yticks(range(len(memory)), [model_name[x] for x in list(memory.keys())])
-plt.xlabel("Dataset")
-plt.ylabel("Model")
-plt.title("Number of Steps")
-plt.savefig("results/images/num_steps.png", dpi=300, bbox_inches="tight")
-
-plt.figure(figsize=fig_size)
-plt.matshow(
+plot_matrix(memory, memory_matrix, 1, newcmp, "Memory Usage (MB)", "memory")
+plot_matrix(time, time_matrix, 2, newcmp, "Time for 1000 Steps (s)", "time")
+plot_matrix(num_steps, num_steps_matrix, 3, newcmp, "Number of Steps", "num_steps")
+plot_matrix(
+    time,
     np.array(time_matrix) * np.array(num_steps_matrix) / 1000,
-    norm=colors.LogNorm(),
-    fignum=4,
-    cmap=newcmp,
+    4,
+    newcmp,
+    "Total Time Usage (s)",
+    "total_time",
 )
-for i in range(len(time)):
-    for j in range(len(time["S5"])):
-        time_ij = time[list(time.keys())[i]][list(time["S5"].keys())[j]]
-        num_steps_ij = num_steps[list(num_steps.keys())[i]][
-            list(num_steps["S5"].keys())[j]
-        ]
-        plt.text(
-            j,
-            i,
-            f"{round(time_ij * num_steps_ij / 1000)}",
-            ha="center",
-            va="center",
-            color="white",
-        )
-plt.colorbar()
-plt.xticks(range(len(time["S5"])), [short_name[x] for x in list(time["S5"].keys())])
-plt.gca().xaxis.tick_bottom()
-plt.yticks(range(len(memory)), [model_name[x] for x in list(memory.keys())])
-plt.xlabel("Dataset")
-plt.ylabel("Model")
-plt.title("Total Time Usage (s)")
-plt.savefig("results/images/total_time.png", dpi=300, bbox_inches="tight")
-
 plt.show()
