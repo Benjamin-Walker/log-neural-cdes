@@ -8,7 +8,7 @@ from signax.signature import signature
 key = jr.PRNGKey(1234)
 depth = 4
 
-data = jr.normal(key, shape=(10000, 100, 6))
+data = jr.normal(key, shape=(100000, 100, 6))
 data = jnp.round(data)
 data = jnp.cumsum(data, axis=1)
 

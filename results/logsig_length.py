@@ -1,3 +1,5 @@
+import os
+
 import iisignature as iisig
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,5 +22,6 @@ plt.xticks(range(1, 16))
 plt.ylabel("Log-Signature Dimension, $\\beta(v,N)$")
 plt.title("Log-Signature Dimension vs Time Series Dimension")
 plt.legend()
-plt.savefig("logsig_length.png", dpi=300, bbox_inches="tight")
+os.makedirs("results/images", exist_ok=True)
+plt.savefig("results/images/logsig_length.png", dpi=300, bbox_inches="tight")
 plt.show()

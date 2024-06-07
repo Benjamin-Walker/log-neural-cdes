@@ -9,7 +9,7 @@ class VectorField(eqx.Module):
     mlp: eqx.nn.MLP
 
     def __init__(
-        self, in_size, out_size, width, depth, *, key, activation=jax.nn.relu, scale=100
+        self, in_size, out_size, width, depth, *, key, activation=jax.nn.relu, scale=1
     ):
         mlp = eqx.nn.MLP(
             in_size=in_size,

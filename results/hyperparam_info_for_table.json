@@ -1,0 +1,83 @@
+{
+  "short_names": {
+    "EigenWorms": "EW",
+    "EthanolConcentration": "EC",
+    "Heartbeat": "HB",
+    "MotorImagery": "MI",
+    "SelfRegulationSCP1": "SCP1",
+    "SelfRegulationSCP2": "SCP2",
+    "ppg": "PPG"
+  },
+  "hypparams_srm": {
+    "Learning Rate": ["0.001", "0.0001", "1e-05"],
+    "Include Time": ["True", "False"],
+    "Hidden Dimension": ["16", "64", "128"],
+    "Number of Layers": ["2", "4", "6"],
+    "State Dimension": ["16", "64", "256"],
+    "S5 Initialisation Blocks": ["2", "4", "8"],
+    "Convolution Dimension": ["2", "3", "4"],
+    "Expansion Factor": ["1", "2", "4"]
+  },
+  "hypparams_ncde": {
+    "Learning Rate": ["0.001", "0.0001", "1e-05"],
+    "Include Time": ["True", "False"],
+    "Hidden Dimension": ["16", "64", "128"],
+    "Vector Field (Depth, Width)": [["2", "32"], ["3", "64"], ["3", "128"], ["4", "128"]],
+    "Log-ODE (Depth, Step)": [["1", "1.00"], ["2", "2.00"], ["2", "4.00"], ["2", "8.00"], ["2", "12.00"], ["2", "16.00"], ["1", "10.00"], ["2", "10.00"], ["2", "100.00"], ["2", "1000.00"]],
+    "Regularisation λ": ["0.001", "1e-06", "0.0"]
+  },
+  "dir_spot": {
+    "lru": {
+      "Include Time": 3,
+      "Learning Rate": 7,
+      "Number of Layers": 10,
+      "Hidden Dimension": 13,
+      "State Dimension": 22
+    },
+    "S5": {
+      "Include Time": 3,
+      "Learning Rate": 7,
+      "Number of Layers": 10,
+      "Hidden Dimension": 13,
+      "State Dimension": 22,
+      "S5 Initialisation Blocks": 25
+    },
+    "S6": {
+      "Include Time": 3,
+      "Learning Rate": 1,
+      "Number of Layers": 5,
+      "Hidden Dimension": 7,
+      "State Dimension": 9
+    },
+    "mamba": {
+      "Include Time": 3,
+      "Learning Rate": 1,
+      "Number of Layers": 5,
+      "Hidden Dimension": 7,
+      "State Dimension": 9,
+      "Convolution Dimension": 11,
+      "Expansion Factor": 13
+    },
+    "ncde": {
+      "Learning Rate": 7,
+      "Include Time": 3,
+      "Hidden Dimension": 13,
+      "Vector Field (Depth, Width)": [16, 19]
+    },
+    "nrde": {
+      "Learning Rate": 7,
+      "Include Time": 3,
+      "Hidden Dimension": 17,
+      "Vector Field (Depth, Width)": [20, 23],
+      "Log-ODE (Depth, Step)": [11, 9]
+    },
+    "log_ncde": {
+      "Learning Rate": 7,
+      "Include Time": 3,
+      "Hidden Dimension": 17,
+      "Vector Field (Depth, Width)": [20, 23],
+      "Log-ODE (Depth, Step)": [11, 9],
+      "Regularisation λ": 40
+    }
+  }
+}

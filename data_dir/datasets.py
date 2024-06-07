@@ -244,20 +244,6 @@ def create_uea_dataset(
             test_data = pickle.load(f)
         with open(data_dir + f"/processed/UEA/{name}/y_test.pkl", "rb") as f:
             test_labels = pickle.load(f)
-        onehot_train_labels = jnp.zeros(
-            (len(train_labels), len(jnp.unique(train_labels)))
-        )
-        onehot_train_labels = onehot_train_labels.at[
-            jnp.arange(len(train_labels)), train_labels
-        ].set(1)
-        onehot_val_labels = jnp.zeros((len(val_labels), len(jnp.unique(val_labels))))
-        onehot_val_labels = onehot_val_labels.at[
-            jnp.arange(len(val_labels)), val_labels
-        ].set(1)
-        onehot_test_labels = jnp.zeros((len(test_labels), len(jnp.unique(test_labels))))
-        onehot_test_labels = onehot_test_labels.at[
-            jnp.arange(len(test_labels)), test_labels
-        ].set(1)
         if include_time:
             ts = (T / train_data.shape[1]) * jnp.repeat(
                 jnp.arange(train_data.shape[1])[None, :], train_data.shape[0], axis=0
@@ -272,7 +258,7 @@ def create_uea_dataset(
             )
             test_data = jnp.concatenate([ts[:, :, None], test_data], axis=2)
         data = (train_data, val_data, test_data)
-        onehot_labels = (onehot_train_labels, onehot_val_labels, onehot_test_labels)
+        onehot_labels = (train_labels, val_labels, test_labels)
     else:
         with open(data_dir + f"/processed/UEA/{name}/data.pkl", "rb") as f:
             data = pickle.load(f)
@@ -413,7 +399,7 @@ def create_dataset(
             T,
             key=key,
         )
-    elif data_dir == "toy":
+    elif name == "toy":
         return create_toy_dataset(
             data_dir, name, stepsize, depth, include_time, T, key=key
         )

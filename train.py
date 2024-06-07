@@ -381,62 +381,60 @@ def create_dataset_model_and_train(
 
 
 if __name__ == "__main__":
+    seed = 1234
     data_dir = "data_dir"
     output_parent_dir = ""
     lr_scheduler = lambda lr: lr
-    use_presplit = False
-    num_steps = 100000
+    num_steps = 101
+    print_steps = 100
     batch_size = 32
-    model_names = ["log_ncde"]
-    experiment = "ppg"
-    metric = "mse"
+    model_name = "nrde"
+    metric = "accuracy"
+    dataset_name = "Heartbeat"
 
-    if experiment == "ppg":
-        model_name = "log_ncde"
-        dataset_name = "ppg"
-        lr = 0.001
-        use_presplit = True
-        classification = False
-        include_time = True
-        T = 1
-        stepsize = 10
-        logsig_depth = 1
-        hidden_dim = 64
-        vf_depth = 4
-        vf_width = 128
-        dt0 = 1 / 4.993
-        scale = 1000
-        lambd = 1e-6
-        solver = diffrax.Heun()
-        stepsize_controller = diffrax.ConstantStepSize()
-        model_args = {
-            "hidden_dim": hidden_dim,
-            "vf_depth": vf_depth,
-            "vf_width": vf_width,
-            "dt0": dt0,
-            "solver": solver,
-            "stepsize_controller": stepsize_controller,
-            "scale": scale,
-            "lambd": lambd,
-        }
-        for seed in [2345]:
-            create_dataset_model_and_train(
-                seed,
-                data_dir,
-                use_presplit,
-                dataset_name,
-                metric,
-                include_time,
-                T,
-                model_name,
-                stepsize,
-                logsig_depth,
-                model_args,
-                num_steps,
-                100,
-                lr,
-                lr_scheduler,
-                batch_size,
-                output_parent_dir=output_parent_dir,
-                dataset=None,
-            )
+    lr = 0.0001
+    use_presplit = True
+    classification = True
+    include_time = False
+    T = 1
+    stepsize = 2
+    logsig_depth = 2
+    hidden_dim = 128
+    vf_depth = 4
+    vf_width = 128
+    dt0 = 1 / 500
+    scale = 1
+    lambd = 0.0
+    solver = diffrax.Heun()
+    stepsize_controller = diffrax.ConstantStepSize()
+    model_args = {
+        "hidden_dim": hidden_dim,
+        "vf_depth": vf_depth,
+        "vf_width": vf_width,
+        "dt0": dt0,
+        "solver": solver,
+        "stepsize_controller": stepsize_controller,
+        "scale": scale,
+        "lambd": lambd,
+    }
+
+    create_dataset_model_and_train(
+        seed,
+        data_dir,
+        use_presplit,
+        str(dataset_name),
+        metric,
+        include_time,
+        T,
+        model_name,
+        stepsize,
+        logsig_depth,
+        model_args,
+        num_steps,
+        print_steps,
+        lr,
+        lr_scheduler,
+        batch_size,
+        output_parent_dir=output_parent_dir,
+        dataset=None,
+    )

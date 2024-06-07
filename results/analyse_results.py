@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 
-benchmark = "UEA"
+benchmark = "PPG"
 experiment = "repeats"
 results_dir = "results/UEA_PPG_toy/" + benchmark + "_outputs_" + experiment + "/"
 

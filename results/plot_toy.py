@@ -150,5 +150,5 @@ for i, dataset in enumerate(datasets):
 
 # fig.suptitle('Validation Accuracy vs Steps for Different Datasets and Models', fontsize=16)
 plt.tight_layout(rect=[0, 0, 1, 0.96])
-plt.savefig("results/combined_plot.png", dpi=300, bbox_inches="tight")
+plt.savefig("results/images/combined_plot.png", dpi=300, bbox_inches="tight")
 plt.show()
