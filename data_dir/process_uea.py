@@ -2,9 +2,11 @@
 
 import os
 import pickle
+import warnings
 
 import jax.numpy as jnp
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sktime.datasets import load_from_arff_to_dataframe
 from tqdm import tqdm
@@ -27,12 +29,14 @@ def create_jax_data(train_file, test_file):
         data_train, data_test, labels_train, labels_test: All as jax tensors.
     """
     # Get arff format
-    train_data, train_labels = load_from_arff_to_dataframe(train_file)
-    test_data, test_labels = load_from_arff_to_dataframe(test_file)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
+        train_data, train_labels = load_from_arff_to_dataframe(train_file)
+        test_data, test_labels = load_from_arff_to_dataframe(test_file)
 
     def convert_data(data):
         # Expand the series to numpy
-        data_expand = data.applymap(lambda x: x.values).values
+        data_expand = data.map(lambda x: x.values).values
         # Single array, then to tensor
         data_numpy = np.stack([np.vstack(x).T for x in data_expand])
         data_jnumpy = jnp.array(data_numpy)
@@ -62,7 +66,7 @@ def convert_all_files(data_dir):
         test_file = arff_folder + "/{}/{}_TEST.arff".format(ds_name, ds_name)
 
         # Ready save dir
-        save_dir = data_dir + "_repeat/processed/UEA/{}".format(ds_name)
+        save_dir = data_dir + "/processed/UEA/{}".format(ds_name)
 
         # If files don't exist, skip.
         if any(
@@ -86,12 +90,15 @@ def convert_all_files(data_dir):
             data = jnp.concatenate([train_data, test_data])
             labels = jnp.concatenate([train_labels, test_labels])
 
-            for i in range(len(data)):
-                for j in range(i, len(data)):
-                    if (data[i] == data[j]).all():
-                        if i != j:
-                            print(i, j)
-                            breakpoint()
+            # Remove repeated samples
+            unique_rows, indices, inverse_indices = np.unique(
+                data, axis=0, return_index=True, return_inverse=True
+            )
+            data = data[indices]
+            labels = labels[indices]
+            print(
+                f"Deleting {len(inverse_indices) - len(indices)} repeated samples in {ds_name}"
+            )
 
             # Save original train test indexes in case we wish to use original splits
             original_idxs = (
@@ -106,5 +113,5 @@ def convert_all_files(data_dir):
 
 
 if __name__ == "__main__":
-    data_dir = "data"
+    data_dir = "data_dir"
     convert_all_files(data_dir)

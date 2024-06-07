@@ -1,3 +1,4 @@
+import os
 import pickle
 import random
 
@@ -104,15 +105,17 @@ train_output = np.concatenate(all_train_output, axis=0)
 val_output = np.concatenate(all_val_output, axis=0)
 test_output = np.concatenate(all_test_output, axis=0)
 
-with open("data/processed/PPG/X_train.pkl", "wb") as f:
+os.makedirs("data_dir/processed/PPG", exist_ok=True)
+
+with open("data_dir/processed/PPG/X_train.pkl", "wb") as f:
     pickle.dump(train_input, f)
-with open("data/processed/PPG/y_train.pkl", "wb") as f:
+with open("data_dir/processed/PPG/y_train.pkl", "wb") as f:
     pickle.dump(train_output, f)
-with open("data/processed/PPG/X_val.pkl", "wb") as f:
+with open("data_dir/processed/PPG/X_val.pkl", "wb") as f:
     pickle.dump(val_input, f)
-with open("data/processed/PPG/y_val.pkl", "wb") as f:
+with open("data_dir/processed/PPG/y_val.pkl", "wb") as f:
     pickle.dump(val_output, f)
-with open("data/processed/PPG/X_test.pkl", "wb") as f:
+with open("data_dir/processed/PPG/X_test.pkl", "wb") as f:
     pickle.dump(test_input, f)
-with open("data/processed/PPG/y_test.pkl", "wb") as f:
+with open("data_dir/processed/PPG/y_test.pkl", "wb") as f:
     pickle.dump(test_output, f)

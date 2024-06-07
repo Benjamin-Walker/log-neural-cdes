@@ -298,7 +298,6 @@ def create_dataset_model_and_train(
     lr,
     lr_scheduler,
     batch_size,
-    dataset=None,
     output_parent_dir="",
 ):
     output_parent_dir += "outputs/" + model_name + "/" + dataset_name
@@ -320,20 +319,19 @@ def create_dataset_model_and_train(
     key = jr.PRNGKey(seed)
 
     datasetkey, modelkey, trainkey, key = jr.split(key, 4)
-    if dataset is None:
-        print(f"Creating dataset {dataset_name}")
+    print(f"Creating dataset {dataset_name}")
 
-        dataset = create_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            include_time=include_time,
-            T=T,
-            use_idxs=False,
-            use_presplit=use_presplit,
-            key=datasetkey,
-        )
+    dataset = create_dataset(
+        data_dir,
+        dataset_name,
+        stepsize=stepsize,
+        depth=logsig_depth,
+        include_time=include_time,
+        T=T,
+        use_idxs=False,
+        use_presplit=use_presplit,
+        key=datasetkey,
+    )
 
     print(f"Creating model {model_name}")
     classification = metric == "accuracy"
@@ -390,10 +388,10 @@ if __name__ == "__main__":
     batch_size = 32
     model_name = "nrde"
     metric = "accuracy"
-    dataset_name = "Heartbeat"
+    dataset_name = "EthanolConcentration"
 
     lr = 0.0001
-    use_presplit = True
+    use_presplit = False
     classification = True
     include_time = False
     T = 1
@@ -436,5 +434,4 @@ if __name__ == "__main__":
         lr_scheduler,
         batch_size,
         output_parent_dir=output_parent_dir,
-        dataset=None,
     )

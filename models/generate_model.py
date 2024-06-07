@@ -6,7 +6,7 @@ from models.LogNeuralCDEs import LogNeuralCDE
 from models.LRU import LRU
 from models.NeuralCDEs import NeuralCDE, NeuralRDE
 from models.RNN import GRUCell, LinearCell, LSTMCell, MLPCell, RNN
-from models.SSM import S5
+from models.S5 import S5
 
 
 def create_model(

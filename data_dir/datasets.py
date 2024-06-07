@@ -386,6 +386,9 @@ def create_dataset(
     uea_subfolders = [
         f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
     ]
+    toy_subfolders = [
+        f.name for f in os.scandir(data_dir + "/processed/toy") if f.is_dir()
+    ]
 
     if name in uea_subfolders:
         return create_uea_dataset(
@@ -399,7 +402,7 @@ def create_dataset(
             T,
             key=key,
         )
-    elif name == "toy":
+    elif name[:-1] in toy_subfolders:
         return create_toy_dataset(
             data_dir, name, stepsize, depth, include_time, T, key=key
         )

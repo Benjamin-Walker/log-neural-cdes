@@ -34,7 +34,7 @@ def download_and_unzip(url, save_dir, zipname):
 if __name__ == "__main__":
     data_dir = "data_dir"
     url = (
-        "http://www.timeseriesclassification.com/ClassificationDownloads/Archives"
+        "http://www.timeseriesclassification.com/aeon-toolkit/Archives"
         "/Multivariate2018_arff.zip"
     )
     save_dir = data_dir + "/raw/UEA/"
