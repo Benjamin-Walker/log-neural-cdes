@@ -27,9 +27,8 @@ want to predict.
 
 ## Data
 
-The data_dir folder contains the scripts for downloading data, preprocessing the data, 
-generating path objects, and creating dataloaders and datasets. Raw data should be 
-downloaded into the `data/raw` folder. Processed data should be saved into the `data/processed`
+The data_dir folder contains the scripts for downloading data, preprocessing the data, and creating dataloaders and 
+datasets. Raw data should be downloaded into the `data/raw` folder. Processed data should be saved into the `data/processed`
 in the following format: 
 ```
 processed/{collection}/{dataset_name}/data.pkl, 
@@ -77,13 +76,13 @@ baseline models:
 - `RNN`: A simple recurrent neural network which can use any cell. Currently,
 the available cells are `Linear`, `GRU`, `LSTM`, and `MLP`.
 - `LRU`: A stacked recurrent model with linear recurrent unit layers.
-- `S5` A stacked recurrent model with S5 layers.
+- `S5`: A stacked recurrent model with S5 layers.
 
 ## Experiments
 
 The code for training and evaluating the models is contained in `train.py`.  The main method for running experiments 
 is the `run_experiment.py` script. This script requires you to specify the names of the models you want to train, 
-the names of the datasets you want to train on, and a directory which contain configuration files. The configuration
+the names of the datasets you want to train on, and a directory which contains configuration files. The configuration
 files should be organised as `config_dir/{model_name}/{dataset_name}.json` and contain the
 following fields:
 - `seeds`: A list of seeds to use for training.
@@ -100,6 +99,12 @@ following fields:
 - Any specific model parameters. 
 
 See `experiment_configs/repeats` for some examples.
+
+## Reproducing the Results
+
+The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder.
+The `results` folder contains a zip file of the output files from these experiments, as well as the code for analysing 
+the results and generating the plots in the paper.
 
 ## Requirements
 
@@ -129,6 +134,8 @@ After installing the requirements, run `pre-commit install` to install the pre-c
 
 
 ## Bibtex Citation
+
+When using this code, please cite the following paper:
 
 ```
 @inproceddings{Walker2024LogNCDE,
