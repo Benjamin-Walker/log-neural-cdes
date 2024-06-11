@@ -1,0 +1,27 @@
+{
+    "seeds": [
+       1234
+    ],
+    "data_dir": "data_dir",
+    "output_parent_dir": "",
+    "lr_scheduler": "lambda lr: lr",
+    "num_steps": 10000,
+    "print_steps": 100,
+    "batch_size": 32,
+    "model_name": "log_ncde",
+    "metric": "accuracy",
+    "classification": true,
+    "dataset_name": "signature3",
+    "use_presplit": false,
+    "T": 1,
+    "dt0": "0.01",
+    "scale": 1,
+    "lr": "0.0001",
+    "time": "False",
+    "hidden_dim": "64",
+    "vf_depth": "3",
+    "vf_width": "128",
+    "depth": "2",
+    "stepsize": "4.00",
+    "lambd": "0"
+}

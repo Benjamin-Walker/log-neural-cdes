@@ -5,6 +5,13 @@ Building on <a href="https://arxiv.org/abs/2009.08295">Neural Rough Differential
 repository introduces Log Neural Controlled Differential Equations (Log-NCDEs), a novel, effective, and efficient 
 method for training NCDEs. 
 
+<p align="center">
+    <img class="center" src="./assets/Log-NCDE.png" width="800"/>
+</p>
+
+Potentially irregular samples from a time series are transformed into the log-signature over a set of intervals 
+$[r_i,r_{i+1}]$. The log-signature is combined with the iterated Lie brackets of a 
+
 ## Data
 
 The data_dir folder contains the scripts for downloading data, preprocessing the data, 
