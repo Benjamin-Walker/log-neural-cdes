@@ -1,0 +1,28 @@
+{
+    "seeds": [
+        2345,
+        3456,
+        4567,
+        5678,
+        6789
+    ],
+    "data_dir": "data_dir",
+    "output_parent_dir": "",
+    "lr_scheduler": "lambda lr: lr",
+    "num_steps": 100000,
+    "print_steps": 100,
+    "batch_size": 32,
+    "model_name": "ncde",
+    "metric": "accuracy",
+    "classification": true,
+    "dataset_name": "Heartbeat",
+    "use_presplit": false,
+    "T": 1,
+    "dt0": "0.002",
+    "scale": 1,
+    "lr": "0.001",
+    "time": "False",
+    "hidden_dim": "16",
+    "vf_depth": "2",
+    "vf_width": "32"
+}

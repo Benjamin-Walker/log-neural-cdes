@@ -1,8 +1,9 @@
 # Project Specific
-data/raw/
+data_dir/raw/
 .DS_Store
-data/processed/
-outputs/
+data_dir/processed/
+results/old_outputs/
+*.npz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

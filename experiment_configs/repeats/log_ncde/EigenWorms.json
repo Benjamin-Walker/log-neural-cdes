@@ -1,0 +1,31 @@
+{
+    "seeds": [
+        2345,
+        3456,
+        4567,
+        5678,
+        6789
+    ],
+    "data_dir": "data_dir",
+    "output_parent_dir": "",
+    "lr_scheduler": "lambda lr: lr",
+    "num_steps": 100000,
+    "print_steps": 100,
+    "batch_size": 32,
+    "model_name": "log_ncde",
+    "metric": "accuracy",
+    "classification": true,
+    "dataset_name": "EigenWorms",
+    "use_presplit": false,
+    "T": 1,
+    "dt0": "0.00066711140760507",
+    "scale": 1000,
+    "lr": "0.0001",
+    "time": "False",
+    "hidden_dim": "64",
+    "vf_depth": "4",
+    "vf_width": "128",
+    "depth": "2",
+    "stepsize": "12.00",
+    "lambd": "1e-06"
+}

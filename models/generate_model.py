@@ -1,3 +1,7 @@
+"""
+This module contains a function to generate a model based on the model name and the hyperparameters.
+"""
+
 import diffrax
 import equinox as eqx
 import jax.random as jr
@@ -6,7 +10,7 @@ from models.LogNeuralCDEs import LogNeuralCDE
 from models.LRU import LRU
 from models.NeuralCDEs import NeuralCDE, NeuralRDE
 from models.RNN import GRUCell, LinearCell, LSTMCell, MLPCell, RNN
-from models.SSM import S5
+from models.S5 import S5
 
 
 def create_model(
@@ -21,6 +25,7 @@ def create_model(
     vf_depth=None,
     vf_width=None,
     classification=True,
+    output_step=1,
     ssm_dim=None,
     ssm_blocks=None,
     solver=diffrax.Heun(),
@@ -32,8 +37,6 @@ def create_model(
     *,
     key,
 ):
-    """Create model."""
-
     cellkey, outputkey = jr.split(key, 2)
 
     if model_name == "log_ncde":
@@ -48,6 +51,7 @@ def create_model(
                 logsig_depth,
                 label_dim,
                 classification,
+                output_step,
                 intervals,
                 solver,
                 stepsize_controller,
@@ -70,6 +74,7 @@ def create_model(
                 data_dim,
                 label_dim,
                 classification,
+                output_step,
                 solver,
                 stepsize_controller,
                 dt0,
@@ -91,6 +96,7 @@ def create_model(
                 logsig_dim,
                 label_dim,
                 classification,
+                output_step,
                 intervals,
                 solver,
                 stepsize_controller,
@@ -111,17 +117,18 @@ def create_model(
             hidden_dim,
             label_dim,
             classification,
+            output_step,
             key=key,
         )
         state = eqx.nn.State(lru)
         return lru, state
-    elif model_name == "ssm":
+    elif model_name == "S5":
         if num_blocks is None:
-            raise ValueError("Must specify num_blocks for SSM.")
+            raise ValueError("Must specify num_blocks for S5.")
         if ssm_dim is None:
-            raise ValueError("Must specify ssm_dim for SSM.")
+            raise ValueError("Must specify ssm_dim for S5.")
         if ssm_blocks is None:
-            raise ValueError("Must specify ssm_blocks for SSM.")
+            raise ValueError("Must specify ssm_blocks for S5.")
         ssm = S5(
             num_blocks,
             data_dim,
@@ -130,6 +137,7 @@ def create_model(
             hidden_dim,
             label_dim,
             classification,
+            output_step,
             "lecun_normal",
             True,
             True,
@@ -154,4 +162,4 @@ def create_model(
     else:
         raise ValueError(f"Unknown model name: {model_name}")
 
-    return RNN(cell, hidden_dim, label_dim, classification, key=key), None
+    return RNN(cell, hidden_dim, label_dim, classification, output_step, key=key), None

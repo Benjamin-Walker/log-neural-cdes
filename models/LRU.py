@@ -1,7 +1,14 @@
 """
-Implementation of the Linear Recurrent Unit
 Code modified from https://gist.github.com/Ryu1845/7e78da4baa8925b4de482969befa949d
+
+This module implements the LRU class. The LRU class has the following attributes:
+- linear_encoder: The linear encoder applied to the input time series.
+- blocks: A list of LRU blocks.
+- linear_layer: The final linear layer of the S5 model which outputs the predictions.
+- classification: Whether the model is used for classification.
+- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
 """
+
 from typing import List
 
 import equinox as eqx
@@ -11,7 +18,6 @@ import jax.random as jr
 
 
 def binary_operator_diag(element_i, element_j):
-    """Binary operator for parallel scan of linear recurrence."""
     a_i, bu_i = element_i
     a_j, bu_j = element_j
     return a_j * a_i, a_j * bu_i + bu_j
@@ -22,13 +28,11 @@ class GLU(eqx.Module):
     w2: eqx.nn.Linear
 
     def __init__(self, input_dim, output_dim, key):
-        """Initialize GLU."""
         w1_key, w2_key = jr.split(key, 2)
         self.w1 = eqx.nn.Linear(input_dim, output_dim, use_bias=True, key=w1_key)
         self.w2 = eqx.nn.Linear(input_dim, output_dim, use_bias=True, key=w2_key)
 
     def __call__(self, x):
-        """Compute GLU."""
         return self.w1(x) * jax.nn.sigmoid(self.w2(x))
 
 
@@ -43,7 +47,6 @@ class LRULayer(eqx.Module):
     gamma_log: jnp.ndarray
 
     def __init__(self, N, H, r_min=0, r_max=1, max_phase=6.28, *, key):
-        """Initialize parameters of the LRU layer."""
         u1_key, u2_key, B_re_key, B_im_key, C_re_key, C_im_key, D_key = jr.split(key, 7)
 
         # N: state dimension, H: model dimension
@@ -87,7 +90,6 @@ class LRULayer(eqx.Module):
 
 
 class LRUBlock(eqx.Module):
-    """Linear Recurrent Unit Block."""
 
     norm: eqx.nn.BatchNorm
     lru: LRULayer
@@ -95,7 +97,6 @@ class LRUBlock(eqx.Module):
     drop: eqx.nn.Dropout
 
     def __init__(self, N, H, r_min=0, r_max=1, max_phase=6.28, drop_rate=0.1, *, key):
-        """Initialize LRU block."""
         lrukey, glukey = jr.split(key, 2)
         self.norm = eqx.nn.BatchNorm(
             input_size=H, axis_name="batch", channelwise_affine=False
@@ -105,7 +106,6 @@ class LRUBlock(eqx.Module):
         self.drop = eqx.nn.Dropout(p=drop_rate)
 
     def __call__(self, x, state, *, key):
-        """Compute LRU block."""
         dropkey1, dropkey2 = jr.split(key, 2)
         skip = x
         x, state = self.norm(x.T, state)
@@ -119,12 +119,11 @@ class LRUBlock(eqx.Module):
 
 
 class LRU(eqx.Module):
-    """Linear Recurrent Unit."""
-
     linear_encoder: eqx.nn.Linear
     blocks: List[LRUBlock]
     linear_layer: eqx.nn.Linear
     classification: bool
+    output_step: int
     stateful: bool = True
     nondeterministic: bool = True
     lip2: bool = False
@@ -137,6 +136,7 @@ class LRU(eqx.Module):
         H,
         output_dim,
         classification,
+        output_step,
         r_min=0,
         r_max=1,
         max_phase=6.28,
@@ -144,7 +144,6 @@ class LRU(eqx.Module):
         *,
         key
     ):
-        """Initialize LRU."""
         linear_encoder_key, *block_keys, linear_layer_key = jr.split(
             key, num_blocks + 2
         )
@@ -155,9 +154,9 @@ class LRU(eqx.Module):
         ]
         self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
         self.classification = classification
+        self.output_step = output_step
 
     def __call__(self, x, state, key):
-        """Compute LRU."""
         dropkeys = jr.split(key, len(self.blocks))
         x = jax.vmap(self.linear_encoder)(x)
         for block, key in zip(self.blocks, dropkeys):
@@ -166,6 +165,6 @@ class LRU(eqx.Module):
             x = jnp.mean(x, axis=0)
             x = jax.nn.softmax(self.linear_layer(x), axis=0)
         else:
-            x = x[127::128]
+            x = x[self.output_step - 1 :: self.output_step]
             x = jax.nn.tanh(jax.vmap(self.linear_layer)(x))
         return x, state

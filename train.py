@@ -1,14 +1,37 @@
+"""
+This module defines functions which take hyperparameters and produce datasets and models, as well as train them.
+The function create_dataset_model_and_train takes as argument:
+- seed: a random seed
+- data_dir: the directory where the data is stored
+- use_presplit: a boolean indicating whether to use a pre-split dataset
+- dataset_name: the name of the dataset
+- output_step: if a regression dataset, how many steps to skip before outputting a prediction.
+- metric: the metric to use for evaluation. Currently implemented `mse' or 'accuracy'.
+- include_time: whether to include time as a channel in the time series.
+- T: Scale time to [0, T].
+- model_name: the name of the model to use.
+- stepsize: the initial step size for the solver.
+- logsig_depth: the depth of the Log-ODE method. Currently implemented only for depth=1 and 2.
+- model_args: a dictionary of additional arguments for the model.
+- num_steps: the number of steps to train the model.
+- print_steps: how often to print the loss.
+- lr: the learning rate.
+- lr_scheduler: the learning rate scheduler.
+- batch_size: the batch size.
+- output_parent_dir: the parent directory where the output is stored.
+"""
+
 import os
+import shutil
 import time
 
-import diffrax
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
 import optax
 
-from data.datasets_LogNCDE import create_dataset
+from data_dir.datasets import create_dataset
 from models.generate_model import create_model
 
 
@@ -69,7 +92,7 @@ def regression_loss(diff_model, static_model, X, y, state, key):
             )
         norm *= model.lambd
     return (
-        jnp.mean(jnp.mean((pred_y[:, 3:] - y[:, 3:]) ** 2, axis=1)) + norm,
+        jnp.mean(jnp.mean((pred_y - y) ** 2, axis=1)) + norm,
         state,
     )
 
@@ -85,6 +108,7 @@ def make_step(model, filter_spec, X, y, loss_fn, state, opt, opt_state, key):
 
 def train_model(
     model,
+    metric,
     filter_spec,
     state,
     dataloaders,
@@ -96,11 +120,31 @@ def train_model(
     key,
     output_dir,
 ):
+
+    if metric == "accuracy":
+        best_val = max
+        operator_improv = lambda x, y: x >= y
+        operator_no_improv = lambda x, y: x <= y
+    elif metric == "mse":
+        best_val = min
+        operator_improv = lambda x, y: x <= y
+        operator_no_improv = lambda x, y: x >= y
+    else:
+        raise ValueError(f"Unknown metric: {metric}")
+
     if os.path.isdir(output_dir):
-        raise ValueError(f"Warning: Output directory {output_dir} already exists")
+        user_input = input(
+            f"Warning: Output directory {output_dir} already exists. Do you want to delete it? (yes/no): "
+        )
+        if user_input.lower() == "yes":
+            shutil.rmtree(output_dir)
+            os.makedirs(output_dir)
+            print(f"Directory {output_dir} has been deleted and recreated.")
+        else:
+            raise ValueError(f"Directory {output_dir} already exists. Exiting.")
     else:
         os.makedirs(output_dir)
-    model_file = output_dir + "/model.checkpoint.npz"
+        print(f"Directory {output_dir} has been created.")
 
     batchkey, key = jr.split(key, 2)
     opt = optax.adam(learning_rate=lr_scheduler(lr))
@@ -112,9 +156,14 @@ def train_model(
         loss_fn = regression_loss
 
     running_loss = 0.0
-    all_val_acc = [0.0]
-    all_train_acc = [0.0]
-    val_acc_for_best_model = [1000000.0]
+    if metric == "accuracy":
+        all_val_metric = [0.0]
+        all_train_metric = [0.0]
+        val_metric_for_best_model = [0.0]
+    elif metric == "mse":
+        all_val_metric = [100.0]
+        all_train_metric = [100.0]
+        val_metric_for_best_model = [100.0]
     no_val_improvement = 0
     all_time = []
     start = time.time()
@@ -148,14 +197,12 @@ def train_model(
             prediction = jnp.vstack(predictions)
             y = jnp.vstack(labels)
             if model.classification:
-                train_accuracy = jnp.mean(
+                train_metric = jnp.mean(
                     jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
                 )
             else:
                 prediction = prediction[:, :, 0]
-                train_accuracy = jnp.mean(
-                    jnp.mean((prediction - y) ** 2, axis=1), axis=0
-                )
+                train_metric = jnp.mean(jnp.mean((prediction - y) ** 2, axis=1), axis=0)
             predictions = []
             labels = []
             for data in dataloaders["val"].loop_epoch(batch_size):
@@ -175,31 +222,29 @@ def train_model(
             prediction = jnp.vstack(predictions)
             y = jnp.vstack(labels)
             if model.classification:
-                val_accuracy = jnp.mean(
+                val_metric = jnp.mean(
                     jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
                 )
             else:
                 prediction = prediction[:, :, 0]
-                val_accuracy = jnp.mean(jnp.mean((prediction - y) ** 2, axis=1), axis=0)
+                val_metric = jnp.mean(jnp.mean((prediction - y) ** 2, axis=1), axis=0)
             end = time.time()
             total_time = end - start
             print(
                 f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
-                f"Train mse: {train_accuracy}, "
-                f"Validation mse: {val_accuracy}, Time: {total_time}"
+                f"Train metric: {train_metric}, "
+                f"Validation metric: {val_metric}, Time: {total_time}"
             )
             start = time.time()
             if step > 0:
-                if val_accuracy >= min(val_acc_for_best_model):
+                if operator_no_improv(val_metric, best_val(val_metric_for_best_model)):
                     no_val_improvement += 1
                     if no_val_improvement > 10:
                         break
                 else:
                     no_val_improvement = 0
-                if val_accuracy <= min(val_acc_for_best_model):
-                    print("Saving model")
-                    eqx.tree_serialise_leaves(model_file, model)
-                    val_acc_for_best_model.append(val_accuracy)
+                if operator_improv(val_metric, best_val(val_metric_for_best_model)):
+                    val_metric_for_best_model.append(val_metric)
                     predictions = []
                     labels = []
                     for data in dataloaders["test"].loop_epoch(batch_size):
@@ -219,41 +264,43 @@ def train_model(
                     prediction = jnp.vstack(predictions)
                     y = jnp.vstack(labels)
                     if model.classification:
-                        test_accuracy = jnp.mean(
+                        test_metric = jnp.mean(
                             jnp.argmax(prediction, axis=1) == jnp.argmax(y, axis=1)
                         )
                     else:
                         prediction = prediction[:, :, 0]
-                        test_accuracy = jnp.mean(
+                        test_metric = jnp.mean(
                             jnp.mean((prediction - y) ** 2, axis=1), axis=0
                         )
-                    print(f"Test mse: {test_accuracy}")
+                    print(f"Test metric: {test_metric}")
                 running_loss = 0.0
-                all_train_acc.append(train_accuracy)
-                all_val_acc.append(val_accuracy)
+                all_train_metric.append(train_metric)
+                all_val_metric.append(val_metric)
                 all_time.append(total_time)
                 steps = jnp.arange(0, step + 1, print_steps)
-                all_train_acc_save = jnp.array(all_train_acc)
-                all_val_acc_save = jnp.array(all_val_acc)
+                all_train_metric_save = jnp.array(all_train_metric)
+                all_val_metric_save = jnp.array(all_val_metric)
                 all_time_save = jnp.array(all_time)
-                test_acc_save = jnp.array(test_accuracy)
+                test_metric_save = jnp.array(test_metric)
                 jnp.save(output_dir + "/steps.npy", steps)
-                jnp.save(output_dir + "/all_train_acc.npy", all_train_acc_save)
-                jnp.save(output_dir + "/all_val_acc.npy", all_val_acc_save)
+                jnp.save(output_dir + "/all_train_metric.npy", all_train_metric_save)
+                jnp.save(output_dir + "/all_val_metric.npy", all_val_metric_save)
                 jnp.save(output_dir + "/all_time.npy", all_time_save)
-                jnp.save(output_dir + "/test_acc.npy", test_acc_save)
+                jnp.save(output_dir + "/test_metric.npy", test_metric_save)
 
-    print(f"Test accuracy: {test_accuracy}")
+    print(f"Test metric: {test_metric}")
     steps = jnp.arange(0, num_steps + 1, print_steps)
-    all_train_acc = jnp.array(all_train_acc)
-    all_val_acc = jnp.array(all_val_acc)
+    all_train_metric = jnp.array(all_train_metric)
+    all_val_metric = jnp.array(all_val_metric)
     all_time = jnp.array(all_time)
-    test_acc = jnp.array(test_accuracy)
+    test_metric = jnp.array(test_metric)
     jnp.save(output_dir + "/steps.npy", steps)
-    jnp.save(output_dir + "/all_train_acc.npy", all_train_acc)
-    jnp.save(output_dir + "/all_val_acc.npy", all_val_acc)
+    jnp.save(output_dir + "/all_train_metric.npy", all_train_metric)
+    jnp.save(output_dir + "/all_val_metric.npy", all_val_metric)
     jnp.save(output_dir + "/all_time.npy", all_time)
-    jnp.save(output_dir + "/test_acc.npy", test_acc)
+    jnp.save(output_dir + "/test_metric.npy", test_metric)
+
+    return model
 
 
 def create_dataset_model_and_train(
@@ -261,6 +308,8 @@ def create_dataset_model_and_train(
     data_dir,
     use_presplit,
     dataset_name,
+    output_step,
+    metric,
     include_time,
     T,
     model_name,
@@ -272,10 +321,9 @@ def create_dataset_model_and_train(
     lr,
     lr_scheduler,
     batch_size,
-    dataset=None,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_ppg_random_repeats/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -294,31 +342,31 @@ def create_dataset_model_and_train(
     key = jr.PRNGKey(seed)
 
     datasetkey, modelkey, trainkey, key = jr.split(key, 4)
-    if dataset is None:
-        print(f"Creating dataset {dataset_name}")
+    print(f"Creating dataset {dataset_name}")
 
-        dataset = create_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            include_time=include_time,
-            T=T,
-            use_idxs=False,
-            use_presplit=use_presplit,
-            seed=seed,
-            key=datasetkey,
-        )
+    dataset = create_dataset(
+        data_dir,
+        dataset_name,
+        stepsize=stepsize,
+        depth=logsig_depth,
+        include_time=include_time,
+        T=T,
+        use_idxs=False,
+        use_presplit=use_presplit,
+        key=datasetkey,
+    )
 
     print(f"Creating model {model_name}")
+    classification = metric == "accuracy"
     model, state = create_model(
         model_name,
         dataset.data_dim,
         dataset.logsig_dim,
         logsig_depth,
         dataset.intervals,
-        1,
-        classification=False,
+        dataset.label_dim,
+        classification=classification,
+        output_step=output_step,
         **model_args,
         key=modelkey,
     )
@@ -338,8 +386,9 @@ def create_dataset_model_and_train(
     else:
         dataloaders = dataset.raw_dataloaders
 
-    train_model(
+    return train_model(
         model,
+        metric,
         filter_spec,
         state,
         dataloaders,
@@ -351,82 +400,3 @@ def create_dataset_model_and_train(
         trainkey,
         output_parent_dir + "/" + output_dir,
     )
-
-
-if __name__ == "__main__":
-    data_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data"
-    use_presplit = False
-    output_parent_dir = ""
-    seed = 6789
-    batch_size = 1
-    lr = 3e-5
-    lr_scheduler = lambda lr: lr
-    T = 1
-    dt0 = 1 / 500
-    include_time = False
-    solver = diffrax.Heun()
-    stepsize_controller = diffrax.ConstantStepSize()
-    stepsize = 100
-    logsig_depth = 2
-    hidden_dim = 128
-    scale = T
-    lambd = 1e-6
-    dataset_names = ["ppg"]
-    # dataset_names = ["EigenWorms"]
-    model_names = ["lru", "ssm", "nrde"]
-
-    for dataset_name in dataset_names:
-        print(f"Creating dataset {dataset_name}")
-        dataset = create_dataset(
-            data_dir,
-            dataset_name,
-            stepsize=stepsize,
-            depth=logsig_depth,
-            include_time=include_time,
-            T=T,
-            use_idxs=False,
-            use_presplit=use_presplit,
-            key=jr.PRNGKey(0),
-            seed=seed,
-        )
-        for model_name in model_names:
-            if model_name == "log_ncde" or model_name == "nrde":
-                batch_size = 32
-                num_steps = 20000
-                print_steps = 200
-            else:
-                batch_size = 8
-                num_steps = 400000
-                print_steps = 1000
-            model_args = {
-                "num_blocks": 6,
-                "hidden_dim": hidden_dim,
-                "vf_depth": 4,
-                "vf_width": 256,
-                "ssm_dim": 128,
-                "ssm_blocks": 16,
-                "dt0": dt0,
-                "solver": solver,
-                "stepsize_controller": stepsize_controller,
-                "scale": scale,
-                "lambd": lambd,
-            }
-            create_dataset_model_and_train(
-                seed,
-                data_dir,
-                use_presplit,
-                dataset_name,
-                include_time,
-                T,
-                model_name,
-                stepsize,
-                logsig_depth,
-                model_args,
-                num_steps,
-                print_steps,
-                lr,
-                lr_scheduler,
-                batch_size,
-                output_parent_dir=output_parent_dir,
-                dataset=dataset,
-            )

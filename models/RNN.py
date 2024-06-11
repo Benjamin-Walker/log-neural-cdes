@@ -1,3 +1,11 @@
+"""
+This module implements the RNN class and the RNN cell classes. The RNN class has the following attributes:
+- cell: The RNN cell used in the RNN.
+- output_layer: The linear layer used to obtain the output of the RNN.
+- hidden_dim: The dimension of the hidden state $h_t$.
+- classification: Whether the model is used for classification.
+"""
+
 import abc
 
 import equinox as eqx
@@ -13,12 +21,10 @@ class _AbstractRNNCell(eqx.Module):
 
     @abc.abstractmethod
     def __init__(self, data_dim, hidden_dim, *, key):
-        """Initialize RNN cell."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def __call__(self, state, input):
-        """Call method for RNN cell."""
         raise NotImplementedError
 
 
@@ -78,14 +84,18 @@ class RNN(eqx.Module):
     stateful: bool = False
     nondeterministic: bool = False
     lip2: bool = False
+    output_step: int
 
-    def __init__(self, cell, hidden_dim, label_dim, classification=True, *, key):
+    def __init__(
+        self, cell, hidden_dim, label_dim, classification=True, output_step=1, *, key
+    ):
         self.cell = cell
         self.output_layer = eqx.nn.Linear(
             hidden_dim, label_dim, use_bias=False, key=key
         )
         self.hidden_dim = self.cell.hidden_size
         self.classification = classification
+        self.output_step = output_step
 
     def __call__(self, x):
         hidden = jnp.zeros((self.hidden_dim,))
@@ -103,4 +113,5 @@ class RNN(eqx.Module):
         if self.classification:
             return jax.nn.softmax(self.output_layer(final_state), axis=0)
         else:
-            return jax.vmap(self.output_layer)(all_states)
+            all_states = all_states[self.output_step - 1 :: self.output_step]
+            return jax.nn.tanh(jax.vmap(self.output_layer)(all_states))
