@@ -59,13 +59,13 @@ The PPG-DaLiA dataset is a multivariate time series regression dataset,
 where the aim is to predict a person’s heart rate using data
 collected from a wrist-worn device. The dataset can be downloaded from the 
 <a href="https://archive.ics.uci.edu/dataset/495/ppg+dalia">UCI Machine Learning Repository</a>. The data should be 
-unzipped and saved in the `data/raw` folder in the following format `PPG_FieldStudy/S{i}/S{i}.pkl`. The data can be
+unzipped and saved in the `data_dir/raw` folder in the following format `PPG_FieldStudy/S{i}/S{i}.pkl`. The data can be
 preprocessed by running the `process_ppg.py` script.
 
 ## Models
 
-The scrips in the models folder are used to define the various deep learning
-models used in the experiments. In order to be integrated into the training, 
+The scripts in the `models` folder are used to define a number of deep learning time series models, including NCDEs, 
+NRDEs, Log-NCDEs, LRU, and S5. In order to be integrated into the training, 
 the `__call__` function of the model should only take one argument as input. In 
 order to handle this, the dataloaders return the model's inputs as a list, 
 which is unpacked within the model `__call__`. 
@@ -104,7 +104,7 @@ See `experiment_configs/repeats` for some examples.
 
 The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder and
 `run_experiment.py` is currently configured to run the repeat experiments on the UEA datasets.
-The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiment. 
+The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiments. 
 Furthermore, it contains the code for analysing the results and generating the plots in the paper.
 
 ## Requirements
@@ -123,7 +123,7 @@ The code is written in Python 3.10 and uses the following packages:
 ```
 conda create -n Log-NCDE python=3.10
 conda activate Log-NCDE
-conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4
+conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4 -c conda-forge
 # Substitue for correct Jax pip install: https://jax.readthedocs.io/en/latest/installation.html
 pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.4 optax==0.2.2 diffrax==0.5.1 signax==0.1.1
 ```
