@@ -27,9 +27,9 @@ want to predict.
 
 ## Data
 
-The data_dir folder contains the scripts for downloading data, preprocessing the data, and creating dataloaders and 
+The folder `data_dir` contains the scripts for downloading data, preprocessing the data, and creating dataloaders and 
 datasets. Raw data should be downloaded into the `data/raw` folder. Processed data should be saved into the `data/processed`
-in the following format: 
+folder in the following format: 
 ```
 processed/{collection}/{dataset_name}/data.pkl, 
 processed/{collection}/{dataset_name}/labels.pkl,
@@ -51,7 +51,7 @@ can be choosen for the four classifications considered. The data can be generate
 ### The UEA Datasets
 
 The UEA datasets are a collection of multivariate time series classification benchmarks. They can be downloaded by 
-running `data_dir/download_data.py` and preprocessed by running `data_dir/process_uea.py`.
+running `data_dir/download_uea.py` and preprocessed by running `data_dir/process_uea.py`.
 
 ### The PPG-DaLiA Dataset
 
@@ -102,9 +102,10 @@ See `experiment_configs/repeats` for some examples.
 
 ## Reproducing the Results
 
-The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder.
-The `results` folder contains a zip file of the output files from these experiments, as well as the code for analysing 
-the results and generating the plots in the paper.
+The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder and
+`run_experiment.py` is currently configured to run the repeat experiments on the UEA datasets.
+The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiment. 
+Furthermore, it contains the code for analysing the results and generating the plots in the paper.
 
 ## Requirements
 

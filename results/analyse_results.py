@@ -1,3 +1,9 @@
+"""
+This script is used to analyse the results of the UEA and PPG experiments. It is designed both to determine the
+optimal hyperparameters for each model and dataset following a grid search optimisation, and to compare the performance
+of the models across different random seeds on fixed hyperparameters.
+"""
+
 import os
 
 import numpy as np
@@ -5,7 +11,7 @@ import numpy as np
 
 benchmark = "PPG"
 experiment = "repeats"
-results_dir = "results/UEA_PPG_toy/" + benchmark + "_outputs_" + experiment + "/"
+results_dir = "results/paper_outputs/" + benchmark + "_outputs_" + experiment + "/"
 
 if benchmark == "UEA":
     best_idx = np.argmax

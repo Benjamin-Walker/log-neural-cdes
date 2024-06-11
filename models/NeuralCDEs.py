@@ -1,3 +1,34 @@
+"""
+This script implemented the NeuralCDE and NeuralRDE classes using Jax and equinox. The NeuralCDE class has the
+following attributes:
+- vf: The vector field $f_{\theta}$ of the NCDE.
+- data_dim: The number of channels in the time series.
+- hidden_dim: The dimension of the hidden state $h_t$.
+- linear1: The input linear layer for initialising $h_0$.
+- linear2: The output linear layer for obtaining predictions from $h_t$.
+- classification: Whether the model is used for classification.
+- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
+- solver: The solver applied to the NCDE.
+- stepsize_controller: The stepsize controller for the solver.
+- dt0: The initial step size for the solver.
+- max_steps: The maximum number of steps for the solver.
+
+The NeuralRDE class has the following attributes:
+- vf: The vector field $\bar{f}_{\theta}$ of the NRDE (except the final linear layer).
+- data_dim: The number of channels in the time series.
+- logsig_dim: The dimension of the log-signature of the path which will be used as input to the NRDE.
+- hidden_dim: The dimension of the hidden state $h_t$.
+- mlp_linear: The final linear layer of the vector field.
+- linear1: The input linear layer for initialising $h_0$.
+- linear2: The output linear layer for obtaining predictions from $h_t$.
+- classification: Whether the model is used for classification.
+- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
+- solver: The solver applied to the NRDE.
+- stepsize_controller: The stepsize controller for the solver.
+- dt0: The initial step size for the solver.
+- max_steps: The maximum number of steps for the solver.
+"""
+
 import diffrax
 import equinox as eqx
 import jax
@@ -54,6 +85,7 @@ class NeuralCDE(eqx.Module):
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
+    output_step: int
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
     dt0: float
@@ -70,6 +102,7 @@ class NeuralCDE(eqx.Module):
         data_dim,
         label_dim,
         classification,
+        output_step,
         solver,
         stepsize_controller,
         dt0,
@@ -98,6 +131,7 @@ class NeuralCDE(eqx.Module):
         self.stepsize_controller = stepsize_controller
         self.dt0 = dt0
         self.max_steps = max_steps
+        self.output_step = output_step
 
     def __call__(self, X):
         ts, coeffs, x0 = X
@@ -109,7 +143,8 @@ class NeuralCDE(eqx.Module):
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            times = jnp.arange(1.0 / 390, 1.0, 1.0 / 390)
+            step = self.output_step / len(ts)
+            times = jnp.arange(step, 1.0, step)
             saveat = diffrax.SaveAt(ts=times, t1=True)
         solution = diffrax.diffeqsolve(
             terms=diffrax.ControlTerm(func, control).to_ode(),
@@ -137,6 +172,7 @@ class NeuralRDE(eqx.Module):
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     classification: bool
+    output_step: int
     intervals: jnp.ndarray
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
@@ -155,6 +191,7 @@ class NeuralRDE(eqx.Module):
         logsig_dim,
         label_dim,
         classification,
+        output_step,
         intervals,
         solver,
         stepsize_controller,
@@ -182,6 +219,7 @@ class NeuralRDE(eqx.Module):
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
         self.classification = classification
+        self.output_step = output_step
         self.hidden_dim = hidden_dim
         self.data_dim = data_dim
         self.intervals = intervals
@@ -206,7 +244,8 @@ class NeuralRDE(eqx.Module):
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            times = jnp.arange(1.0 / 390, 1.0, 1.0 / 390)
+            step = self.output_step / len(ts)
+            times = jnp.arange(step, 1.0, step)
             saveat = diffrax.SaveAt(ts=times, t1=True)
 
         solution = diffrax.diffeqsolve(

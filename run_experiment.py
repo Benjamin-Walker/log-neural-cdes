@@ -1,3 +1,9 @@
+"""
+This script loads a JSON file containing the hyperparameters for each model and dataset, and uses
+create_dataset_model_and_train from train.py to train the models on the datasets using the hyperparameters. The results
+are saved in the output directory specified in the JSON file.
+"""
+
 import json
 
 import diffrax
@@ -7,13 +13,14 @@ from train import create_dataset_model_and_train
 
 model_names = ["ncde", "log_ncde", "nrde", "lru", "S5"]
 dataset_names = [
-    "signature1",
-    "signature2",
-    "signature3",
-    "signature4",
+    "EigenWorms",
+    "EthanolConcentration",
+    "Heartbeat",
+    "MotorImagery",
+    "SelfRegulationSCP1",
+    "SelfRegulationSCP2",
 ]
-experiment_folder = "experiment_configs/toy"
-
+experiment_folder = "experiment_configs/repeats"
 
 for model_name in model_names:
     for dataset_name in dataset_names:
@@ -68,6 +75,10 @@ for model_name in model_names:
             ssm_blocks = int(data["ssm_blocks"])
         else:
             ssm_blocks = None
+        if dataset_name == "ppg":
+            output_step = int(data["output_step"])
+        else:
+            output_step = 1
 
         model_args = {
             "num_blocks": num_blocks,
@@ -83,7 +94,6 @@ for model_name in model_names:
             "lambd": lambd,
         }
 
-        # Run experiments for each seed
         for seed in seeds:
             print(f"Running experiment with seed: {seed}")
             create_dataset_model_and_train(
@@ -91,6 +101,7 @@ for model_name in model_names:
                 data_dir=data_dir,
                 use_presplit=use_presplit,
                 dataset_name=dataset_name,
+                output_step=output_step,
                 metric=metric,
                 include_time=include_time,
                 T=T,

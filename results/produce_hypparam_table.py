@@ -1,3 +1,8 @@
+"""
+This script is used to produce a table of the hyperparameters selected from the grid search optimisation for the UEA
+and PPG experiments.
+"""
+
 import json
 import os
 
@@ -45,10 +50,10 @@ for model_list, hypparams in zip(
                             "PPG_outputs_repeats",
                         ]:
                             if os.path.exists(
-                                f"results/UEA_PPG_toy/{parent_dir}/{model}/{dataset}/"
+                                f"results/paper_outputs/{parent_dir}/{model}/{dataset}/"
                             ):
                                 dir = os.listdir(
-                                    f"results/UEA_PPG_toy/{parent_dir}/{model}/{dataset}/"
+                                    f"results/paper_outputs/{parent_dir}/{model}/{dataset}/"
                                 )[0].split("_")
                                 idxs = dir_spot[model][key]
                                 if isinstance(idxs, list):

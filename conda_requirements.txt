@@ -1,5 +1,0 @@
-pre-commit
-sktime
-jaxlib
-jax
-tqdm

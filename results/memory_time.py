@@ -1,3 +1,7 @@
+"""
+This script reads the results from the memory_time_results.json file and plots the results in a matrix format.
+"""
+
 import json
 import os
 

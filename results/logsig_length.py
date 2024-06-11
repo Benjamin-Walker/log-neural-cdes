@@ -1,3 +1,7 @@
+"""
+This script generates a plot of the log-signature dimension against the time series dimension.
+"""
+
 import os
 
 import iisignature as iisig

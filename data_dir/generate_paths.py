@@ -1,3 +1,7 @@
+"""
+This module contains functions for generating log-signature of paths over intervals of length stepsize.
+"""
+
 import jax
 import jax.numpy as jnp
 from signax.signature import signature

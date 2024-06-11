@@ -1,3 +1,7 @@
+"""
+This script processes the PPG_FieldStudy dataset and saves the processed data in the data_dir/processed directory.
+"""
+
 import os
 import pickle
 import random

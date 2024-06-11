@@ -1,3 +1,7 @@
+"""
+This module contains a function to generate a model based on the model name and the hyperparameters.
+"""
+
 import diffrax
 import equinox as eqx
 import jax.random as jr
@@ -21,6 +25,7 @@ def create_model(
     vf_depth=None,
     vf_width=None,
     classification=True,
+    output_step=1,
     ssm_dim=None,
     ssm_blocks=None,
     solver=diffrax.Heun(),
@@ -32,8 +37,6 @@ def create_model(
     *,
     key,
 ):
-    """Create model."""
-
     cellkey, outputkey = jr.split(key, 2)
 
     if model_name == "log_ncde":
@@ -48,6 +51,7 @@ def create_model(
                 logsig_depth,
                 label_dim,
                 classification,
+                output_step,
                 intervals,
                 solver,
                 stepsize_controller,
@@ -70,6 +74,7 @@ def create_model(
                 data_dim,
                 label_dim,
                 classification,
+                output_step,
                 solver,
                 stepsize_controller,
                 dt0,
@@ -91,6 +96,7 @@ def create_model(
                 logsig_dim,
                 label_dim,
                 classification,
+                output_step,
                 intervals,
                 solver,
                 stepsize_controller,
@@ -111,6 +117,7 @@ def create_model(
             hidden_dim,
             label_dim,
             classification,
+            output_step,
             key=key,
         )
         state = eqx.nn.State(lru)
@@ -130,6 +137,7 @@ def create_model(
             hidden_dim,
             label_dim,
             classification,
+            output_step,
             "lecun_normal",
             True,
             True,
@@ -154,4 +162,4 @@ def create_model(
     else:
         raise ValueError(f"Unknown model name: {model_name}")
 
-    return RNN(cell, hidden_dim, label_dim, classification, key=key), None
+    return RNN(cell, hidden_dim, label_dim, classification, output_step, key=key), None

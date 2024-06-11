@@ -1,3 +1,7 @@
+"""
+This module contains a function for generating the coefficients for a Hermite cubic spline with backwards differences.
+"""
+
 import diffrax
 import jax
 import jax.numpy as jnp

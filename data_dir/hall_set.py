@@ -1,3 +1,8 @@
+"""
+This module implements a HallSet class, which is needed in this repository to convert the log-signature of a path to
+a Hall basis and identify the corresponding tensor algebra element.
+"""
+
 import functools
 import itertools
 from collections import defaultdict

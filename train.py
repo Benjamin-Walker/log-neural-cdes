@@ -1,8 +1,30 @@
+"""
+This module defines functions which take hyperparameters and produce datasets and models, as well as train them.
+The function create_dataset_model_and_train takes as argument:
+- seed: a random seed
+- data_dir: the directory where the data is stored
+- use_presplit: a boolean indicating whether to use a pre-split dataset
+- dataset_name: the name of the dataset
+- output_step: if a regression dataset, how many steps to skip before outputting a prediction.
+- metric: the metric to use for evaluation. Currently implemented `mse' or 'accuracy'.
+- include_time: whether to include time as a channel in the time series.
+- T: Scale time to [0, T].
+- model_name: the name of the model to use.
+- stepsize: the initial step size for the solver.
+- logsig_depth: the depth of the Log-ODE method. Currently implemented only for depth=1 and 2.
+- model_args: a dictionary of additional arguments for the model.
+- num_steps: the number of steps to train the model.
+- print_steps: how often to print the loss.
+- lr: the learning rate.
+- lr_scheduler: the learning rate scheduler.
+- batch_size: the batch size.
+- output_parent_dir: the parent directory where the output is stored.
+"""
+
 import os
 import shutil
 import time
 
-import diffrax
 import equinox as eqx
 import jax
 import jax.numpy as jnp
@@ -286,6 +308,7 @@ def create_dataset_model_and_train(
     data_dir,
     use_presplit,
     dataset_name,
+    output_step,
     metric,
     include_time,
     T,
@@ -343,6 +366,7 @@ def create_dataset_model_and_train(
         dataset.intervals,
         dataset.label_dim,
         classification=classification,
+        output_step=output_step,
         **model_args,
         key=modelkey,
     )
@@ -375,63 +399,4 @@ def create_dataset_model_and_train(
         batch_size,
         trainkey,
         output_parent_dir + "/" + output_dir,
-    )
-
-
-if __name__ == "__main__":
-    seed = 1234
-    data_dir = "data_dir"
-    output_parent_dir = ""
-    lr_scheduler = lambda lr: lr
-    num_steps = 101
-    print_steps = 100
-    batch_size = 32
-    model_name = "nrde"
-    metric = "accuracy"
-    dataset_name = "EthanolConcentration"
-
-    lr = 0.0001
-    use_presplit = False
-    classification = True
-    include_time = False
-    T = 1
-    stepsize = 2
-    logsig_depth = 2
-    hidden_dim = 128
-    vf_depth = 4
-    vf_width = 128
-    dt0 = 1 / 500
-    scale = 1
-    lambd = 0.0
-    solver = diffrax.Heun()
-    stepsize_controller = diffrax.ConstantStepSize()
-    model_args = {
-        "hidden_dim": hidden_dim,
-        "vf_depth": vf_depth,
-        "vf_width": vf_width,
-        "dt0": dt0,
-        "solver": solver,
-        "stepsize_controller": stepsize_controller,
-        "scale": scale,
-        "lambd": lambd,
-    }
-
-    create_dataset_model_and_train(
-        seed,
-        data_dir,
-        use_presplit,
-        str(dataset_name),
-        metric,
-        include_time,
-        T,
-        model_name,
-        stepsize,
-        logsig_depth,
-        model_args,
-        num_steps,
-        print_steps,
-        lr,
-        lr_scheduler,
-        batch_size,
-        output_parent_dir=output_parent_dir,
     )

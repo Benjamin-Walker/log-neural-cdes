@@ -1,4 +1,13 @@
-"""S5 implementation modified from: https://github.com/lindermanlab/S5/blob/main/s5/ssm_init.py"""
+"""
+S5 implementation modified from: https://github.com/lindermanlab/S5/blob/main/s5/ssm_init.py
+
+This module implements the structured state space model S5. The S5 model has the following attributes:
+- linear_encoder: The linear encoder applied to the input time series.
+- blocks: A list of S5 blocks.
+- linear_layer: The final linear layer of the S5 model which outputs the predictions.
+- classification: Whether the model is used for classification.
+- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
+"""
 
 from typing import List
 
@@ -433,6 +442,7 @@ class S5(eqx.Module):
     blocks: List[S5Block]
     linear_layer: eqx.nn.Linear
     classification: bool
+    output_step: int
     stateful: bool = True
     nondeterministic: bool = True
     lip2: bool = False
@@ -446,6 +456,7 @@ class S5(eqx.Module):
         H,
         output_dim,
         classification,
+        output_step,
         C_init,
         conj_sym,
         clip_eigs,
@@ -479,6 +490,7 @@ class S5(eqx.Module):
         ]
         self.linear_layer = eqx.nn.Linear(H, output_dim, key=linear_layer_key)
         self.classification = classification
+        self.output_step = output_step
 
     def __call__(self, x, state, key):
         """Compute S5."""
@@ -490,6 +502,6 @@ class S5(eqx.Module):
             x = jnp.mean(x, axis=0)
             x = jax.nn.softmax(self.linear_layer(x), axis=0)
         else:
-            x = x[127::128]
+            x = x[self.output_step - 1 :: self.output_step]
             x = jax.nn.tanh(jax.vmap(self.linear_layer)(x))
         return x, state

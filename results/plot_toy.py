@@ -1,3 +1,7 @@
+"""
+This script plots the results from the four classifications considered on the toy dataset.
+"""
+
 import os
 
 import matplotlib
@@ -84,15 +88,15 @@ axes = axes.flatten()
 for i, dataset in enumerate(datasets):
     ax = axes[i]
     for model in plot_names.keys():
-        exp = os.listdir(f"results/UEA_PPG_toy/toy_outputs/{model}/toy/{dataset}")[0]
+        exp = os.listdir(f"results/paper_outputs/toy_outputs/{model}/toy/{dataset}")[0]
         with open(
-            f"results/UEA_PPG_toy/toy_outputs/{model}/toy/{dataset}/{exp}/all_val_acc.npy",
+            f"results/paper_outputs/toy_outputs/{model}/toy/{dataset}/{exp}/all_val_acc.npy",
             "rb",
         ) as f:
             val_acc = np.load(f)
             val_acc[0] = 0.5
         with open(
-            f"results/UEA_PPG_toy/toy_outputs/{model}/toy/{dataset}/{exp}/steps.npy",
+            f"results/paper_outputs/toy_outputs/{model}/toy/{dataset}/{exp}/steps.npy",
             "rb",
         ) as f:
             steps = np.load(f)
@@ -148,7 +152,7 @@ for i, dataset in enumerate(datasets):
         ax.legend(ncols=2, loc="upper right")
     ax.set_ylim([0.019, 0.6])
 
-# fig.suptitle('Validation Accuracy vs Steps for Different Datasets and Models', fontsize=16)
 plt.tight_layout(rect=[0, 0, 1, 0.96])
+os.makedirs("results/images", exist_ok=True)
 plt.savefig("results/images/combined_plot.png", dpi=300, bbox_inches="tight")
 plt.show()

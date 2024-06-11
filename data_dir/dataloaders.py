@@ -1,3 +1,24 @@
+"""
+A dataloader class for loading data in batches. Each model in this repository is designed to take a single argument as
+input. Hence, the dataloader can handle three different cases.
+- The first is simply the value of the time series data. This is used by stacked recurrent models, such as recurrent
+neural networks and structured state space models. In this case data should be a jnp.ndarray of shape
+(n_samples, n_timesteps, n_features)
+- The second case is NCDEs, which requires the sampling time, the coefficients of an interpolation, and the initial
+value of the data. In this case, data should be a tuple of length 3, where the first element is a jnp.ndarray of shape
+(n_samples, n_timesteps) for the sampling times, the third element is a jnp.ndarray of shape (n_samples, n_features)
+for the initial value, and the second element is a tuple of length n_coeffs, where each element is a jnp.ndarray of
+shape (n_samples, n_timesteps-1, n_features) for the coefficients of the interpolation.
+- The third case are NRDEs and Log-NCDEs, which require the sampling time, the log-signature of the data, and the
+initial value of the data. In this case, data should be a tuple of length 3, where the first element is a jnp.ndarray
+of shape (n_samples, n_timesteps) for the sampling times, the third element is a jnp.ndarray of shape
+(n_samples, n_features) for the initial value, and the second element is a jnp.ndarray of shape
+(n_samples, n_intervals, n_logsig_features) for the log-signature of the data over n_intervals.
+
+Additionally, the data can be stored as a numpy array, and each batch converted to a jax numpy array, to save GPU
+memory.
+"""
+
 import jax.numpy as jnp
 import jax.random as jr
 

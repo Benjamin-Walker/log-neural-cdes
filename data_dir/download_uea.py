@@ -1,3 +1,7 @@
+"""
+This script downloads and unzips the UEA data from the timeseriesclassification website.
+"""
+
 import os
 import tarfile
 import urllib.request

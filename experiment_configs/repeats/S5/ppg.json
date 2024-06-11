@@ -15,6 +15,7 @@
     "model_name": "S5",
     "metric": "mse",
     "classification": false,
+    "output_step": 128,
     "dataset_name": "ppg",
     "use_presplit": false,
     "T": 1,

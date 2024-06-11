@@ -1,3 +1,23 @@
+"""
+This scripts implements the LogNeuralCDE class using Jax and equinox. The model is a NCDE and the output is
+approximated during training using the Log-ODE method. The model's attributes are:
+- vf: The vector field $f_{\theta}$ of the NCDE.
+- data_dim: The number of channels in the time series.
+- depth: The depth of the Log-ODE method. Currently implemented only for depth=1 and 2.
+- hidden_dim: The dimension of the hidden state $h_t$.
+- linear1: The input linear layer for initialising $h_0$.
+- linear2: The output linear layer for obtaining predictions from $h_t$.
+- pairs: The pairs of basis elements for the terms in the depth-2 log-signature of the path.
+- classification: Whether the model is used for classification.
+- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
+- intervals: The intervals for the Log-ODE method.
+- solver: The solver applied to the ODE produce by the Log-ODE method.
+- stepsize_controller: The stepsize controller for the solver.
+- dt0: The initial step size for the solver.
+- max_steps: The maximum number of steps for the solver.
+- lambd: The Lip(2) regularisation parameter.
+"""
+
 import diffrax
 import equinox as eqx
 import jax
@@ -10,13 +30,14 @@ from models.NeuralCDEs import VectorField
 
 class LogNeuralCDE(eqx.Module):
     vf: VectorField
-    width: int
+    data_dim: int
     depth: int
     hidden_dim: int
     linear1: eqx.nn.Linear
     linear2: eqx.nn.Linear
     pairs: jnp.ndarray
     classification: bool
+    output_step: int
     intervals: jnp.ndarray
     solver: diffrax.AbstractSolver
     stepsize_controller: diffrax.AbstractStepSizeController
@@ -36,6 +57,7 @@ class LogNeuralCDE(eqx.Module):
         depth,
         label_dim,
         classification,
+        output_step,
         intervals,
         solver,
         stepsize_controller,
@@ -59,17 +81,18 @@ class LogNeuralCDE(eqx.Module):
             key=vf_key,
         )
         self.vf = vf
-        self.width = data_dim
+        self.data_dim = data_dim
         self.depth = depth
         self.hidden_dim = hidden_dim
         self.linear1 = eqx.nn.Linear(data_dim, hidden_dim, key=l1key)
         self.linear2 = eqx.nn.Linear(hidden_dim, label_dim, key=l2key)
-        hs = HallSet(self.width, self.depth)
+        hs = HallSet(self.data_dim, self.depth)
         if self.depth == 1:
             self.pairs = None
         else:
             self.pairs = jnp.asarray(hs.data[1:])
         self.classification = classification
+        self.output_step = output_step
         self.intervals = intervals
         self.solver = solver
         self.stepsize_controller = stepsize_controller
@@ -86,7 +109,7 @@ class LogNeuralCDE(eqx.Module):
         def func(t, y, args):
             idx = jnp.searchsorted(self.intervals, t)
             logsig_t = logsig[idx - 1]
-            vf_out = jnp.reshape(self.vf(y), (self.width, self.hidden_dim))
+            vf_out = jnp.reshape(self.vf(y), (self.data_dim, self.hidden_dim))
 
             if self.pairs is None:
                 return jnp.dot(logsig_t[1:], vf_out) / (
@@ -95,25 +118,26 @@ class LogNeuralCDE(eqx.Module):
 
             jvps = jnp.reshape(
                 jax.vmap(lambda x: jax.jvp(self.vf, (y,), (x,))[1])(vf_out),
-                (self.width, self.width, self.hidden_dim),
+                (self.data_dim, self.data_dim, self.hidden_dim),
             )
 
             def liebracket(jvps, pair):
                 return jvps[pair[0] - 1, pair[1] - 1] - jvps[pair[1] - 1, pair[0] - 1]
 
             lieout = jax.vmap(liebracket, in_axes=(None, 0))(
-                jvps, self.pairs[self.width :]
+                jvps, self.pairs[self.data_dim :]
             )
 
             return (
-                jnp.dot(logsig_t[1 : self.width + 1], vf_out)
-                + jnp.dot(logsig_t[self.width + 1 :], lieout)
+                jnp.dot(logsig_t[1 : self.data_dim + 1], vf_out)
+                + jnp.dot(logsig_t[self.data_dim + 1 :], lieout)
             ) / (self.intervals[idx] - self.intervals[idx - 1])
 
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            times = jnp.arange(1.0 / 390, 1.0, 1.0 / 390)
+            step = self.output_step / len(ts)
+            times = jnp.arange(step, 1.0, step)
             saveat = diffrax.SaveAt(ts=times, t1=True)
 
         solution = diffrax.diffeqsolve(
