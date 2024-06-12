@@ -28,6 +28,12 @@ model_order = ["lru", "S5", "S6", "mamba", "ncde", "nrde", "log_ncde"]
 memory = {model: memory[model] for model in model_order}
 time = {model: time[model] for model in model_order}
 num_steps = {model: num_steps[model] for model in model_order}
+total_time = {}
+for key in time:
+    if key not in total_time:
+        total_time[key] = {}
+    for dataset in time[key]:
+        total_time[key][dataset] = time[key][dataset] * num_steps[key][dataset] / 1000
 
 memory_matrix = [
     [memory[model][dataset] for dataset in memory[model]] for model in memory
@@ -36,13 +42,15 @@ time_matrix = [[time[model][dataset] for dataset in time[model]] for model in ti
 num_steps_matrix = [
     [num_steps[model][dataset] for dataset in num_steps[model]] for model in num_steps
 ]
+total_time_matrix = [
+    [total_time[model][dataset] for dataset in total_time[model]]
+    for model in total_time
+]
 
 av_time = np.mean(time_matrix, axis=1)
 av_memory = np.mean(memory_matrix, axis=1)
 av_num_steps = np.mean(num_steps_matrix, axis=1)
-av_total_time = np.mean(
-    np.array(time_matrix) * np.array(num_steps_matrix) / 1000, axis=1
-)
+av_total_time = np.mean(total_time_matrix, axis=1)
 
 for i, model in enumerate(model_order):
     print(
@@ -83,11 +91,6 @@ plot_matrix(memory, memory_matrix, 1, newcmp, "Memory Usage (MB)", "memory")
 plot_matrix(time, time_matrix, 2, newcmp, "Time for 1000 Steps (s)", "time")
 plot_matrix(num_steps, num_steps_matrix, 3, newcmp, "Number of Steps", "num_steps")
 plot_matrix(
-    time,
-    np.array(time_matrix) * np.array(num_steps_matrix) / 1000,
-    4,
-    newcmp,
-    "Total Time Usage (s)",
-    "total_time",
+    total_time, total_time_matrix, 4, newcmp, "Total Time Usage (s)", "total_time"
 )
 plt.show()
