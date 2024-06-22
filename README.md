@@ -109,7 +109,9 @@ Furthermore, it contains the code for analysing the results and generating the p
 
 ## Requirements
 
-The code is written in Python 3.10 and uses the following packages:
+### Jax Environment
+
+The code for S5, LRU, NCDE, NRDE, and Log-NCDE is written in Python 3.10 and uses the following packages:
 - `jax` and `jaxlib` for automatic differentiation.
 - `equinox` for constructing neural networks.
 - `optax` for neural network optimisers.
@@ -132,6 +134,23 @@ If process_uea throws this error: No module named 'packaging'
 Then run: pip install packaging
 
 After installing the requirements, run `pre-commit install` to install the pre-commit hooks.
+
+### PyTorch Environment
+
+The code for S6 and Mamba is written in Python 3.10 and uses the following packages:
+- `pytorch` for automatic differentiation.
+- `causal-conv1d` for the efficient implementation of a 1D causal convolution.
+- `mamba-ssm` for the Mamba layer.
+- `einops` for reshaping tensors.
+
+```angular2html
+conda create -n pytorch_mamba python=3.11
+conda activate pytorch_mamba
+conda install pytorch=2.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+conda install packaging -c conda-forge
+conda install numpy==1.26.4
+pip install causal-conv1d>=1.2.0 mamba-ssm einops jax
+```
 
 
 ## Bibtex Citation
