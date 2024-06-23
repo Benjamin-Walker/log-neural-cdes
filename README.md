@@ -25,10 +25,60 @@ want to predict.
     <img class="center" src="./assets/Log-NCDE.png" width="800"/>
 </p>
 
+## Requirements
+
+This repository is implemented in python 3.10 and most of the experiments use Jax as their machine learning framework. 
+However, in order to use the efficient Pytorch implementation of the [Mamba recurrence](https://github.com/state-spaces/mamba/tree/main), 
+the code for S6 and Mamba is implemented in Pytorch. Although it is possible to install the cuda versions of Jax and 
+Pytorch in the same environment, we recommend using two separate environments. The repository is designed such that the
+Jax environment is the main environment and the Pytorch environment is only used for the S6 and Mamba experiments.
+
+### Jax Environment
+
+The code for preprocessing the datasets, training S5, LRU, NCDE, NRDE, and Log-NCDE, and plotting the results uses the following packages:
+- `jax` and `jaxlib` for automatic differentiation.
+- `equinox` for constructing neural networks.
+- `optax` for neural network optimisers.
+- `diffrax` for differential equation solvers.
+- `signax` for calculating the signature.
+- `sktime` for handling time series data in ARFF format.
+- `tqdm` for progress bars.
+- `matplotlib` for plotting.
+- `pre-commit` for code formatting.
+
+```
+conda create -n Log-NCDE python=3.10
+conda activate Log-NCDE
+conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4 -c conda-forge
+# Substitue for correct Jax pip install: https://jax.readthedocs.io/en/latest/installation.html
+pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.4 optax==0.2.2 diffrax==0.5.1 signax==0.1.1
+```
+
+If running `data_dir/process_uea.py` throws this error: No module named 'packaging'
+Then run: `pip install packaging`
+
+After installing the requirements, run `pre-commit install` to install the pre-commit hooks.
+
+### PyTorch Environment
+
+The code for training S6 and Mamba uses the following packages:
+- `pytorch` for automatic differentiation.
+- `causal-conv1d` for the efficient implementation of a 1D causal convolution.
+- `mamba-ssm` for the Mamba layer.
+- `einops` for reshaping tensors.
+
+```angular2html
+conda create -n pytorch_mamba python=3.10
+conda activate pytorch_mamba
+conda install pytorch=2.2.2 pytorch-cuda=12.1 numpy=1.26.4 -c pytorch -c nvidia
+conda install packaging=24.1 -c conda-forge
+pip install causal-conv1d>=1.2.0 mamba-ssm==1.2.2 einops==0.8.0 jax==0.4.30
+```
+
 ## Data
 
 The folder `data_dir` contains the scripts for downloading data, preprocessing the data, and creating dataloaders and 
-datasets. Raw data should be downloaded into the `data/raw` folder. Processed data should be saved into the `data/processed`
+datasets. Raw data should be downloaded into the `data_dir/raw` folder. Processed data should be saved into the `data_dir/processed`
 folder in the following format: 
 ```
 processed/{collection}/{dataset_name}/data.pkl, 
@@ -64,7 +114,7 @@ preprocessed by running the `process_ppg.py` script.
 
 ## Models
 
-The scripts in the `models` folder are used to define a number of deep learning time series models, including NCDEs, 
+The scripts in the `models` folder implement a number of deep learning time series models in Jax, including NCDEs, 
 NRDEs, Log-NCDEs, LRU, and S5. In order to be integrated into the training, 
 the `__call__` function of the model should only take one argument as input. In 
 order to handle this, the dataloaders return the model's inputs as a list, 
@@ -78,12 +128,16 @@ the available cells are `Linear`, `GRU`, `LSTM`, and `MLP`.
 - `LRU`: A stacked recurrent model with linear recurrent unit layers.
 - `S5`: A stacked recurrent model with S5 layers.
 
+The `torch_experiments` folder contains Pytorch implementations of S6 and Mamba. The [mamba-ssm](https://github.com/state-spaces/mamba/tree/main) package is 
+used for the mamba recurrence and the S6 recurrence is implemented in `torch_experiments/s6_recurrence.py`.
+
 ## Experiments
 
-The code for training and evaluating the models is contained in `train.py`.  The main method for running experiments 
-is the `run_experiment.py` script. This script requires you to specify the names of the models you want to train, 
-the names of the datasets you want to train on, and a directory which contains configuration files. The configuration
-files should be organised as `config_dir/{model_name}/{dataset_name}.json` and contain the
+The code for training and evaluating the models is contained in `train.py` for the jax models and
+`torch_experiments/train.py` for the pytorch models. Experiments can be run using the `run_experiment.py` script. This script requires you to specify the names of the models you want to train, 
+the names of the datasets you want to train on, and a directory which contains configuration files. By default,
+it will run the NCDE, NRDE, Log-NCDE, S5, and LRU experiments. If run with the --pytorch_experiment flag, it will run
+the S6 and MAMBA experiments. The configuration files should be organised as `config_dir/{model_name}/{dataset_name}.json` and contain the
 following fields:
 - `seeds`: A list of seeds to use for training.
 - `data_dir`: The directory containing the data.
@@ -103,55 +157,9 @@ See `experiment_configs/repeats` for some examples.
 ## Reproducing the Results
 
 The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder and
-`run_experiment.py` is currently configured to run the repeat experiments on the UEA datasets.
+`run_experiment.py` is currently configured to run the repeat experiments on the UEA datasets for the Jax models.
 The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiments. 
 Furthermore, it contains the code for analysing the results and generating the plots in the paper.
-
-## Requirements
-
-### Jax Environment
-
-The code for S5, LRU, NCDE, NRDE, and Log-NCDE is written in Python 3.10 and uses the following packages:
-- `jax` and `jaxlib` for automatic differentiation.
-- `equinox` for constructing neural networks.
-- `optax` for neural network optimisers.
-- `diffrax` for differential equation solvers.
-- `signax` for hyperparameter optimisation.
-- `sktime` for handling time series data in ARFF format.
-- `tqdm` for progress bars.
-- `matplotlib` for plotting.
-- `pre-commit` for code formatting.
-
-```
-conda create -n Log-NCDE python=3.10
-conda activate Log-NCDE
-conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4 -c conda-forge
-# Substitue for correct Jax pip install: https://jax.readthedocs.io/en/latest/installation.html
-pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.4 optax==0.2.2 diffrax==0.5.1 signax==0.1.1
-```
-
-If process_uea throws this error: No module named 'packaging'
-Then run: pip install packaging
-
-After installing the requirements, run `pre-commit install` to install the pre-commit hooks.
-
-### PyTorch Environment
-
-The code for S6 and Mamba is written in Python 3.10 and uses the following packages:
-- `pytorch` for automatic differentiation.
-- `causal-conv1d` for the efficient implementation of a 1D causal convolution.
-- `mamba-ssm` for the Mamba layer.
-- `einops` for reshaping tensors.
-
-```angular2html
-conda create -n pytorch_mamba python=3.11
-conda activate pytorch_mamba
-conda install pytorch=2.2 torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
-conda install packaging -c conda-forge
-conda install numpy==1.26.4
-pip install causal-conv1d>=1.2.0 mamba-ssm einops jax
-```
-
 
 ## Bibtex Citation
 

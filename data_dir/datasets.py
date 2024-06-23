@@ -333,17 +333,17 @@ def create_toy_dataset(data_dir, name, stepsize, depth, include_time, T, *, key)
 def create_ppg_dataset(
     data_dir, use_presplit, stepsize, depth, include_time, T, *, key
 ):
-    with open(data_dir + "/processed/PPG/X_train.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/ppg/X_train.pkl", "rb") as f:
         train_data = pickle.load(f)
-    with open(data_dir + "/processed/PPG/y_train.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/ppg/y_train.pkl", "rb") as f:
         train_labels = pickle.load(f)
-    with open(data_dir + "/processed/PPG/X_val.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/ppg/X_val.pkl", "rb") as f:
         val_data = pickle.load(f)
-    with open(data_dir + "/processed/PPG/y_val.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/ppg/y_val.pkl", "rb") as f:
         val_labels = pickle.load(f)
-    with open(data_dir + "/processed/PPG/X_test.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/ppg/X_test.pkl", "rb") as f:
         test_data = pickle.load(f)
-    with open(data_dir + "/processed/PPG/y_test.pkl", "rb") as f:
+    with open(data_dir + "/processed/PPG/ppg/y_test.pkl", "rb") as f:
         test_labels = pickle.load(f)
 
     if include_time:

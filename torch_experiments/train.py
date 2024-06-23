@@ -3,11 +3,11 @@ import shutil
 import time
 
 import numpy as np
-from jax_dataset import Dataset
-from mamba_recurrence import S6Layer
+import torch
 from mamba_ssm import Mamba as MambaLayer
 
-import torch
+from torch_experiments.jax_dataset import Dataset
+from torch_experiments.s6_recurrence import S6Layer
 
 
 class GLU(torch.nn.Module):
@@ -91,6 +91,7 @@ def create_dataset_model_and_train(
     metric,
     batch_size,
     dataset_name,
+    n_samples,
     output_step,
     use_presplit,
     include_time,
@@ -100,6 +101,7 @@ def create_dataset_model_and_train(
     model_args,
 ):
     torch.manual_seed(seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     classification = metric == "accuracy"
 
@@ -114,16 +116,16 @@ def create_dataset_model_and_train(
     else:
         raise ValueError(f"Unknown metric: {metric}")
 
-    output_dir = output_parent_dir + f"/{model_name}" + f"/{dataset_name}/"
-    output_dir += (
-        f"lr_{lr}_time_{include_time}_numblocks_{num_blocks}_"
-        f"hiddendim_{hidden_dim}_statedim_{state_dim}_convdim_{conv_dim}_"
-        f"expansion_{expansion}_seed_{seed}"
-    )
+    output_dir = output_parent_dir + f"outputs/{model_name}" + f"/{dataset_name}/"
+    output_dir += f"lr_{lr}_time_{include_time}"
+    for k, v in model_args.items():
+        output_dir += f"_{k}_{v}"
+    output_dir += f"_seed_{seed}"
 
     if os.path.isdir(output_dir):
         user_input = input(
-            f"Warning: Output directory {output_dir} already exists. Do you want to delete it? (yes/no): "
+            f"Warning: Output directory {output_dir} already exists. Do you want to "
+            f" delete it? (yes/no): "
         )
         if user_input.lower() == "yes":
             shutil.rmtree(output_dir)
@@ -135,22 +137,8 @@ def create_dataset_model_and_train(
         os.makedirs(output_dir)
         print(f"Directory {output_dir} has been created.")
 
-    n_samples = {
-        "EigenWorms": 236,
-        "EthanolConcentration": 524,
-        "Heartbeat": 409,
-        "MotorImagery": 378,
-        "SelfRegulationSCP1": 561,
-        "SelfRegulationSCP2": 380,
-        "ppg": 1232,
-        "signature1": 100000,
-        "signature2": 100000,
-        "signature3": 100000,
-        "signature4": 100000,
-    }
-    indexes = torch.randperm(n_samples[dataset_name])
+    indexes = torch.randperm(n_samples)
 
-    device = "cuda"
     train_dataset = Dataset(
         data_dir,
         dataset_name,
@@ -210,15 +198,14 @@ def create_dataset_model_and_train(
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     running_loss = 0.0
-    all_train_accuracies = []
-    all_val_accuracies = []
-    val_acc_for_best_model = []
+    all_train_metrics = []
+    all_val_metrics = []
+    val_metric_for_best_model = []
     no_val_improvement = 0.0
     steps = []
     step = 0
-    num_epochs = 10 * int(num_steps / len(train_dataloader))
     start = time.time()
-    for _ in range(num_epochs):
+    while step <= num_steps:
         for X, y in train_dataloader:
             optimizer.zero_grad()
 
@@ -237,136 +224,92 @@ def create_dataset_model_and_train(
 
                 model.eval()
 
-                train_accuracy = 0.0
+                train_metric = 0.0
                 for X, y in train_dataloader:
                     X = X.to(device)
                     y = y.to(device)
                     y_hat = model(X)
                     if classification:
-                        accuracy = (
+                        metric = (
                             y_hat.argmax(dim=1) == y.argmax(dim=1)
                         ).float().cpu().sum() / len(y)
                     else:
-                        accuracy = torch.nn.functional.mse_loss(
-                            y_hat[:, :, 0], y
-                        ).item()
-                    train_accuracy += accuracy
-                all_train_accuracies.append((train_accuracy / len(train_dataloader)))
+                        metric = torch.nn.functional.mse_loss(y_hat[:, :, 0], y).item()
+                    train_metric += metric
+                all_train_metrics.append((train_metric / len(train_dataloader)))
 
-                val_accuracy = 0.0
+                val_metric = 0.0
                 for X, y in val_dataloader:
                     X = X.to(device)
                     y = y.to(device)
                     y_hat = model(X)
                     if classification:
-                        accuracy = (
+                        metric = (
                             y_hat.argmax(dim=1) == y.argmax(dim=1)
                         ).float().cpu().sum() / len(y)
                     else:
-                        accuracy = torch.nn.functional.mse_loss(
-                            y_hat[:, :, 0], y
-                        ).item()
-                    val_accuracy += accuracy
+                        metric = torch.nn.functional.mse_loss(y_hat[:, :, 0], y).item()
+                    val_metric += metric
                 end = time.time()
                 print(
-                    f"Step: {step}, Train Accuracy: {train_accuracy / len(train_dataloader)},"
-                    f"Val Accuracy: {val_accuracy / len(val_dataloader)}, Time: {end - start}"
+                    f"Step: {step}, "
+                    f"Train Metric: {train_metric / len(train_dataloader)},"
+                    f"Val Metric: {val_metric / len(val_dataloader)}, "
+                    f"Time: {end - start}"
                 )
                 start = time.time()
-                all_val_accuracies.append((val_accuracy / len(val_dataloader)))
+                all_val_metrics.append((val_metric / len(val_dataloader)))
                 steps.append(step)
                 running_loss = 0.0
 
-                if len(val_acc_for_best_model) == 0 or operator_improv(
-                    all_val_accuracies[-1], best_val(val_acc_for_best_model)
+                if len(val_metric_for_best_model) == 0 or operator_improv(
+                    all_val_metrics[-1], best_val(val_metric_for_best_model)
                 ):
                     no_val_improvement = 0.0
-                    val_acc_for_best_model.append(all_val_accuracies[-1])
-                    test_accuracy = 0.0
+                    val_metric_for_best_model.append(all_val_metrics[-1])
+                    test_metric = 0.0
                     for X, y in test_dataloader:
                         X = X.to(device)
                         y = y.to(device)
                         y_hat = model(X)
                         if classification:
-                            accuracy = (
+                            metric = (
                                 y_hat.argmax(dim=1) == y.argmax(dim=1)
                             ).float().cpu().sum() / len(y)
                         else:
-                            accuracy = torch.nn.functional.mse_loss(
+                            metric = torch.nn.functional.mse_loss(
                                 y_hat[:, :, 0], y
                             ).item()
-                        test_accuracy += accuracy
-                    test_accuracy = test_accuracy / len(test_dataloader)
+                        test_metric += metric
+                    test_metric = test_metric / len(test_dataloader)
 
-                    print(f"Test Accuracy: {test_accuracy}")
+                    print(f"Test Metric: {test_metric}")
                 if operator_no_improv(
-                    all_val_accuracies[-1], best_val(val_acc_for_best_model)
+                    all_val_metrics[-1], best_val(val_metric_for_best_model)
                 ):
                     no_val_improvement += 1
                     if no_val_improvement > 10:
                         steps_save = np.array(steps)
-                        all_train_accuracies_save = np.array(all_train_accuracies)
-                        all_val_accuracies_save = np.array(all_val_accuracies)
-                        test_accuracy = np.array(test_accuracy)
+                        all_train_metrics_save = np.array(all_train_metrics)
+                        all_val_metrics_save = np.array(all_val_metrics)
+                        test_metric = np.array(test_metric)
                         np.save(output_dir + "/steps.npy", steps_save)
                         np.save(
-                            output_dir + "/train_acc.npy", all_train_accuracies_save
+                            output_dir + "/all_train_metric.npy", all_train_metrics_save
                         )
                         np.save(
-                            output_dir + "/all_val_acc.npy", all_val_accuracies_save
+                            output_dir + "/all_val_metric.npy", all_val_metrics_save
                         )
-                        np.save(output_dir + "/test_acc.npy", test_accuracy)
+                        np.save(output_dir + "/test_metric.npy", test_metric)
                         return
 
                 steps_save = np.array(steps)
-                all_train_accuracies_save = np.array(all_train_accuracies)
-                all_val_accuracies_save = np.array(all_val_accuracies)
-                test_accuracy = np.array(test_accuracy)
+                all_train_metrics_save = np.array(all_train_metrics)
+                all_val_metrics_save = np.array(all_val_metrics)
+                test_metric = np.array(test_metric)
                 np.save(output_dir + "/steps.npy", steps_save)
-                np.save(output_dir + "/train_acc.npy", all_train_accuracies_save)
-                np.save(output_dir + "/all_val_acc.npy", all_val_accuracies_save)
-                np.save(output_dir + "/test_acc.npy", test_accuracy)
-            if step == num_steps:
-                return
+                np.save(output_dir + "/all_train_metric.npy", all_train_metrics_save)
+                np.save(output_dir + "/all_val_metric.npy", all_val_metrics_save)
+                np.save(output_dir + "/test_metric.npy", test_metric)
             model.train()
             step += 1
-
-
-if __name__ == "__main__":
-
-    lr = 1e-4
-    model_name = "S6"
-    metric = "mse"
-    S6 = False
-
-    for seed in [2345, 3456, 4567, 5678, 6789]:
-        for dataset in ["ppg"]:
-            for include_time in [True]:
-                for num_blocks in [2]:
-                    for hidden_dim in [64]:
-                        for state_dim in [64]:
-                            for conv_dim in [4]:
-                                for expansion in [2]:
-                                    model_args = {
-                                        "num_blocks": num_blocks,
-                                        "hidden_dim": hidden_dim,
-                                        "state_dim": state_dim,
-                                        "conv_dim": conv_dim,
-                                        "expansion": expansion,
-                                    }
-                                    create_dataset_model_and_train(
-                                        seed=seed,
-                                        data_dir="data_dir",
-                                        output_parent_dir="outputs_S6_ppg_repeats",
-                                        model_name=model_name,
-                                        metric=metric,
-                                        batch_size=4,
-                                        dataset_name=dataset,
-                                        output_step=128,
-                                        use_presplit=True,
-                                        include_time=include_time,
-                                        num_steps=100000,
-                                        print_steps=1000,
-                                        lr=lr,
-                                        model_args=model_args,
-                                    )
