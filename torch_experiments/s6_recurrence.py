@@ -2,11 +2,10 @@
 
 import math
 
-from einops import rearrange, repeat
-from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
-
 import torch
 import torch.nn as nn
+from einops import rearrange, repeat
+from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
 
 class S6Layer(nn.Module):
@@ -28,9 +27,6 @@ class S6Layer(nn.Module):
         self.d_model = d_model
         self.d_state = d_state
         self.dt_rank = math.ceil(self.d_model / 16) if dt_rank == "auto" else dt_rank
-
-        self.activation = "silu"
-        self.act = nn.SiLU()
 
         self.x_proj = nn.Linear(
             self.d_model, self.dt_rank + self.d_state * 2, bias=False, **factory_kwargs
@@ -98,7 +94,6 @@ class S6Layer(nn.Module):
         dt = rearrange(dt, "d (b l) -> b d l", l=seqlen)
         B = rearrange(B, "(b l) dstate -> b dstate l", l=seqlen).contiguous()
         C = rearrange(C, "(b l) dstate -> b dstate l", l=seqlen).contiguous()
-        assert self.activation in ["silu", "swish"]
         y = selective_scan_fn(
             x,
             dt,

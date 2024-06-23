@@ -17,7 +17,7 @@
     "classification": false,
     "output_step": 128,
     "dataset_name": "ppg",
-    "use_presplit": false,
+    "use_presplit": true,
     "T": 1,
     "dt0": null,
     "scale": 1,
