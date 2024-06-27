@@ -103,7 +103,7 @@ def make_step(model, filter_spec, X, y, loss_fn, state, opt, opt_state, key):
     (value, state), grads = loss_fn(diff_model, static_model, X, y, state, key)
     updates, opt_state = opt.update(grads, opt_state)
     model = eqx.apply_updates(model, updates)
-    return model, state, value
+    return model, state, opt_state, value
 
 
 def train_model(
@@ -173,7 +173,7 @@ def train_model(
     ):
         stepkey, key = jr.split(key, 2)
         X, y = data
-        model, state, value = make_step(
+        model, state, opt_state, value = make_step(
             model, filter_spec, X, y, loss_fn, state, opt, opt_state, stepkey
         )
         running_loss += value
@@ -323,7 +323,7 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_adam/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
