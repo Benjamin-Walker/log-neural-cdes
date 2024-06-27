@@ -323,8 +323,8 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_adam/" + model_name + "/" + dataset_name
-    output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
+    output_parent_dir += "outputs_adam_hypopt/" + model_name + "/" + dataset_name
+    output_dir = f"opt_Adam_T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
     for k, v in model_args.items():

@@ -63,6 +63,8 @@ def run_experiments(
     dataset_name,
     data_dir,
     use_presplit,
+    output_step,
+    metric,
     include_time,
     T,
     num_steps,
@@ -74,8 +76,8 @@ def run_experiments(
     logsig_depth,
     model_args,
 ):
-    SEEDS = [2345, 3456, 4567, 5678, 6789]
-    # SEEDS = [1234]
+    # SEEDS = [2345, 3456, 4567, 5678, 6789]
+    SEEDS = [1234]
 
     cfg_list = []
 
@@ -86,6 +88,8 @@ def run_experiments(
                 data_dir,
                 use_presplit,
                 dataset_name,
+                output_step,
+                metric,
                 include_time,
                 T,
                 model_name,
@@ -97,9 +101,7 @@ def run_experiments(
                 lr,
                 lr_scheduler,
                 batch_size,
-                None,
                 "",
-                # WORKING_DIRECTORY + "/",
             ]
         )
 
@@ -113,9 +115,9 @@ def run_experiments(
         time=TIME,
         partition=PARTITION,
         gres=f"gpu:{GPUS}",
-        constraint="gpu_mem:32GB",
+        # constraint="gpu_mem:32GB",
         # mem="3000G",
-        qos="priority",
+        # qos="priority",
         account="math-datasig",
     )
 
@@ -126,13 +128,21 @@ def run(cfg):
 
 if __name__ == "__main__":
     data_dir = WORKING_DIRECTORY + "/data"
-    use_presplit = False
+    use_presplit = True
 
-    model_names = ["log_ncde", "ncde", "nrde"]
-    dataset_names = ["ppg"]
+    model_names = ["log_ncde", "ncde", "nrde", "lru", "S5"]
+    dataset_names = [
+        "EthanolConcentration",
+        "Heartbeat",
+        "MotorImagery",
+        "SelfRegulationSCP1",
+        "SelfRegulationSCP2",
+    ]
+    output_step = 128
+    metric = "accuracy"
     num_steps = 100000
     batch_size = 32
-    repeat_experiments = True
+    repeat_experiments = False
 
     if repeat_experiments:
 
@@ -193,6 +203,8 @@ if __name__ == "__main__":
                         dataset_name,
                         data_dir,
                         use_presplit,
+                        output_step,
+                        metric,
                         include_time,
                         T,
                         num_steps,
@@ -207,16 +219,6 @@ if __name__ == "__main__":
     else:
         use_presplit = True
 
-        dataset_names = [
-            "ppg"
-            # "EigenWorms",
-            # "EthanolConcentration",
-            # "Heartbeat",
-            # "MotorImagery",
-            # "SelfRegulationSCP1",
-            # "SelfRegulationSCP2",
-        ]
-
         lengths = {
             "ppg": 49920,
             "EigenWorms": 17984,
@@ -227,13 +229,6 @@ if __name__ == "__main__":
             "SelfRegulationSCP2": 1152,
         }
 
-        model_names = [
-            # "log_ncde",
-            # "ncde",
-            # "nrde",
-            "ssm",
-            "lru",
-        ]
         lr_scheduler = lambda x: x
         stepsize = 1
         logsig_depth = 1
@@ -285,7 +280,6 @@ if __name__ == "__main__":
                                                 n_steps = max(
                                                     500, 1 + int(length / stepsize)
                                                 )
-                                                print(n_steps)
                                                 dt0 = T / n_steps
                                                 if model_name == "log_ncde":
                                                     scale = T * 1000
@@ -308,6 +302,8 @@ if __name__ == "__main__":
                                                             dataset_name,
                                                             data_dir,
                                                             use_presplit,
+                                                            output_step,
+                                                            metric,
                                                             include_time,
                                                             T,
                                                             num_steps,
@@ -339,6 +335,8 @@ if __name__ == "__main__":
                                                         dataset_name,
                                                         data_dir,
                                                         use_presplit,
+                                                        output_step,
+                                                        metric,
                                                         include_time,
                                                         T,
                                                         num_steps,
@@ -353,7 +351,6 @@ if __name__ == "__main__":
                                         elif model_name == "ncde":
                                             scale = T
                                             n_steps = max(500, 1 + length)
-                                            print(n_steps)
                                             dt0 = T / n_steps
                                             model_args = {
                                                 "num_blocks": num_blocks,
@@ -373,6 +370,8 @@ if __name__ == "__main__":
                                                 dataset_name,
                                                 data_dir,
                                                 use_presplit,
+                                                output_step,
+                                                metric,
                                                 include_time,
                                                 T,
                                                 num_steps,
@@ -387,10 +386,11 @@ if __name__ == "__main__":
                             else:
                                 num_steps = 100000
                                 print_steps = 1000
-                                batch_size = 4
+                                if dataset_name == "ppg":
+                                    batch_size = 4
                                 for num_blocks in [2, 4, 6]:
                                     for ssm_dim in [16, 64, 256]:
-                                        if model_name == "ssm":
+                                        if model_name == "S5":
                                             for ssm_blocks in [2, 4, 8]:
                                                 model_args = {
                                                     "num_blocks": num_blocks,
@@ -410,6 +410,8 @@ if __name__ == "__main__":
                                                     dataset_name,
                                                     data_dir,
                                                     use_presplit,
+                                                    output_step,
+                                                    metric,
                                                     include_time,
                                                     T,
                                                     num_steps,
@@ -440,6 +442,8 @@ if __name__ == "__main__":
                                                 dataset_name,
                                                 data_dir,
                                                 use_presplit,
+                                                output_step,
+                                                metric,
                                                 include_time,
                                                 T,
                                                 num_steps,
