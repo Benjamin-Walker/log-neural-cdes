@@ -101,7 +101,7 @@ def run_experiments(
                 lr,
                 lr_scheduler,
                 batch_size,
-                "",
+                "test/",
             ]
         )
 
@@ -117,7 +117,7 @@ def run_experiments(
         gres=f"gpu:{GPUS}",
         # constraint="gpu_mem:32GB",
         # mem="3000G",
-        # qos="priority",
+        qos="priority",
         account="math-datasig",
     )
 
@@ -132,6 +132,8 @@ if __name__ == "__main__":
 
     model_names = ["log_ncde", "ncde", "nrde", "lru", "S5"]
     dataset_names = [
+        "ppg",
+        "EigenWorms",
         "EthanolConcentration",
         "Heartbeat",
         "MotorImagery",
@@ -139,9 +141,7 @@ if __name__ == "__main__":
         "SelfRegulationSCP2",
     ]
     output_step = 128
-    metric = "accuracy"
-    num_steps = 100000
-    batch_size = 32
+    num_steps = 101
     repeat_experiments = False
 
     if repeat_experiments:
@@ -163,6 +163,15 @@ if __name__ == "__main__":
                     print_steps = 1000
                 dataset_name = experiment[1]
                 if dataset_name in dataset_names:
+                    if dataset_name == "ppg":
+                        metric = "mse"
+                        if model_name == "S5" or model_name == "lru":
+                            batch_size = 4
+                        else:
+                            batch_size = 32
+                    else:
+                        metric = "accuracy"
+                        batch_size = 32
                     T = float(experiment[3])
                     include_time = True if experiment[5] == "True" else False
                     lr = float(experiment[9])
@@ -239,6 +248,10 @@ if __name__ == "__main__":
         T = 1
 
         for dataset_name in dataset_names:
+            if dataset_name == "ppg":
+                metric = "mse"
+            else:
+                metric = "accuracy"
             for model_name in model_names:
                 for lr in [1e-3, 1e-4, 1e-5]:
                     for include_time in [True, False]:
@@ -248,7 +261,7 @@ if __name__ == "__main__":
                                 or model_name == "nrde"
                                 or model_name == "ncde"
                             ):
-                                num_steps = 100000
+                                num_steps = 101
                                 print_steps = 100
                                 batch_size = 32
                                 for solvercontroller in [
@@ -384,9 +397,11 @@ if __name__ == "__main__":
                                                 model_args,
                                             )
                             else:
-                                num_steps = 100000
-                                print_steps = 1000
+                                num_steps = 101
+                                print_steps = 100
                                 if dataset_name == "ppg":
+                                    batch_size = 4
+                                else:
                                     batch_size = 4
                                 for num_blocks in [2, 4, 6]:
                                     for ssm_dim in [16, 64, 256]:
