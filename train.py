@@ -103,7 +103,7 @@ def make_step(model, filter_spec, X, y, loss_fn, state, opt, opt_state, key):
     (value, state), grads = loss_fn(diff_model, static_model, X, y, state, key)
     updates, opt_state = opt.update(grads, opt_state)
     model = eqx.apply_updates(model, updates)
-    return model, state, value
+    return model, state, opt_state, value
 
 
 def train_model(
@@ -173,7 +173,7 @@ def train_model(
     ):
         stepkey, key = jr.split(key, 2)
         X, y = data
-        model, state, value = make_step(
+        model, state, opt_state, value = make_step(
             model, filter_spec, X, y, loss_fn, state, opt, opt_state, stepkey
         )
         running_loss += value
