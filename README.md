@@ -11,11 +11,15 @@ method for training NCDEs.
 
 Neural controlled differential equations (NCDEs) treat time series data as observations from a control path $X_t$, 
 parameterise a CDE's vector field using a neural network $f_{\theta}$, and take the solution path $h_t$ as a 
-continuously evolving hidden state, $$h_t = h_0 + \int_0^t f_{\theta}(h_s) \mathrm{d}X_s.$$
+continuously evolving hidden state, 
+
+$$h_t = h_0 + \int_0^t f_{\theta}(h_s) \mathrm{d}X_s.$$
 
 Log-NCDEs use the Log-ODE method to approximate the solution path $h_t$ during training. Given a set of intervals 
 $[r_i,r_{i+1}]$, the Log-ODE method replaces the CDE on each interval with the ODE, 
+
 $$h_{r_{i+1}} = h_{r_i} + \int_{r_i}^{r_{i+1}}\bar{f}\_{\theta}(h_s)\frac{\log(S^{N}(X)\_{[r_i,r_{i+1}]})}{r_{i+1}-r_i}\mathrm{d}s,$$
+
 where $\bar{f_{\theta}}$ is constructed using the iterated Lie brackets of $f_{\theta}$ and 
 $\mathrm{log}(S^{N}(X)\_{[r_i,r_{i+1}]})$ is the depth $N$ truncated log-signature of X over $[r_i,r_{i+1}]$. Informally, 
 $\bar{f}\_{\theta}$ is a high order description of the vector field $f_{\theta}$ and $\log(S^{N}(X)\_{[r_i,r_{i+1}]})$ 

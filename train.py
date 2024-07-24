@@ -10,7 +10,7 @@ The function create_dataset_model_and_train takes as argument:
 - include_time: whether to include time as a channel in the time series.
 - T: Scale time to [0, T].
 - model_name: the name of the model to use.
-- stepsize: the initial step size for the solver.
+- stepsize: the size of the intervals for the Log-ODE method.
 - logsig_depth: the depth of the Log-ODE method. Currently implemented only for depth=1 and 2.
 - model_args: a dictionary of additional arguments for the model.
 - num_steps: the number of steps to train the model.
