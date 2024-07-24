@@ -5,6 +5,8 @@ Building on <a href="https://arxiv.org/abs/2009.08295">Neural Rough Differential
 repository introduces Log Neural Controlled Differential Equations (Log-NCDEs), a novel, effective, and efficient 
 method for training NCDEs. 
 
+---
+
 ## Introduction
 
 Neural controlled differential equations (NCDEs) treat time series data as observations from a control path $X_t$, 
@@ -24,6 +26,16 @@ want to predict.
 <p align="center">
     <img class="center" src="./assets/Log-NCDE.png" width="800"/>
 </p>
+
+---
+
+## Getting Started
+
+After setting up the JAX environment detailed in the next section, the best place to start is by exploring the `simple_example.ipynb` notebook. 
+This Jupyter notebook provides a comprehensive example of training a NCDE and a Log-NCDE on a simple synthetic dataset. 
+It serves as an example of how to apply the Log-ODE method during NCDE training. 
+
+---
 
 ## Requirements
 
@@ -75,6 +87,8 @@ conda install packaging=24.1 -c conda-forge
 pip install causal-conv1d>=1.2.0 mamba-ssm==1.2.2 einops==0.8.0 jax==0.4.30
 ```
 
+---
+
 ## Data
 
 The folder `data_dir` contains the scripts for downloading data, preprocessing the data, and creating dataloaders and 
@@ -112,6 +126,8 @@ collected from a wrist-worn device. The dataset can be downloaded from the
 unzipped and saved in the `data_dir/raw` folder in the following format `PPG_FieldStudy/S{i}/S{i}.pkl`. The data can be
 preprocessed by running the `process_ppg.py` script.
 
+---
+
 ## Models
 
 The scripts in the `models` folder implement a number of deep learning time series models in Jax, including NCDEs, 
@@ -130,6 +146,8 @@ the available cells are `Linear`, `GRU`, `LSTM`, and `MLP`.
 
 The `torch_experiments` folder contains Pytorch implementations of S6 and Mamba. The [mamba-ssm](https://github.com/state-spaces/mamba/tree/main) package is 
 used for the mamba recurrence and the S6 recurrence is implemented in `torch_experiments/s6_recurrence.py`.
+
+---
 
 ## Experiments
 
@@ -154,12 +172,16 @@ following fields:
 
 See `experiment_configs/repeats` for some examples.
 
+---
+
 ## Reproducing the Results
 
 The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder and
 `run_experiment.py` is currently configured to run the repeat experiments on the UEA datasets for the Jax models.
 The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiments. 
 Furthermore, it contains the code for analysing the results and generating the plots in the paper.
+
+---
 
 ## Bibtex Citation
 
