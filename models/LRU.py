@@ -1,12 +1,22 @@
 """
 Code modified from https://gist.github.com/Ryu1845/7e78da4baa8925b4de482969befa949d
 
-This module implements the LRU class. The LRU class has the following attributes:
-- linear_encoder: The linear encoder applied to the input time series.
-- blocks: A list of LRU blocks.
-- linear_layer: The final linear layer of the S5 model which outputs the predictions.
-- classification: Whether the model is used for classification.
-- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
+This module implements the `LRU` class, a model architecture using JAX and Equinox.
+
+Attributes of the `LRU` class:
+- `linear_encoder`: The linear encoder applied to the input time series data.
+- `blocks`: A list of `LRUBlock` instances, each containing the LRU layer, normalization, GLU, and dropout.
+- `linear_layer`: The final linear layer that outputs the model predictions.
+- `classification`: A boolean indicating whether the model is used for classification tasks.
+- `output_step`: For regression tasks, specifies how many steps to skip before outputting a prediction.
+
+The module also includes the following classes and functions:
+- `GLU`: Implements a Gated Linear Unit for non-linear transformations within the model.
+- `LRULayer`: A single LRU layer that applies complex-valued transformations and projections to the input.
+- `LRUBlock`: A block consisting of normalization, LRU layer, GLU, and dropout, used as a building block for the `LRU`
+              model.
+- `binary_operator_diag`: A helper function used in the associative scan operation within `LRULayer` to process diagonal
+                          elements.
 """
 
 from typing import List

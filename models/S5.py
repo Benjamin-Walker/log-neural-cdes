@@ -1,12 +1,21 @@
 """
 S5 implementation modified from: https://github.com/lindermanlab/S5/blob/main/s5/ssm_init.py
 
-This module implements the structured state space model S5. The S5 model has the following attributes:
-- linear_encoder: The linear encoder applied to the input time series.
-- blocks: A list of S5 blocks.
-- linear_layer: The final linear layer of the S5 model which outputs the predictions.
-- classification: Whether the model is used for classification.
-- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
+This module implements S5 using JAX and Equinox.
+
+Attributes of the S5 model:
+- `linear_encoder`: The linear encoder applied to the input time series.
+- `blocks`: A list of S5 blocks, each consisting of an S5 layer, normalisation, GLU, and dropout.
+- `linear_layer`: The final linear layer that outputs the predictions of the model.
+- `classification`: A boolean indicating whether the model is used for classification tasks.
+- `output_step`: For regression tasks, specifies how many steps to skip before outputting a prediction.
+
+The module also includes:
+- `S5Layer`: Implements the core S5 layer using structured state space models with options for
+  different discretisation methods and eigenvalue clipping.
+- `S5Block`: Combines the S5 layer with batch normalisation, a GLU activation, and dropout.
+- Utility functions for initialising and discretising the state space model components,
+  such as `make_HiPPO`, `make_NPLR_HiPPO`, and `make_DPLR_HiPPO`.
 """
 
 from typing import List

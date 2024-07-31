@@ -1,21 +1,27 @@
 """
-This scripts implements the LogNeuralCDE class using Jax and equinox. The model is a NCDE and the output is
-approximated during training using the Log-ODE method. The model's attributes are:
-- vf: The vector field $f_{\theta}$ of the NCDE.
-- data_dim: The number of channels in the time series.
-- depth: The depth of the Log-ODE method. Currently implemented only for depth=1 and 2.
-- hidden_dim: The dimension of the hidden state $h_t$.
-- linear1: The input linear layer for initialising $h_0$.
-- linear2: The output linear layer for obtaining predictions from $h_t$.
-- pairs: The pairs of basis elements for the terms in the depth-2 log-signature of the path.
-- classification: Whether the model is used for classification.
-- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
-- intervals: The intervals for the Log-ODE method.
-- solver: The solver applied to the ODE produce by the Log-ODE method.
-- stepsize_controller: The stepsize controller for the solver.
-- dt0: The initial step size for the solver.
-- max_steps: The maximum number of steps for the solver.
-- lambd: The Lip(2) regularisation parameter.
+This module implements the `LogNeuralCDE` class using JAX and Equinox. The model is a
+Neural Controlled Differential Equation (NCDE), where the output is approximated during
+training using the Log-ODE method.
+
+Attributes of the `LogNeuralCDE` model:
+- `vf`: The vector field $f_{\theta}$ of the NCDE.
+- `data_dim`: The number of channels in the input time series.
+- `depth`: The depth of the Log-ODE method, currently implemented for depth 1 and 2.
+- `hidden_dim`: The dimension of the hidden state $h_t$.
+- `linear1`: The input linear layer used to initialise the hidden state $h_0$.
+- `linear2`: The output linear layer used to obtain predictions from $h_t$.
+- `pairs`: The pairs of basis elements for the terms in the depth-2 log-signature of the path.
+- `classification`: Boolean indicating if the model is used for classification tasks.
+- `output_step`: If the model is used for regression, the number of steps to skip before outputting a prediction.
+- `intervals`: The intervals used in the Log-ODE method.
+- `solver`: The solver applied to the ODE produced by the Log-ODE method.
+- `stepsize_controller`: The stepsize controller for the solver.
+- `dt0`: The initial step size for the solver.
+- `max_steps`: The maximum number of steps allowed for the solver.
+- `lambd`: The Lip(2) regularisation parameter, used to control the smoothness of the vector field.
+
+The class also includes methods for initialising the model and for performing the forward pass, where the dynamics are
+solved using the specified ODE solver.
 """
 
 import diffrax

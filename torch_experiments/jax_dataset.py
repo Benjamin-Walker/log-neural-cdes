@@ -1,3 +1,17 @@
+"""
+This module defines a custom PyTorch `Dataset` class for loading and processing time series data 
+from different benchmarks (UEA, toy, PPG) which have been preprocessed and saved as Jax numpy arrays.
+The dataset can be pre-split into training, validation, and test sets, or dynamically split based on provided indexes.
+
+Classes:
+- `Dataset`: A PyTorch dataset class that handles loading data and labels from pickle files of jax numpy arrays,
+  optional inclusion of time as a feature, and splitting of data into train/val/test sets.
+
+Methods:
+- `__len__`: Returns the length of the dataset.
+- `__getitem__`: Retrieves a data-label pair at the specified index.
+"""
+
 import os
 import pickle
 

@@ -1,7 +1,22 @@
 """
-This script loads a JSON file containing the hyperparameters for each model and dataset, and uses
-create_dataset_model_and_train from train.py to train the models on the datasets using the hyperparameters. The results
-are saved in the output directory specified in the JSON file.
+This script loads hyperparameters from JSON files and trains models on specified datasets using
+the `create_dataset_model_and_train` function from `train.py` or its PyTorch equivalent. The results
+are saved in the output directories defined in the JSON files.
+
+The `run_experiments` function iterates over model names and dataset names, loading configuration
+files from a specified folder, and then calls the appropriate training function based on the
+framework (PyTorch or JAX).
+
+Arguments for `run_experiments`:
+- `model_names`: List of model architectures to use.
+- `dataset_names`: List of datasets to train on.
+- `experiment_folder`: Directory containing JSON configuration files.
+- `pytorch_experiments`: Boolean indicating whether to use PyTorch (True) or JAX (False).
+
+The script also provides a command-line interface (CLI) for specifying whether to run PyTorch experiments.
+
+Usage:
+- Use the `--pytorch_experiments` flag to run experiments with PyTorch; otherwise, JAX is used by default.
 """
 
 import argparse

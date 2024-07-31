@@ -1,32 +1,36 @@
 """
-This script implemented the NeuralCDE and NeuralRDE classes using Jax and equinox. The NeuralCDE class has the
-following attributes:
-- vf: The vector field $f_{\theta}$ of the NCDE.
-- data_dim: The number of channels in the time series.
-- hidden_dim: The dimension of the hidden state $h_t$.
-- linear1: The input linear layer for initialising $h_0$.
-- linear2: The output linear layer for obtaining predictions from $h_t$.
-- classification: Whether the model is used for classification.
-- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
-- solver: The solver applied to the NCDE.
-- stepsize_controller: The stepsize controller for the solver.
-- dt0: The initial step size for the solver.
-- max_steps: The maximum number of steps for the solver.
+This module implements the `NeuralCDE` and `NeuralRDE` classes using JAX and Equinox.
 
-The NeuralRDE class has the following attributes:
-- vf: The vector field $\bar{f}_{\theta}$ of the NRDE (except the final linear layer).
-- data_dim: The number of channels in the time series.
-- logsig_dim: The dimension of the log-signature of the path which will be used as input to the NRDE.
-- hidden_dim: The dimension of the hidden state $h_t$.
-- mlp_linear: The final linear layer of the vector field.
-- linear1: The input linear layer for initialising $h_0$.
-- linear2: The output linear layer for obtaining predictions from $h_t$.
-- classification: Whether the model is used for classification.
-- output_step: If the model is used for regression, how many steps to skip before outputting a prediction.
-- solver: The solver applied to the NRDE.
-- stepsize_controller: The stepsize controller for the solver.
-- dt0: The initial step size for the solver.
-- max_steps: The maximum number of steps for the solver.
+Attributes of `NeuralCDE`:
+- `vf`: The vector field $f_{\theta}$ of the NCDE.
+- `data_dim`: Number of channels in the input time series.
+- `hidden_dim`: Dimension of the hidden state $h_t$.
+- `linear1`: Input linear layer for initializing $h_0$.
+- `linear2`: Output linear layer for generating predictions from $h_t$.
+- `classification`: Boolean indicating if the model is used for classification.
+- `output_step`: For regression tasks, specifies the step interval for outputting predictions.
+- `solver`: The solver used to integrate the NCDE.
+- `stepsize_controller`: Controls the step size for the solver.
+- `dt0`: Initial step size for the solver.
+- `max_steps`: Maximum number of steps allowed for the solver.
+
+Attributes of `NeuralRDE`:
+- `vf`: The vector field $\bar{f}_{\theta}$ of the NRDE (excluding the final linear layer).
+- `data_dim`: Number of channels in the input time series.
+- `logsig_dim`: Dimension of the log-signature used as input to the NRDE.
+- `hidden_dim`: Dimension of the hidden state $h_t$.
+- `mlp_linear`: Final linear layer of the vector field.
+- `linear1`: Input linear layer for initializing $h_0$.
+- `linear2`: Output linear layer for generating predictions from $h_t$.
+- `classification`: Boolean indicating if the model is used for classification.
+- `output_step`: For regression tasks, specifies the step interval for outputting predictions.
+- `solver`: The solver used to integrate the NRDE.
+- `stepsize_controller`: Controls the step size for the solver.
+- `dt0`: Initial step size for the solver.
+- `max_steps`: Maximum number of steps allowed for the solver.
+
+The module also includes the `VectorField` class, which defines the vector fields used by both
+`NeuralCDE` and `NeuralRDE`.
 """
 
 import diffrax

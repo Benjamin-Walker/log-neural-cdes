@@ -1,24 +1,38 @@
 """
-This module defines functions which take hyperparameters and produce datasets and models, as well as train them.
-The function create_dataset_model_and_train takes as argument:
-- seed: a random seed
-- data_dir: the directory where the data is stored
-- use_presplit: a boolean indicating whether to use a pre-split dataset
-- dataset_name: the name of the dataset
-- output_step: if a regression dataset, how many steps to skip before outputting a prediction.
-- metric: the metric to use for evaluation. Currently implemented `mse' or 'accuracy'.
-- include_time: whether to include time as a channel in the time series.
-- T: Scale time to [0, T].
-- model_name: the name of the model to use.
-- stepsize: the size of the intervals for the Log-ODE method.
-- logsig_depth: the depth of the Log-ODE method. Currently implemented only for depth=1 and 2.
-- model_args: a dictionary of additional arguments for the model.
-- num_steps: the number of steps to train the model.
-- print_steps: how often to print the loss.
-- lr: the learning rate.
-- lr_scheduler: the learning rate scheduler.
-- batch_size: the batch size.
-- output_parent_dir: the parent directory where the output is stored.
+This module defines functions for creating datasets, building models, and training them using JAX
+and Equinox. The main function, `create_dataset_model_and_train`, is designed to initialise the
+dataset, construct the model, and execute the training process.
+
+The function `create_dataset_model_and_train` takes the following arguments:
+
+- `seed`: A random seed for reproducibility.
+- `data_dir`: The directory where the dataset is stored.
+- `use_presplit`: A boolean indicating whether to use a pre-split dataset.
+- `dataset_name`: The name of the dataset to load and use for training.
+- `output_step`: For regression tasks, the number of steps to skip before outputting a prediction.
+- `metric`: The metric to use for evaluation. Supported values are `'mse'` for regression and `'accuracy'` for
+            classification.
+- `include_time`: A boolean indicating whether to include time as a channel in the time series data.
+- `T`: The maximum time value to scale time data to [0, T].
+- `model_name`: The name of the model architecture to use.
+- `stepsize`: The size of the intervals for the Log-ODE method.
+- `logsig_depth`: The depth of the Log-ODE method. Currently implemented for depths 1 and 2.
+- `model_args`: A dictionary of additional arguments to customise the model.
+- `num_steps`: The number of steps to train the model.
+- `print_steps`: How often to print the loss during training.
+- `lr`: The learning rate for the optimiser.
+- `lr_scheduler`: The learning rate scheduler function.
+- `batch_size`: The number of samples per batch during training.
+- `output_parent_dir`: The parent directory where the training outputs will be saved.
+
+The module also includes the following key functions:
+
+- `calc_output`: Computes the model output, handling stateful and nondeterministic models with JAX's `vmap` for
+                 batching.
+- `classification_loss`: Computes the loss for classification tasks, including optional regularisation.
+- `regression_loss`: Computes the loss for regression tasks, including optional regularisation.
+- `make_step`: Performs a single optimisation step, updating model parameters based on the computed gradients.
+- `train_model`: Handles the training loop, managing metrics, early stopping, and saving progress at regular intervals.
 """
 
 import os
