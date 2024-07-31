@@ -1,7 +1,18 @@
 """
-This script is used to analyse the results of the UEA and PPG experiments. It is designed both to determine the
-optimal hyperparameters for each model and dataset following a grid search optimisation, and to compare the performance
-of the models across different random seeds on fixed hyperparameters.
+This script analyses the results of the UEA and PPG experiments. It is designed to determine the
+optimal hyperparameters for each model and dataset following a grid search optimisation, and to
+compare the performance of models across different random seeds using fixed hyperparameters.
+
+The script performs the following tasks:
+- Identifies the best hyperparameters based on validation accuracy for each model and dataset.
+- Compares model performance across different random seeds, calculating the mean and standard
+  deviation of test accuracy.
+
+The script can handle two types of experiments:
+1. `hypopt`: Hyperparameter optimisation, where the best configuration is selected based on
+   validation accuracy.
+2. `repeats`: Repeated experiments with fixed hyperparameters, where the results across multiple
+   runs are aggregated.
 """
 
 import os

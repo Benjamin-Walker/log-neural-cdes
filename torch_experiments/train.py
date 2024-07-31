@@ -1,3 +1,36 @@
+"""
+This module defines classes and functions for creating and training Mamba and S6 using PyTorch.
+The main function, `create_dataset_model_and_train`, is designed to initialise the dataset, construct the model, and
+execute the training process.
+
+The function `create_dataset_model_and_train` takes the following arguments:
+
+- `seed`: An integer representing the random seed for reproducibility.
+- `data_dir`: The directory where the dataset is stored.
+- `output_parent_dir`: The parent directory where the training outputs will be saved.
+- `model_name`: A string specifying the model architecture to use ('mamba' or 'S6').
+- `metric`: The evaluation metric to use during training, either 'accuracy' for classification or 'mse' for regression.
+- `batch_size`: The number of samples per batch during training.
+- `dataset_name`: The name of the dataset to load and use for training.
+- `n_samples`: The total number of samples in the dataset.
+- `output_step`: For regression tasks, defines the interval for outputting predictions.
+- `use_presplit`: A boolean indicating whether to use a pre-split dataset.
+- `include_time`: A boolean that determines whether to include time as a feature in the dataset.
+- `num_steps`: The total number of steps for training the model.
+- `print_steps`: The interval of steps after which to print training progress and metrics.
+- `lr`: The learning rate for the optimiser.
+- `model_args`: A dictionary containing additional arguments and hyperparameters for model customisation.
+
+Classes defined in this module:
+
+- `GLU`: Implements a Gated Linear Unit (GLU) layer, which applies a linear transformation followed by a gated
+         activation.
+- `MambaBlock`: A block that consists of normalisation, a Mamba or S6 layer, a GLU layer, and dropout. It serves as a
+                basic building block for the Mamba model.
+- `Mamba`: A sequence model that stacks multiple MambaBlock layers and includes an encoder and decoder for input/output
+           transformation.
+"""
+
 import os
 import shutil
 import time

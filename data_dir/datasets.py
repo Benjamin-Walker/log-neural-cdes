@@ -1,11 +1,17 @@
 """
-This module contains the Dataset class and functions to generate datasets. Since each model requires different versions
-of the data as input, a Dataset object contains three dataloaders:
-- raw_dataloaders: dataloaders which return the value of the data at each time point, as is used by recurrent neural
-networks and structured state space models.
-- coeff_dataloaders: dataloaders which return the coefficients of an interpolation of the data, as is used by NCDEs.
-- path_dataloaders: dataloaders which return the log-signature of the data over intervals, as is used by NRDEs and
-Log-NCDEs.
+This module defines the `Dataset` class and functions for generating datasets tailored to different model types.
+A `Dataset` object in this module contains three different dataloaders, each providing a specific version of the data
+required by different models:
+
+- `raw_dataloaders`: Returns the raw time series data, suitable for recurrent neural networks (RNNs) and structured
+  state space models (SSMs).
+- `coeff_dataloaders`: Provides the coefficients of an interpolation of the data, used by Neural Controlled Differential
+  Equations (NCDEs).
+- `path_dataloaders`: Provides the log-signature of the data over intervals, used by Neural Rough Differential Equations
+  (NRDEs) and Log-NCDEs.
+
+The module also includes utility functions for processing and generating these datasets, ensuring compatibility with
+different model requirements.
 """
 
 import os
