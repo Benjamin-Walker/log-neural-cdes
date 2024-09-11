@@ -192,7 +192,7 @@ Furthermore, it contains the code for analysing the results and generating the p
 When using this code, please cite the following paper:
 
 ```
-@inproceddings{Walker2024LogNCDE,
+@article{Walker2024LogNCDE,
   title={Log Neural Controlled Differential Equations: The Lie Brackets Make a Difference},
   author={Walker, Benjamin and McLeod, Andrew D. and Qin, Tiexin and Cheng, Yichuan and Li, Haoliang and Lyons, Terry},
   journal={International Conference on Machine Learning},
