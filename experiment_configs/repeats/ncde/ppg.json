@@ -24,6 +24,6 @@
     "lr": "0.001",
     "time": "True",
     "hidden_dim": "16",
-    "vf_depth": "3",
+    "vf_depth": "4",
     "vf_width": "128"
 }

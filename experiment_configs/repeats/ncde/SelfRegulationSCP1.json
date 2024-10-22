@@ -22,7 +22,7 @@
     "scale": 1,
     "lr": "0.0001",
     "time": "False",
-    "hidden_dim": "16",
-    "vf_depth": "3",
+    "hidden_dim": "128",
+    "vf_depth": "4",
     "vf_width": "128"
 }

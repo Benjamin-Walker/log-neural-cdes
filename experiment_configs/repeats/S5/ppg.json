@@ -25,6 +25,6 @@
     "lr": "0.001",
     "num_blocks": "6",
     "hidden_dim": "16",
-    "ssm_dim": "256",
-    "ssm_blocks": "8"
+    "ssm_dim": "64",
+    "ssm_blocks": "2"
 }

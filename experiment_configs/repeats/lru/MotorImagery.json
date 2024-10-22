@@ -23,6 +23,6 @@
     "time": "False",
     "lr": "0.001",
     "num_blocks": "6",
-    "hidden_dim": "64",
+    "hidden_dim": "16",
     "ssm_dim": "256"
 }

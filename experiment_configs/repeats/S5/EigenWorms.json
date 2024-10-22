@@ -21,9 +21,9 @@
     "dt0": null,
     "scale": 1,
     "time": "True",
-    "lr": "0.001",
+    "lr": "0.0001",
     "num_blocks": "2",
-    "hidden_dim": "128",
-    "ssm_dim": "256",
+    "hidden_dim": "64",
+    "ssm_dim": "16",
     "ssm_blocks": "8"
 }

@@ -20,9 +20,9 @@
     "T": 1,
     "dt0": "0.0008673026886383347",
     "scale": 1,
-    "lr": "1e-05",
-    "time": "True",
-    "hidden_dim": "64",
+    "lr": "0.001",
+    "time": "False",
+    "hidden_dim": "128",
     "vf_depth": "4",
     "vf_width": "128"
 }

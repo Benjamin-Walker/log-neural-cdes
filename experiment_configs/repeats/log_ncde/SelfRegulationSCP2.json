@@ -20,12 +20,12 @@
     "T": 1,
     "dt0": "0.002",
     "scale": 1000,
-    "lr": "0.001",
-    "time": "True",
-    "hidden_dim": "64",
-    "vf_depth": "3",
-    "vf_width": "128",
+    "lr": "0.0001",
+    "time": "False",
+    "hidden_dim": "128",
+    "vf_depth": "2",
+    "vf_width": "32",
     "depth": "2",
-    "stepsize": "8.00",
+    "stepsize": "4.00",
     "lambd": "0.001"
 }

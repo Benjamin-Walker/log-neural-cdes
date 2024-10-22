@@ -20,9 +20,9 @@
     "T": 1,
     "dt0": null,
     "scale": 1,
-    "time": "False",
+    "time": "True",
     "lr": "0.0001",
-    "num_blocks": "6",
+    "num_blocks": "2",
     "hidden_dim": "128",
     "ssm_dim": "256"
 }
