@@ -1,30 +1,24 @@
 {
     "seeds": [
-        2345,
-        3456,
-        4567,
-        5678,
-        6789
+      1234
     ],
     "data_dir": "data_dir",
     "output_parent_dir": "",
     "lr_scheduler": "lambda lr: lr",
-    "num_steps": 100000,
+    "num_steps": 10000,
     "print_steps": 100,
     "batch_size": 32,
-    "model_name": "nrde",
+    "model_name": "S6",
     "metric": "accuracy",
     "classification": true,
-    "dataset_name": "Heartbeat",
+    "dataset_name": "signature1",
     "use_presplit": false,
     "T": 1,
-    "dt0": "0.002",
+    "dt0": null,
     "scale": 1,
-    "lr": "0.001",
-    "time": "False",
+    "time": "True",
+    "lr": "0.0003",
+    "num_blocks": "6",
     "hidden_dim": "64",
-    "vf_depth": "3",
-    "vf_width": "128",
-    "depth": "2",
-    "stepsize": "2.00"
+    "ssm_dim": "64"
 }

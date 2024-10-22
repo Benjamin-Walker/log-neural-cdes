@@ -43,10 +43,10 @@ titles = {
 
 markerpoints = {
     "signature1": {
-        "lru": [21, 80],
-        "S5": [18, 70],
-        "S6": [40, -1],
-        "mamba": [40, -1],
+        "lru": [15, 88],
+        "S5": [10, -1],
+        "S6": [40, 95],
+        "mamba": [23, -1],
         "ncde": [20, -1],
         "nrde": [30, -1],
         "log_ncde": [40, -1],
@@ -55,14 +55,14 @@ markerpoints = {
         "lru": [19, 90],
         "S5": [13, -1],
         "S6": [40, -1],
-        "mamba": [15, -1],
+        "mamba": [18, -1],
         "ncde": [-1],
         "nrde": [-1],
         "log_ncde": [-1],
     },
     "signature3": {
         "lru": [30, -1],
-        "S5": [20, 90],
+        "S5": [20, -1],
         "S6": [40, -1],
         "mamba": [40, -1],
         "ncde": [-1],
@@ -70,8 +70,8 @@ markerpoints = {
         "log_ncde": [-1],
     },
     "signature4": {
-        "lru": [20, 90],
-        "S5": [10, 80],
+        "lru": [20, -5],
+        "S5": [10, -1],
         "S6": [30, -1],
         "mamba": [40, -1],
         "ncde": [-1],
@@ -88,28 +88,22 @@ axes = axes.flatten()
 for i, dataset in enumerate(datasets):
     ax = axes[i]
     for model in plot_names.keys():
-        exp = os.listdir(f"results/paper_outputs/toy_outputs/{model}/toy/{dataset}")[0]
+        exp = os.listdir(f"results/paper_outputs/toy_outputs/{model}/{dataset}")[0]
         with open(
-            f"results/paper_outputs/toy_outputs/{model}/toy/{dataset}/{exp}/all_val_acc.npy",
+            f"results/paper_outputs/toy_outputs/{model}/{dataset}/{exp}/all_val_metric.npy",
             "rb",
         ) as f:
             val_acc = np.load(f)
             val_acc[0] = 0.5
+
         with open(
-            f"results/paper_outputs/toy_outputs/{model}/toy/{dataset}/{exp}/steps.npy",
+            f"results/paper_outputs/toy_outputs/{model}/{dataset}/{exp}/steps.npy",
             "rb",
         ) as f:
             steps = np.load(f)
-        if dataset == "signature1":
-            if model in ["ncde", "nrde", "lru", "S5"]:
-                markevery = [20, -1]
-            elif model in ["S6", "mamba", "log_ncde"]:
-                markevery = [40, -1]
-        else:
-            if model in ["ncde", "nrde", "log_ncde"]:
-                markevery = [-1]
-            else:
-                markevery = [20, -1]
+        if len(val_acc) > 101:
+            val_acc = val_acc[:101]
+            steps = steps[:101]
         ax.semilogy(
             steps,
             1 - val_acc,
@@ -150,7 +144,7 @@ for i, dataset in enumerate(datasets):
     ax.set_title(titles[dataset], pad=10)
     if dataset == "signature1":
         ax.legend(ncols=2, loc="upper right")
-    ax.set_ylim([0.019, 0.6])
+    ax.set_ylim([0.017, 0.6])
 
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 os.makedirs("results/images", exist_ok=True)

@@ -23,9 +23,9 @@
     "lr": "0.001",
     "time": "True",
     "hidden_dim": "16",
-    "vf_depth": "2",
-    "vf_width": "32",
+    "vf_depth": "3",
+    "vf_width": "128",
     "depth": "2",
     "stepsize": "2.00",
-    "lambd": "0.0"
+    "lambd": "1e-06"
 }

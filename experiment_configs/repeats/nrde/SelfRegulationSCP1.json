@@ -18,13 +18,13 @@
     "dataset_name": "SelfRegulationSCP1",
     "use_presplit": false,
     "T": 1,
-    "dt0": "0.002",
+    "dt0": "0.0011148272017837235",
     "scale": 1,
     "lr": "0.001",
-    "time": "False",
-    "hidden_dim": "16",
-    "vf_depth": "2",
-    "vf_width": "32",
-    "depth": "2",
-    "stepsize": "4.00"
+    "time": "True",
+    "hidden_dim": "64",
+    "vf_depth": "4",
+    "vf_width": "128",
+    "depth": "1",
+    "stepsize": "1.00"
 }

@@ -18,14 +18,14 @@
     "dataset_name": "EthanolConcentration",
     "use_presplit": false,
     "T": 1,
-    "dt0": "0.001141552511415525",
+    "dt0": "0.0005707762557077625",
     "scale": 1000,
     "lr": "0.0001",
     "time": "True",
     "hidden_dim": "64",
     "vf_depth": "3",
-    "vf_width": "128",
-    "depth": "2",
-    "stepsize": "2.00",
-    "lambd": "0.0"
+    "vf_width": "64",
+    "depth": "1",
+    "stepsize": "1.00",
+    "lambd": "1e-06"
 }

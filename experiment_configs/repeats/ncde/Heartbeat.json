@@ -21,8 +21,8 @@
     "dt0": "0.002",
     "scale": 1,
     "lr": "0.001",
-    "time": "False",
-    "hidden_dim": "16",
-    "vf_depth": "2",
-    "vf_width": "32"
+    "time": "True",
+    "hidden_dim": "128",
+    "vf_depth": "4",
+    "vf_width": "128"
 }

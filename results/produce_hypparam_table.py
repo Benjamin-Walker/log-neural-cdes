@@ -75,7 +75,10 @@ for model_list, hypparams in zip(
                                         count += 1
                 else:
                     print_ += " & \ding{55}"
-            print_ += " \\\\ \\cline{2-6}"
+            if model in ["S5", "S6", "mamba", "lru"]:
+                print_ += " \\\\ \\cline{2-6}"
+            else:
+                print_ += " \\\\ \\cline{2-5}"
             if count_key == len(values):
                 print_ += " \Xhline{2\\arrayrulewidth}"
             print(print_)

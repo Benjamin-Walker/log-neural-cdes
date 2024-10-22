@@ -67,7 +67,7 @@ conda create -n Log-NCDE python=3.10
 conda activate Log-NCDE
 conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4 -c conda-forge
 # Substitue for correct Jax pip install: https://jax.readthedocs.io/en/latest/installation.html
-pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.4 optax==0.2.2 diffrax==0.5.1 signax==0.1.1
+pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.8 optax==0.2.2 diffrax==0.6.0 signax==0.1.1
 ```
 
 If running `data_dir/process_uea.py` throws this error: No module named 'packaging'
@@ -184,6 +184,16 @@ The configuration files for all the experiments with fixed hyperparameters can b
 `run_experiment.py` is currently configured to run the repeat experiments on the UEA datasets for the Jax models.
 The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiments. 
 Furthermore, it contains the code for analysing the results and generating the plots in the paper.
+
+
+---
+## Update 28th October 2024
+
+We discovered a minor error in the code that affected the optimiser used when training the models implemented in Jax. 
+This bug has been fixed, and all experiments have been re-run. While this led to slight adjustments in the numerical 
+results, the overall conclusions of the paper remain unchanged. The arXiv version of the paper has been updated to 
+reflect these changes and can be found [here](https://arxiv.org/abs/2402.18512v3).
+
 
 ---
 
