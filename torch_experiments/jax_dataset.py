@@ -116,6 +116,7 @@ class Dataset(torch.utils.data.Dataset):
             assert len(indexes) == len(data)
             data = data[indexes]
             labels = labels[indexes]
+            num_classes = len(torch.unique(labels))
             if train:
                 data = data[: int(0.7 * len(data))]
                 labels = labels[: int(0.7 * len(labels))]
@@ -126,7 +127,6 @@ class Dataset(torch.utils.data.Dataset):
                 data = data[int(0.85 * len(data)) :]
                 labels = labels[int(0.85 * len(labels)) :]
             self.data = data
-            num_classes = len(torch.unique(labels))
             self.labels = torch.nn.functional.one_hot(
                 labels.to(torch.int64), num_classes
             ).to(torch.float32)
