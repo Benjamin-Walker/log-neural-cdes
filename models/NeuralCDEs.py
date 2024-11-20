@@ -114,9 +114,7 @@ class NeuralCDE(eqx.Module):
         scale,
         *,
         key,
-        **kwargs
     ):
-        super().__init__(**kwargs)
         vf_key, l1key, l2key = jr.split(key, 3)
         self.vf = VectorField(
             hidden_dim,
@@ -204,7 +202,6 @@ class NeuralRDE(eqx.Module):
         scale,
         *,
         key,
-        **kwargs
     ):
         vf_key, mlplkey, l1key, l2key = jr.split(key, 4)
         # Exclude first element as always zero

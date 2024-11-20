@@ -73,9 +73,7 @@ class LogNeuralCDE(eqx.Module):
         lambd,
         *,
         key,
-        **kwargs,
     ):
-        super().__init__(**kwargs)
         vf_key, l1key, l2key, weightkey = jr.split(key, 4)
         vf = VectorField(
             hidden_dim,
