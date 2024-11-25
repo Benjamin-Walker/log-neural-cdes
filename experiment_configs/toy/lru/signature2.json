@@ -7,6 +7,7 @@
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
     "print_steps": 100,
+    "early_stopping_steps": 1000,
     "batch_size": 32,
     "model_name": "lru",
     "metric": "accuracy",

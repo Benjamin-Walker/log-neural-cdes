@@ -38,6 +38,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
             lr_scheduler = eval(data["lr_scheduler"])
             num_steps = data["num_steps"]
             print_steps = data["print_steps"]
+            early_stopping_steps = data["early_stopping_steps"]
             batch_size = data["batch_size"]
             metric = data["metric"]
             use_presplit = data["use_presplit"]
@@ -128,6 +129,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "include_time": include_time,
                     "num_steps": num_steps,
                     "print_steps": print_steps,
+                    "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "model_args": model_args,
                 }
@@ -164,6 +166,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "model_args": model_args,
                     "num_steps": num_steps,
                     "print_steps": print_steps,
+                    "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "lr_scheduler": lr_scheduler,
                     "batch_size": batch_size,
