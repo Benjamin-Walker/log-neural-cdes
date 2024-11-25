@@ -1,12 +1,13 @@
 {
     "seeds": [
-       1234
+        1234
     ],
     "data_dir": "data_dir",
     "output_parent_dir": "",
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 10000,
     "print_steps": 100,
+    "early_stopping_steps": 1000,
     "batch_size": 32,
     "model_name": "log_ncde",
     "metric": "accuracy",

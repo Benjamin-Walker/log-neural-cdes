@@ -130,6 +130,7 @@ def create_dataset_model_and_train(
     include_time,
     num_steps,
     print_steps,
+    early_stopping_steps,
     lr,
     model_args,
 ):
@@ -321,7 +322,7 @@ def create_dataset_model_and_train(
                     all_val_metrics[-1], best_val(val_metric_for_best_model)
                 ):
                     no_val_improvement += 1
-                    if no_val_improvement > 10:
+                    if no_val_improvement > early_stopping_steps:
                         steps_save = np.array(steps)
                         all_train_metrics_save = np.array(all_train_metrics)
                         all_val_metrics_save = np.array(all_val_metrics)

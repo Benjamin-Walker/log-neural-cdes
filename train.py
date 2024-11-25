@@ -128,6 +128,7 @@ def train_model(
     dataloaders,
     num_steps,
     print_steps,
+    early_stopping_steps,
     lr,
     lr_scheduler,
     batch_size,
@@ -253,7 +254,7 @@ def train_model(
             if step > 0:
                 if operator_no_improv(val_metric, best_val(val_metric_for_best_model)):
                     no_val_improvement += 1
-                    if no_val_improvement > 10:
+                    if no_val_improvement > early_stopping_steps:
                         break
                 else:
                     no_val_improvement = 0
@@ -332,6 +333,7 @@ def create_dataset_model_and_train(
     model_args,
     num_steps,
     print_steps,
+    early_stopping_steps,
     lr,
     lr_scheduler,
     batch_size,
@@ -408,6 +410,7 @@ def create_dataset_model_and_train(
         dataloaders,
         num_steps,
         print_steps,
+        early_stopping_steps,
         lr,
         lr_scheduler,
         batch_size,
