@@ -77,11 +77,14 @@ def classification_loss(diff_model, static_model, X, y, state, key):
     )
     norm = 0
     if model.lip2:
-        for layer in model.vf.mlp.layers:
-            norm += jnp.mean(
-                jnp.linalg.norm(layer.weight, axis=-1)
-                + jnp.linalg.norm(layer.bias, axis=-1)
-            )
+        if hasattr(model, "vf"):
+            for layer in model.vf.mlp.layers:
+                norm += jnp.mean(
+                    jnp.linalg.norm(layer.weight, axis=-1)
+                    + jnp.linalg.norm(layer.bias, axis=-1)
+                )
+        else:
+            norm += jnp.mean(jnp.linalg.norm(model.vf_A, axis=-1))
         norm *= model.lambd
     return (
         jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)) + norm,
@@ -121,6 +124,8 @@ def make_step(model, filter_spec, X, y, loss_fn, state, opt, opt_state, key):
 
 
 def train_model(
+    model_name,
+    dataset_name,
     model,
     metric,
     filter_spec,
@@ -188,6 +193,13 @@ def train_model(
     ):
         stepkey, key = jr.split(key, 2)
         X, y = data
+
+        if (
+            model_name == "bd_linear_ncde"
+            or model_name == "diagonal_linear_ncde"
+            or model_name == "dense_linear_ncde"
+        ) and dataset_name == "Heartbeat":
+            X = (X[0], X[1] / 10, X[2])
         model, state, opt_state, value = make_step(
             model, filter_spec, X, y, loss_fn, state, opt, opt_state, stepkey
         )
@@ -199,6 +211,12 @@ def train_model(
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
+                if (
+                    model_name == "bd_linear_ncde"
+                    or model_name == "diagonal_linear_ncde"
+                    or model_name == "dense_linear_ncde"
+                ) and dataset_name == "Heartbeat":
+                    X = (X[0], X[1] / 10, X[2])
                 prediction, _ = calc_output(
                     inference_model,
                     X,
@@ -224,6 +242,12 @@ def train_model(
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
+                if (
+                    model_name == "bd_linear_ncde"
+                    or model_name == "diagonal_linear_ncde"
+                    or model_name == "dense_linear_ncde"
+                ) and dataset_name == "Heartbeat":
+                    X = (X[0], X[1] / 10, X[2])
                 prediction, _ = calc_output(
                     inference_model,
                     X,
@@ -266,6 +290,12 @@ def train_model(
                         stepkey, key = jr.split(key, 2)
                         inference_model = eqx.tree_inference(model, value=True)
                         X, y = data
+                        if (
+                            model_name == "bd_linear_ncde"
+                            or model_name == "diagonal_linear_ncde"
+                            or model_name == "dense_linear_ncde"
+                        ) and dataset_name == "Heartbeat":
+                            X = (X[0], X[1] / 10, X[2])
                         prediction, _ = calc_output(
                             inference_model,
                             X,
@@ -360,6 +390,15 @@ def create_dataset_model_and_train(
     datasetkey, modelkey, trainkey, key = jr.split(key, 4)
     print(f"Creating dataset {dataset_name}")
 
+    if (
+        model_name == "bd_linear_ncde"
+        or model_name == "diagonal_linear_ncde"
+        or model_name == "dense_linear_ncde"
+    ):
+        scale = True
+    else:
+        scale = False
+
     dataset = create_dataset(
         data_dir,
         dataset_name,
@@ -369,6 +408,7 @@ def create_dataset_model_and_train(
         T=T,
         use_idxs=False,
         use_presplit=use_presplit,
+        scale=scale,
         key=datasetkey,
     )
 
@@ -387,7 +427,13 @@ def create_dataset_model_and_train(
         key=modelkey,
     )
     filter_spec = jax.tree_util.tree_map(lambda _: True, model)
-    if model_name == "nrde" or model_name == "log_ncde":
+    if (
+        model_name == "nrde"
+        or model_name == "log_ncde"
+        or model_name == "bd_linear_ncde"
+        or model_name == "diagonal_linear_ncde"
+        or model_name == "dense_linear_ncde"
+    ):
         dataloaders = dataset.path_dataloaders
         if model_name == "log_ncde":
             where = lambda model: (model.intervals, model.pairs)
@@ -403,6 +449,8 @@ def create_dataset_model_and_train(
         dataloaders = dataset.raw_dataloaders
 
     return train_model(
+        model_name,
+        dataset_name,
         model,
         metric,
         filter_spec,

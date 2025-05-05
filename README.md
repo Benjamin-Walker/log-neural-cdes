@@ -7,6 +7,29 @@ method for training NCDEs.
 
 ---
 
+## Update – 22nd May 2025
+
+This repository now supports **Structured Linear Controlled Differential Equations** (SLiCEs), which replace the non-linear vector fields of NCDEs and Log-NCDEs with structured linear vector fields, retaining the same maximal expressivity whilst being significantly more efficient.
+
+SLiCEs are defined by
+
+$$
+h_t = h_0 + \int_0^t \sum_{i=1}^{d_X} A^i_{\theta} h_s \mathrm{d}X_s,
+$$
+
+where each $A^i_{\theta} \in \mathbb{R}^{d_h \times d_h}$ is a trainable matrix acting on the hidden state. When the $A^i_{\theta}$ are dense, this system is known as a **Linear Neural CDE (LNCDE)** and these models are *maximally expressive*, see [here](https://github.com/Benjamin-Walker/selective-ssms-and-linear-cdes). However, the computational cost and number of parameters when using dense matrices scale as $\mathcal{O}(d_h^3)$, making them impractical for large models.
+
+SLiCEs offer a solution: they retain the maximal expressivity **while reducing computational and memory costs** by structuring the $A^i_{\theta}$ matrices. This repository includes three SLiCE variants:
+- **D-LNCDE**: Diagonal matrices: fastest, but limited expressivity.
+- **BD-LNCDE**: Block-diagonal matrices: maximally expressive and efficient.
+- **DE-LNCDE**: Fully dense matrices: maximally expressive, but computationally expensive.
+
+**In practice**: Replacing the non-linear vector field of a Log-NCDE with the block-diagonal vector field of a BD-LNCDE leads to **20× faster training** per step on the UEA multivariate time-series tasks whilst achieving the same average test accuracy.
+
+For further details and an expansive comparison with other state-of-the-art sequence models, see the [official SLiCE repository](https://github.com/Benjamin-Walker/structured-linear-cdes).
+
+---
+
 ## Introduction
 
 Neural controlled differential equations (NCDEs) treat time series data as observations from a control path $X_t$, 
@@ -57,6 +80,7 @@ The code for preprocessing the datasets, training S5, LRU, NCDE, NRDE, and Log-N
 - `optax` for neural network optimisers.
 - `diffrax` for differential equation solvers.
 - `signax` for calculating the signature.
+- `roughpy` for calculating the Hall basis.
 - `sktime` for handling time series data in ARFF format.
 - `tqdm` for progress bars.
 - `matplotlib` for plotting.
@@ -67,7 +91,7 @@ conda create -n Log-NCDE python=3.10
 conda activate Log-NCDE
 conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4 -c conda-forge
 # Substitue for correct Jax pip install: https://jax.readthedocs.io/en/latest/installation.html
-pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.8 optax==0.2.2 diffrax==0.6.0 signax==0.1.1
+pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.12.2 optax==0.2.4 diffrax==0.7.0 signax==0.1.1 roughpy==0.2.0
 ```
 
 If running `data_dir/process_uea.py` throws this error: No module named 'packaging'

@@ -55,9 +55,57 @@
       "MotorImagery": 4056,
       "SelfRegulationSCP1": 904,
       "SelfRegulationSCP2": 1222
+    },
+    "bd_linear_ncde": {
+      "EigenWorms": 3494,
+      "EthanolConcentration": 1192,
+      "Heartbeat": 2732,
+      "MotorImagery": 8612,
+      "SelfRegulationSCP1": 666,
+      "SelfRegulationSCP2": 932
+    },
+    "diagonal_linear_ncde": {
+      "EigenWorms": 3486,
+      "EthanolConcentration": 670,
+      "Heartbeat": 920,
+      "MotorImagery": 6552,
+      "SelfRegulationSCP1": 662,
+      "SelfRegulationSCP2": 664
+    },
+    "dense_linear_ncde": {
+      "EigenWorms": 18580,
+      "EthanolConcentration": 11170,
+      "Heartbeat": 2712,
+      "MotorImagery": 8622,
+      "SelfRegulationSCP1": 666,
+      "SelfRegulationSCP2": 11172
     }
   },
   "time": {
+    "dense_linear_ncde": {
+        "EigenWorms": 145.44,
+        "EthanolConcentration": 71.80,
+        "Heartbeat": 196.6,
+        "MotorImagery": 202.78,
+        "SelfRegulationSCP1": 8.27,
+        "SelfRegulationSCP2": 60.51
+    },
+    "bd_linear_ncde": {
+      "EigenWorms": 15.46,
+      "EthanolConcentration": 12.54,
+      "Heartbeat": 138.09,
+      "MotorImagery": 148.16,
+      "SelfRegulationSCP1": 6.77,
+      "SelfRegulationSCP2": 10.71
+    },
+    "diagonal_linear_ncde": {
+      "EigenWorms": 7.56,
+      "EthanolConcentration": 7.97,
+      "Heartbeat": 6.77,
+      "MotorImagery": 6.16,
+      "SelfRegulationSCP1": 6.39,
+      "SelfRegulationSCP2": 6.91
+    },
     "ncde": {
       "EigenWorms": 24595.42,
       "EthanolConcentration": 2216.64,

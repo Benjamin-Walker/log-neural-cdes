@@ -42,6 +42,7 @@ import diffrax
 import equinox as eqx
 import jax.random as jr
 
+from models.LinearNeuralCDEs import LogLinearCDE
 from models.LogNeuralCDEs import LogNeuralCDE
 from models.LRU import LRU
 from models.NeuralCDEs import NeuralCDE, NeuralRDE
@@ -58,6 +59,7 @@ def create_model(
     label_dim,
     hidden_dim,
     num_blocks=None,
+    block_size=None,
     vf_depth=None,
     vf_width=None,
     classification=True,
@@ -70,6 +72,8 @@ def create_model(
     max_steps=16**4,
     scale=1.0,
     lambd=0.0,
+    stepsize=1,
+    w_init_std=0.25,
     *,
     key,
 ):
@@ -99,7 +103,24 @@ def create_model(
             ),
             None,
         )
-    if model_name == "ncde":
+    elif (
+        model_name == "bd_linear_ncde" or "diagonal_linear_ncde" or "dense_linear_ncde"
+    ):
+        return (
+            LogLinearCDE(
+                data_dim=data_dim,
+                hidden_dim=hidden_dim,
+                label_dim=label_dim,
+                block_size=block_size,
+                logsig_depth=logsig_depth,
+                stepsize=stepsize,
+                lambd=lambd,
+                w_init_std=w_init_std,
+                key=key,
+            ),
+            None,
+        )
+    elif model_name == "ncde":
         if vf_width is None or vf_depth is None:
             raise ValueError("Must specify vf_width and vf_depth for a NCDE.")
         return (
