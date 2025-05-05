@@ -83,16 +83,19 @@ def convert_all_files(data_dir):
                 train_file, test_file
             )
             data = jnp.concatenate([train_data, test_data])
+            orig_data_len = data.shape[0]
             labels = jnp.concatenate([train_labels, test_labels])
 
-            unique_rows, indices, inverse_indices = np.unique(
-                data, axis=0, return_index=True, return_inverse=True
-            )
-            data = data[indices]
-            labels = labels[indices]
-            print(
-                f"Deleting {len(inverse_indices) - len(indices)} repeated samples in {ds_name}"
-            )
+            # keep first occurrence of each unique row
+            _, first_idx = np.unique(data, axis=0, return_index=True)
+
+            # restore original ordering of those first occurrences
+            keep_idx = np.sort(first_idx)
+
+            data = data[keep_idx]
+            labels = labels[keep_idx]
+
+            print(f"Deleting {orig_data_len - len(data)} repeated samples in {ds_name}")
 
             original_idxs = (
                 jnp.arange(0, train_data.shape[0]),

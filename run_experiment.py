@@ -43,7 +43,18 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
             metric = data["metric"]
             use_presplit = data["use_presplit"]
             T = data["T"]
-            if model_name in ["lru", "S5", "S6", "mamba"]:
+            if model_name in [
+                "lru",
+                "S5",
+                "S6",
+                "mamba",
+                "rnn_linear",
+                "rnn_lstm",
+                "rnn_gru",
+                "bd_linear_ncde",
+                "diagonal_linear_ncde",
+                "dense_linear_ncde",
+            ]:
                 dt0 = None
             else:
                 dt0 = float(data["dt0"])
@@ -52,6 +63,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
             include_time = data["time"].lower() == "true"
             hidden_dim = int(data["hidden_dim"])
             if model_name in ["log_ncde", "nrde", "ncde"]:
+                block_size = None
                 vf_depth = int(data["vf_depth"])
                 vf_width = int(data["vf_width"])
                 if model_name in ["log_ncde", "nrde"]:
@@ -67,13 +79,26 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                 ssm_dim = None
                 num_blocks = None
             else:
+                if (
+                    model_name == "bd_linear_ncde"
+                    or model_name == "diagonal_linear_ncde"
+                    or model_name == "dense_linear_ncde"
+                ):
+                    block_size = int(data["block_size"])
+                    ssm_dim = None
+                    stepsize = int(float(data["stepsize"]))
+                    logsig_depth = int(data["depth"])
+                    lambd = float(data["lambd"])
+                    num_blocks = None
+                else:
+                    block_size = None
+                    ssm_dim = int(data["ssm_dim"])
+                    stepsize = 1
+                    logsig_depth = 1
+                    lambd = None
+                    num_blocks = int(data["num_blocks"])
                 vf_depth = None
                 vf_width = None
-                logsig_depth = 1
-                stepsize = 1
-                lambd = None
-                ssm_dim = int(data["ssm_dim"])
-                num_blocks = int(data["num_blocks"])
             if model_name == "S5":
                 ssm_blocks = int(data["ssm_blocks"])
             else:
@@ -141,6 +166,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
 
                 model_args = {
                     "num_blocks": num_blocks,
+                    "block_size": block_size,
                     "hidden_dim": hidden_dim,
                     "vf_depth": vf_depth,
                     "vf_width": vf_width,
@@ -151,6 +177,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "stepsize_controller": diffrax.ConstantStepSize(),
                     "scale": scale,
                     "lambd": lambd,
+                    "stepsize": stepsize,
                 }
                 run_args = {
                     "data_dir": data_dir,
@@ -190,7 +217,16 @@ if __name__ == "__main__":
     if pytorch_experiments:
         model_names = ["mamba", "S6"]
     else:
-        model_names = ["ncde", "log_ncde", "nrde", "S5", "lru"]
+        model_names = [
+            "ncde",
+            "log_ncde",
+            "nrde",
+            "S5",
+            "lru",
+            "bd_linear_ncde",
+            "dense_linear_ncde",
+            "diagonal_linear_ncde",
+        ]
     dataset_names = [
         "EigenWorms",
         "EthanolConcentration",

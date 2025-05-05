@@ -233,6 +233,11 @@ def dataset_generator(
     )
 
 
+def _scale_to_minus_one_one(x, data_min, data_max, eps=1e-8):
+    """Affine‑maps x from [data_min,data_max] → [‑1,1] with broadcasting."""
+    return 2.0 * (x - data_min) / (data_max - data_min + eps) - 1.0
+
+
 def create_uea_dataset(
     data_dir,
     name,
@@ -242,6 +247,7 @@ def create_uea_dataset(
     depth,
     include_time,
     T,
+    scale=False,
     *,
     key,
 ):
@@ -293,6 +299,21 @@ def create_uea_dataset(
                 jnp.arange(data.shape[1])[None, :], data.shape[0], axis=0
             )
             data = jnp.concatenate([ts[:, :, None], data], axis=2)
+
+    if scale:
+        if use_presplit:
+            # stack (N,L,C) arrays along N to get all samples
+            all_data = jnp.concatenate([train_data, val_data, test_data], axis=0)
+            data_min = all_data.min(axis=(0, 1), keepdims=True)
+            data_max = all_data.max(axis=(0, 1), keepdims=True)
+
+            train_data = _scale_to_minus_one_one(train_data, data_min, data_max)
+            val_data = _scale_to_minus_one_one(val_data, data_min, data_max)
+            test_data = _scale_to_minus_one_one(test_data, data_min, data_max)
+        else:
+            data_min = data.min(axis=(0, 1), keepdims=True)
+            data_max = data.max(axis=(0, 1), keepdims=True)
+            data = _scale_to_minus_one_one(data, data_min, data_max)
 
     return dataset_generator(
         name,
@@ -396,6 +417,7 @@ def create_dataset(
     depth,
     include_time,
     T,
+    scale=False,
     *,
     key,
 ):
@@ -416,6 +438,7 @@ def create_dataset(
             depth,
             include_time,
             T,
+            scale=scale,
             key=key,
         )
     elif name[:-1] in toy_subfolders:
