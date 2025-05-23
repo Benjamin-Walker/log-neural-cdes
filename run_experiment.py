@@ -218,11 +218,11 @@ if __name__ == "__main__":
         model_names = ["mamba", "S6"]
     else:
         model_names = [
-            "ncde",
-            "log_ncde",
-            "nrde",
-            "S5",
-            "lru",
+            # "ncde",
+            # "log_ncde",
+            # "nrde",
+            # "S5",
+            # "lru",
             "bd_linear_ncde",
             "dense_linear_ncde",
             "diagonal_linear_ncde",
