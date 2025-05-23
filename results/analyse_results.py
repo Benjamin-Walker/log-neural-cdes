@@ -107,12 +107,12 @@ for model in sorted(os.listdir(results_dir)):
                     for tr_idx in train_idxs:
                         idx = idxs[tr_idx]
                         print(
-                            f"{model[:-1]} {dataset[:-1]} {exps[idx]} {100*val_metrics[idx]}"
+                            f"{model[:-1]} {dataset[:-1]} {exps[idx]} {100 * val_metrics[idx]}"
                         )
 
                 elif experiment == "repeats":
                     test_metrics = np.array(test_metrics)
                     print(
                         f"{model[:-1]} {dataset[:-1]} {np.mean([len(x) for x in val_metrics])} "
-                        f"{100*np.mean(test_metrics)} {100*np.std(test_metrics)}"
+                        f"{100 * np.mean(test_metrics)} {100 * np.std(test_metrics)}"
                     )

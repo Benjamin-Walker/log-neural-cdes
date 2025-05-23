@@ -1,19 +1,25 @@
 repos:
   - repo: https://github.com/ambv/black
-    rev: 22.3.0
+    rev: 24.3.0
     hooks:
-    - id: black
+      - id: black
+
   - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.2.3
+    rev: 1.7.0
     hooks:
-    - id: nbqa-black
-    - id: nbqa-isort
-    - id: nbqa-flake8
+      - id: nbqa-black
+        additional_dependencies: [black, setuptools]
+      - id: nbqa-isort
+        additional_dependencies: [isort, setuptools]
+      - id: nbqa-flake8
+        additional_dependencies: [flake8, setuptools]
+
   - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+    rev: 5.13.2
     hooks:
-    - id: isort
+      - id: isort
+
   - repo: https://github.com/pycqa/flake8
-    rev: 4.0.1
+    rev: 6.1.0
     hooks:
-    - id: flake8
+      - id: flake8

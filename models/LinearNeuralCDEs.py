@@ -1,3 +1,28 @@
+"""
+This module implements the `LogLinearCDE` class using JAX and Equinox. The model is a
+block-diagonal Linear Controlled Differential Equation (CDE), where the output is
+approximated during training using the Log-ODE method.
+
+Attributes of the `LogLinearCDE` model:
+- `init_layer`: The linear layer used to initialize the hidden state $h_0$ from the input $x_0$.
+- `out_layer`: The linear layer used to produce final predictions from the hidden state.
+- `vf_A`: Learnable parameters for the linear vector field, shaped as flattened block matrices.
+- `hidden_dim`: The dimension of the hidden state $h_t$.
+- `block_size`: Size of each square block in the block-diagonal vector field.
+- `num_blocks`: Number of blocks, computed as `hidden_dim // block_size`.
+- `parallel_steps`: Number of log-flow matrices composed in parallel (using associative scan).
+- `logsig_depth`: The depth of the log-signature used in the Log-ODE method.
+- `basis_list`: The list of basis elements of the free Lie algebra up to the specified depth.
+- `lambd`: Regularization parameter applied to vector field scaling.
+- `w_init_std`: Standard deviation for the initial weights of the vector field.
+- `classification`: Boolean indicating if the model is used for classification tasks.
+
+The class includes:
+- `log_ode`: Method for computing the iterated Lie brackets of the linear vector fields.
+- `__call__`: Performs the forward pass, where flows are composed and applied to the hidden state
+  either step-by-step or in parallel (using associative scan), followed by output projection.
+"""
+
 from __future__ import annotations
 
 from typing import List, Tuple
@@ -28,10 +53,6 @@ def depth(b):
 
 
 class LogLinearCDE(eqx.Module):
-    """
-    Block‑diagonal Linear Controlled Differential Equation layer.
-    """
-
     init_layer: eqx.nn.Linear
     out_layer: eqx.nn.Linear
     vf_A: jnp.ndarray
@@ -41,10 +62,10 @@ class LogLinearCDE(eqx.Module):
     parallel_steps: int
     logsig_depth: int
     basis_list: List[Tuple[int, ...]]
-    stepsize: int
     lambd: float
+    w_init_std: float
+    classification: bool
 
-    classification: bool = True
     lip2: bool = True
     nondeterministic: bool = False
     stateful: bool = False
@@ -57,10 +78,10 @@ class LogLinearCDE(eqx.Module):
         label_dim: int,
         block_size: int,
         logsig_depth: int,
-        stepsize: int,
         lambd: float = 1.0,
         w_init_std: float = 0.25,
         parallel_steps: int = 128,
+        classification: bool = True,
         key,
     ):
         if hidden_dim % block_size != 0:
@@ -70,7 +91,6 @@ class LogLinearCDE(eqx.Module):
         self.num_blocks = hidden_dim // block_size
         self.parallel_steps = parallel_steps
         self.logsig_depth = logsig_depth
-        self.stepsize = stepsize
         ctx = rp.get_context(width=data_dim, depth=self.logsig_depth, coeffs=rp.DPReal)
         basis = ctx.lie_basis
         basis_list = []
@@ -78,6 +98,7 @@ class LogLinearCDE(eqx.Module):
             basis_list.append(eval(str(basis.index_to_key(i))))
         self.basis_list = basis_list
         self.lambd = lambd
+        self.w_init_std = w_init_std
 
         k_init, k_A, k_B = jr.split(key, 3)
         self.init_layer = eqx.nn.Linear(data_dim, hidden_dim, key=k_init)
@@ -85,9 +106,10 @@ class LogLinearCDE(eqx.Module):
 
         self.vf_A = (
             jr.normal(k_A, (data_dim + 1, self.num_blocks * block_size * block_size))
-            * w_init_std
+            * self.w_init_std
             / jnp.sqrt(block_size)
         )
+        self.classification = classification
 
     def log_ode(self, vf):
 
@@ -111,7 +133,7 @@ class LogLinearCDE(eqx.Module):
 
             left_indices = []
             right_indices = []
-            for (i_b, b) in curr_elements:
+            for i_b, b in curr_elements:
                 u_tuple = to_tuple(b[0])
                 v_tuple = to_tuple(b[1])
                 i_u = basis_index[u_tuple]
@@ -184,7 +206,12 @@ class LogLinearCDE(eqx.Module):
             inp_rem = flows[-remainder:]
             _, y_rem = jax.lax.scan(step, ys[-1], inp_rem)
             ys = jnp.vstack([ys, y_rem])
-        ys = jnp.mean(ys, axis=0)
-        ys = self.out_layer(ys)
-        preds = jax.nn.softmax(ys)
+
+        if self.classification:
+            ys = jnp.mean(ys, axis=0)
+            preds = jax.nn.softmax(self.out_layer(ys))
+        else:
+            ys = jax.vmap(self.out_layer)(ys)
+            preds = jnp.tanh(ys)
+
         return preds
