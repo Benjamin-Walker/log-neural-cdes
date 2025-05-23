@@ -42,7 +42,7 @@ class Dataloader:
     def __init__(self, data, labels, inmemory=True):
         self.data = data
         self.labels = labels
-        if type(self.data) == tuple:
+        if isinstance(self.data, tuple):
             if len(data[1][0].shape) > 2:
                 self.data_is_coeffs = True
             else:
