@@ -177,7 +177,6 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "stepsize_controller": diffrax.ConstantStepSize(),
                     "scale": scale,
                     "lambd": lambd,
-                    "stepsize": stepsize,
                 }
                 run_args = {
                     "data_dir": data_dir,

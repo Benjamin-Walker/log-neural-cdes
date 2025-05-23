@@ -102,12 +102,14 @@ def regression_loss(diff_model, static_model, X, y, state, key):
     pred_y = pred_y[:, :, 0]
     norm = 0
     if model.lip2:
-        for layer in model.vf.mlp.layers:
-            norm += jnp.mean(
-                jnp.linalg.norm(layer.weight, axis=-1)
-                + jnp.linalg.norm(layer.bias, axis=-1)
-            )
-        norm *= model.lambd
+        if hasattr(model, "vf"):
+            for layer in model.vf.mlp.layers:
+                norm += jnp.mean(
+                    jnp.linalg.norm(layer.weight, axis=-1)
+                    + jnp.linalg.norm(layer.bias, axis=-1)
+                )
+        else:
+            norm += jnp.mean(jnp.linalg.norm(model.vf_A, axis=-1))
     return (
         jnp.mean(jnp.mean((pred_y - y) ** 2, axis=1)) + norm,
         state,
