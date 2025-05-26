@@ -227,13 +227,22 @@ reflect these changes and can be found [here](https://arxiv.org/abs/2402.18512v3
 
 ## Bibtex Citation
 
-When using this code, please cite the following paper:
+When using this code, please cite the following papers:
 
-```
+```bibtex
 @article{Walker2024LogNCDE,
   title={Log Neural Controlled Differential Equations: The Lie Brackets Make a Difference},
   author={Walker, Benjamin and McLeod, Andrew D. and Qin, Tiexin and Cheng, Yichuan and Li, Haoliang and Lyons, Terry},
   journal={International Conference on Machine Learning},
   year={2024}
+}
+
+
+@misc{walker2025slices,
+  title        = {Structured Linear CDEs: Maximally Expressive and Parallel-in-Time Sequence Models},
+  author       = {Walker, Benjamin and Yang, Lingyi and Muca Cirone, Nicola and Salvi, Cristopher and Lyons, Terry},
+  year         = {2025},
+  month        = {May},
+  url          = {https://arxiv.org/abs/2505.17761},
 }
 ```
