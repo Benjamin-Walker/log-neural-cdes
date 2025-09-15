@@ -23,7 +23,13 @@ import argparse
 import json
 
 
-def run_experiments(model_names, dataset_names, experiment_folder, pytorch_experiments):
+def run_experiments(
+    model_names,
+    dataset_names,
+    experiment_folder,
+    pytorch_experiments,
+    irregularly_sampled,
+):
 
     for model_name in model_names:
         for dataset_name in dataset_names:
@@ -54,6 +60,10 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                 "bd_linear_ncde",
                 "diagonal_linear_ncde",
                 "dense_linear_ncde",
+                "wh_linear_ncde",
+                "sparse_linear_ncde",
+                "dplr_linear_ncde",
+                "diagonal_dense_linear_ncde",
             ]:
                 dt0 = None
             else:
@@ -78,18 +88,24 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     lambd = None
                 ssm_dim = None
                 num_blocks = None
+                parallel_steps = None
+                walsh_hadamard = None
+                diagonal_dense = None
+                sparsity = None
+                rank = None
             else:
-                if (
-                    model_name == "bd_linear_ncde"
-                    or model_name == "diagonal_linear_ncde"
-                    or model_name == "dense_linear_ncde"
-                ):
+                if model_name.endswith("_linear_ncde"):
                     block_size = int(data["block_size"])
                     ssm_dim = None
                     stepsize = int(float(data["stepsize"]))
                     logsig_depth = int(data["depth"])
                     lambd = float(data["lambd"])
                     num_blocks = None
+                    parallel_steps = int(data.get("parallel_steps", 1))
+                    walsh_hadamard = data.get("walsh_hadamard", False)
+                    diagonal_dense = data.get("diagonal_dense", False)
+                    sparsity = data.get("sparsity", 1.0)
+                    rank = int(data.get("rank", 0))
                 else:
                     block_size = None
                     ssm_dim = int(data["ssm_dim"])
@@ -97,6 +113,11 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     logsig_depth = 1
                     lambd = None
                     num_blocks = int(data["num_blocks"])
+                    parallel_steps = None
+                    walsh_hadamard = None
+                    diagonal_dense = None
+                    sparsity = None
+                    rank = None
                 vf_depth = None
                 vf_width = None
             if model_name == "S5":
@@ -157,6 +178,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "model_args": model_args,
+                    "irregularly_sampled": irregularly_sampled,
                 }
                 run_fn = torch_create_dataset_model_and_train
             else:
@@ -177,6 +199,11 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "stepsize_controller": diffrax.ConstantStepSize(),
                     "scale": scale,
                     "lambd": lambd,
+                    "parallel_steps": parallel_steps,
+                    "walsh_hadamard": walsh_hadamard,
+                    "diagonal_dense": diagonal_dense,
+                    "sparsity": sparsity,
+                    "rank": rank,
                 }
                 run_args = {
                     "data_dir": data_dir,
@@ -197,6 +224,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "lr_scheduler": lr_scheduler,
                     "batch_size": batch_size,
                     "output_parent_dir": output_parent_dir,
+                    "irregularly_sampled": irregularly_sampled,
                 }
                 run_fn = create_dataset_model_and_train
 
@@ -217,23 +245,34 @@ if __name__ == "__main__":
         model_names = ["mamba", "S6"]
     else:
         model_names = [
-            "ncde",
-            "log_ncde",
-            "nrde",
-            "S5",
-            "lru",
-            "bd_linear_ncde",
+            # "S5",
+            # "lru",
+            # "bd_linear_ncde",
+            # "ncde",
+            # "log_ncde",
+            # "nrde",
+            # "diagonal_linear_ncde",
             "dense_linear_ncde",
-            "diagonal_linear_ncde",
+            # "wh_linear_ncde",
+            # "sparse_linear_ncde",
+            # "dplr_linear_ncde",
+            # "diagonal_dense_linear_ncde",
         ]
     dataset_names = [
         "EigenWorms",
-        "EthanolConcentration",
-        "Heartbeat",
-        "MotorImagery",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
+        # "EthanolConcentration",
+        # "Heartbeat",
+        # "MotorImagery",
+        # "SelfRegulationSCP1",
+        # "SelfRegulationSCP2",
     ]
     experiment_folder = "experiment_configs/repeats"
+    irregularly_sampled = 1.0
 
-    run_experiments(model_names, dataset_names, experiment_folder, pytorch_experiments)
+    run_experiments(
+        model_names,
+        dataset_names,
+        experiment_folder,
+        pytorch_experiments,
+        irregularly_sampled=irregularly_sampled,
+    )
