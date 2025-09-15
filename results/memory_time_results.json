@@ -79,9 +79,25 @@
       "MotorImagery": 8622,
       "SelfRegulationSCP1": 666,
       "SelfRegulationSCP2": 11172
+    },
+    "bd_linear_ncde_recurrent": {
+      "EigenWorms": 3482,
+      "EthanolConcentration": 920,
+      "Heartbeat": 2718,
+      "MotorImagery": 8612,
+      "SelfRegulationSCP1": 670,
+      "SelfRegulationSCP2": 668
     }
   },
   "time": {
+    "bd_linear_ncde_recurrent": {
+      "EigenWorms": 28.61,
+      "EthanolConcentration": 26.74,
+      "Heartbeat": 137.88,
+      "MotorImagery": 141.75,
+      "SelfRegulationSCP1": 6.70,
+      "SelfRegulationSCP2": 9.80
+    },
     "dense_linear_ncde": {
         "EigenWorms": 145.44,
         "EthanolConcentration": 71.80,

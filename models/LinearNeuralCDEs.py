@@ -25,13 +25,15 @@ The class includes:
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import jax.random as jr
 import roughpy as rp
+from jax.experimental.sparse import random_bcoo
+from scipy.linalg import hadamard
 
 
 def to_tuple(el):
@@ -55,7 +57,6 @@ def depth(b):
 class LogLinearCDE(eqx.Module):
     init_layer: eqx.nn.Linear
     out_layer: eqx.nn.Linear
-    vf_A: jnp.ndarray
     hidden_dim: int
     block_size: int
     num_blocks: int
@@ -65,7 +66,19 @@ class LogLinearCDE(eqx.Module):
     lambd: float
     w_init_std: float
     classification: bool
+    walsh_hadamard: bool
+    diagonal_dense: bool
+    sparsity: float
+    rank: int
 
+    vf_A: Optional[jnp.ndarray] = None
+    hadamard_matrix: Optional[jnp.ndarray] = None
+    vf_A_sparse: Optional[jnp.ndarray] = None
+    vf_A_diag: Optional[jnp.ndarray] = None
+    vf_A_dense: Optional[jnp.ndarray] = None
+    vf_A_u: Optional[jnp.ndarray] = None
+    vf_A_v: Optional[jnp.ndarray] = None
+    dense_size: int = 0
     lip2: bool = True
     nondeterministic: bool = False
     stateful: bool = False
@@ -79,9 +92,13 @@ class LogLinearCDE(eqx.Module):
         block_size: int,
         logsig_depth: int,
         lambd: float = 1.0,
+        walsh_hadamard: bool = False,
         w_init_std: float = 0.25,
         parallel_steps: int = 128,
         classification: bool = True,
+        diagonal_dense: bool = False,
+        rank: int = 0,
+        sparsity: float = 1.0,
         key,
     ):
         if hidden_dim % block_size != 0:
@@ -104,12 +121,76 @@ class LogLinearCDE(eqx.Module):
         self.init_layer = eqx.nn.Linear(data_dim, hidden_dim, key=k_init)
         self.out_layer = eqx.nn.Linear(hidden_dim, label_dim, key=k_B)
 
-        self.vf_A = (
-            jr.normal(k_A, (data_dim + 1, self.num_blocks * block_size * block_size))
-            * self.w_init_std
-            / jnp.sqrt(block_size)
-        )
+        if diagonal_dense:
+            k_A_diag, k_A_dense = jr.split(k_A, 2)
+            self.vf_A_diag = (
+                jr.normal(k_A_diag, (data_dim + 1, self.hidden_dim - self.block_size))
+                * self.w_init_std
+            )
+            self.vf_A_dense = (
+                jr.normal(k_A_dense, (data_dim + 1, block_size, block_size))
+                * self.w_init_std
+            )
+            self.dense_size = block_size
+            self.block_size = hidden_dim
+            self.num_blocks = 1
+        elif sparsity < 1.0:
+            total = (data_dim + 1) * hidden_dim * hidden_dim
+            nnz = int(jnp.round(total * sparsity))
+            if nnz == 0:
+                raise ValueError("sparsity too low, no weights left!")
+
+            self.vf_A_sparse = (
+                random_bcoo(
+                    key=k_A,
+                    shape=(data_dim + 1, self.hidden_dim, self.hidden_dim),
+                    nse=nnz,
+                    generator=jax.random.normal,
+                    dtype=jnp.float32,
+                )
+                * self.w_init_std
+                / jnp.sqrt(self.hidden_dim)
+            )
+            self.block_size = self.hidden_dim
+            self.num_blocks = 1
+        else:
+            self.vf_A = (
+                jr.normal(
+                    k_A, (data_dim + 1, self.num_blocks * block_size * block_size)
+                )
+                * self.w_init_std
+                / jnp.sqrt(block_size)
+            )
+            if rank > 0:
+                k_A_u, k_A_v = jr.split(k_A, 2)
+                self.vf_A_u = (
+                    jr.normal(k_A_u, (data_dim + 1, self.hidden_dim, rank))
+                    * self.w_init_std
+                    / jnp.sqrt(rank)
+                )
+                self.vf_A_v = (
+                    jr.normal(k_A_v, (data_dim + 1, self.hidden_dim, rank))
+                    * self.w_init_std
+                    / jnp.sqrt(rank)
+                )
+                self.block_size = self.hidden_dim
+                self.num_blocks = 1
+
         self.classification = classification
+
+        self.walsh_hadamard = walsh_hadamard
+        if self.walsh_hadamard:
+            hadamard_matrix = hadamard(self.hidden_dim)
+            self.hadamard_matrix = jnp.array(
+                hadamard_matrix, dtype=jnp.float32
+            ) / jnp.sqrt(self.hidden_dim)
+            self.block_size = self.hidden_dim
+            self.num_blocks = 1
+        else:
+            self.hadamard_matrix = None
+        self.diagonal_dense = diagonal_dense
+        self.sparsity = sparsity
+        self.rank = rank
 
     def log_ode(self, vf):
 
@@ -158,22 +239,85 @@ class LogLinearCDE(eqx.Module):
 
         y0 = self.init_layer(x0)
 
-        vfs = self.vf_A.reshape(-1, self.num_blocks, self.block_size, self.block_size)
-        lie_brackets = jax.vmap(self.log_ode, in_axes=(1))(vfs)
-        log_flows = jnp.einsum("ijkl,ml->mijk", lie_brackets, logsigs[:, 1:])
-        flows = log_flows + jnp.eye(self.block_size)[None, None, :, :]
-
-        def step(y, flow):
-            y_block = y.reshape(self.num_blocks, self.block_size, 1)
-            y_next = flow @ y_block
-            y_next = y_next.reshape(
-                self.hidden_dim,
+        if self.walsh_hadamard:
+            if self.parallel_steps > 1 or self.logsig_depth > 1:
+                vfs = self.vf_A[:, None, :] * self.hadamard_matrix[None, :, :]
+                vfs = jnp.reshape(vfs, (-1, 1, self.hidden_dim, self.hidden_dim))
+        elif self.rank > 0:
+            if self.parallel_steps > 1 or self.logsig_depth > 1:
+                low_rank = jnp.einsum("cij,ckj->ik", self.vf_A_u, self.vf_A_v)
+                low_rank = jnp.reshape(
+                    low_rank, (-1, 1, self.hidden_dim, self.hidden_dim)
+                )
+                diags = jax.vmap(jnp.diag)(self.vf_A)
+                vfs = low_rank + diags[:, None, :, :]
+        elif self.sparsity < 1.0:
+            vfs = self.vf_A_sparse.todense().reshape(
+                -1, 1, self.hidden_dim, self.hidden_dim
             )
-            return y_next, y_next
+        elif self.diagonal_dense:
+            diags = jax.vmap(jnp.diag)(self.vf_A_diag)
+            vfs = jnp.zeros((diags.shape[0], 1, self.hidden_dim, self.hidden_dim))
+            vfs = vfs.at[:, :, -self.dense_size :, -self.dense_size :].set(
+                self.vf_A_dense.reshape(-1, 1, self.dense_size, self.dense_size)
+            )
+            vfs = vfs.at[:, :, : -self.dense_size, : -self.dense_size].set(
+                diags.reshape(
+                    -1,
+                    1,
+                    self.hidden_dim - self.dense_size,
+                    self.hidden_dim - self.dense_size,
+                )
+            )
+        else:
+            vfs = self.vf_A.reshape(
+                -1, self.num_blocks, self.block_size, self.block_size
+            )
+
+        if self.walsh_hadamard and self.parallel_steps == 1 and self.logsig_depth == 1:
+            flows = logsigs @ self.vf_A
+
+            def step(y, flow):
+                # flowed = fwht(flow * y)
+                flowed = self.hadamard_matrix @ (flow * y)
+                y_next = y + flowed
+                return y_next, y_next
+
+        elif self.rank > 0 and self.parallel_steps == 1 and self.logsig_depth == 1:
+            diag_flow = logsigs @ self.vf_A
+            u_flow = jnp.einsum("li,ijk->ljk", logsigs, self.vf_A_u)
+            v_flow = jnp.einsum("li,ijk->ljk", logsigs, self.vf_A_v)
+            flows = (diag_flow, u_flow, v_flow)
+
+            def step(y, flow):
+                diag_flow, u_flow, v_flow = flow
+                diag = diag_flow * y
+                lowrank = jnp.einsum("ji,j->i", v_flow, y)
+                lowrank = jnp.einsum("ki,i->k", u_flow, lowrank)
+                y_next = y + diag + lowrank
+                return y_next, y_next
+
+        else:
+            lie_brackets = jax.vmap(self.log_ode, in_axes=(1))(vfs)
+            log_flows = jnp.einsum("ijkl,ml->mijk", lie_brackets, logsigs[:, 1:])
+            flows = log_flows + jnp.eye(self.block_size)[None, None, :, :]
+            if self.block_size == 1:
+                step_comp = lambda x, y: x * y
+                parallel_step_comp = lambda x, y: x * y
+            else:
+                step_comp = lambda x, y: x @ y
+                parallel_step_comp = lambda x, y: jnp.matmul(y, x)
+
+            def step(y, flow):
+                y_block = y.reshape(self.num_blocks, self.block_size, 1)
+                y_next = step_comp(flow, y_block)
+                y_next = y_next.reshape(
+                    self.hidden_dim,
+                )
+                return y_next, y_next
 
         def parallel_step(y, flows):
-            compose = lambda a, b: jnp.matmul(b, a)
-            flow_total = jax.lax.associative_scan(compose, flows)
+            flow_total = jax.lax.associative_scan(parallel_step_comp, flows)
             y_block = y.reshape(self.num_blocks, self.block_size, 1)
             y_new = jnp.matmul(flow_total, y_block).reshape(-1, self.hidden_dim)
             return y_new[-1], y_new

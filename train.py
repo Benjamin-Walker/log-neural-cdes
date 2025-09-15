@@ -83,8 +83,13 @@ def classification_loss(diff_model, static_model, X, y, state, key):
                     jnp.linalg.norm(layer.weight, axis=-1)
                     + jnp.linalg.norm(layer.bias, axis=-1)
                 )
-        else:
+        elif model.vf_A is not None:
             norm += jnp.mean(jnp.linalg.norm(model.vf_A, axis=-1))
+        elif model.vf_A_sparse is not None:
+            vf_A = model.vf_A_sparse.todense()
+            norm += jnp.mean(jnp.linalg.norm(vf_A, axis=-1))
+        else:
+            norm = 0.0
         norm *= model.lambd
     return (
         jnp.mean(-jnp.sum(y * jnp.log(pred_y + 1e-8), axis=1)) + norm,
@@ -108,8 +113,14 @@ def regression_loss(diff_model, static_model, X, y, state, key):
                     jnp.linalg.norm(layer.weight, axis=-1)
                     + jnp.linalg.norm(layer.bias, axis=-1)
                 )
-        else:
+        elif model.vf_A is not None:
             norm += jnp.mean(jnp.linalg.norm(model.vf_A, axis=-1))
+        elif model.vf_A_sparse is not None:
+            vf_A = model.vf_A_sparse.todense()
+            norm += jnp.mean(jnp.linalg.norm(vf_A, axis=-1))
+        else:
+            norm = 0.0
+        norm *= model.lambd
     return (
         jnp.mean(jnp.mean((pred_y - y) ** 2, axis=1)) + norm,
         state,
@@ -196,11 +207,7 @@ def train_model(
         stepkey, key = jr.split(key, 2)
         X, y = data
 
-        if (
-            model_name == "bd_linear_ncde"
-            or model_name == "diagonal_linear_ncde"
-            or model_name == "dense_linear_ncde"
-        ) and dataset_name == "Heartbeat":
+        if model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
             X = (X[0], X[1] / 10, X[2])
         model, state, opt_state, value = make_step(
             model, filter_spec, X, y, loss_fn, state, opt, opt_state, stepkey
@@ -213,11 +220,7 @@ def train_model(
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
-                if (
-                    model_name == "bd_linear_ncde"
-                    or model_name == "diagonal_linear_ncde"
-                    or model_name == "dense_linear_ncde"
-                ) and dataset_name == "Heartbeat":
+                if model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
                     X = (X[0], X[1] / 10, X[2])
                 prediction, _ = calc_output(
                     inference_model,
@@ -244,11 +247,7 @@ def train_model(
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
-                if (
-                    model_name == "bd_linear_ncde"
-                    or model_name == "diagonal_linear_ncde"
-                    or model_name == "dense_linear_ncde"
-                ) and dataset_name == "Heartbeat":
+                if model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
                     X = (X[0], X[1] / 10, X[2])
                 prediction, _ = calc_output(
                     inference_model,
@@ -293,10 +292,9 @@ def train_model(
                         inference_model = eqx.tree_inference(model, value=True)
                         X, y = data
                         if (
-                            model_name == "bd_linear_ncde"
-                            or model_name == "diagonal_linear_ncde"
-                            or model_name == "dense_linear_ncde"
-                        ) and dataset_name == "Heartbeat":
+                            model_name.endswith("linear_ncde")
+                            and dataset_name == "Heartbeat"
+                        ):
                             X = (X[0], X[1] / 10, X[2])
                         prediction, _ = calc_output(
                             inference_model,
@@ -369,22 +367,24 @@ def create_dataset_model_and_train(
     lr,
     lr_scheduler,
     batch_size,
+    irregularly_sampled=1.0,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_EW_irregular_7/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
     for k, v in model_args.items():
         name = str(v)
-        if "(" in name:
-            name = name.split("(", 1)[0]
-        if name == "dt0":
-            output_dir += f"_{k}_" + f"{v:.2f}"
-        else:
-            output_dir += f"_{k}_" + name
-        if name == "PIDController":
-            output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
+        if v is not None:
+            if "(" in name:
+                name = name.split("(", 1)[0]
+            if name == "dt0":
+                output_dir += f"_{k}_" + f"{v:.2f}"
+            else:
+                output_dir += f"_{k}_" + name
+            if name == "PIDController":
+                output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
     output_dir += f"_seed_{seed}"
 
     key = jr.PRNGKey(seed)
@@ -392,11 +392,7 @@ def create_dataset_model_and_train(
     datasetkey, modelkey, trainkey, key = jr.split(key, 4)
     print(f"Creating dataset {dataset_name}")
 
-    if (
-        model_name == "bd_linear_ncde"
-        or model_name == "diagonal_linear_ncde"
-        or model_name == "dense_linear_ncde"
-    ):
+    if model_name.endswith("linear_ncde"):
         scale = True
     else:
         scale = False
@@ -410,6 +406,7 @@ def create_dataset_model_and_train(
         T=T,
         use_idxs=False,
         use_presplit=use_presplit,
+        irregularly_sampled=irregularly_sampled,
         scale=scale,
         key=datasetkey,
     )
@@ -432,9 +429,7 @@ def create_dataset_model_and_train(
     if (
         model_name == "nrde"
         or model_name == "log_ncde"
-        or model_name == "bd_linear_ncde"
-        or model_name == "diagonal_linear_ncde"
-        or model_name == "dense_linear_ncde"
+        or model_name.endswith("linear_ncde")
     ):
         dataloaders = dataset.path_dataloaders
         if model_name == "log_ncde":
@@ -444,6 +439,9 @@ def create_dataset_model_and_train(
             )
         elif model_name == "nrde":
             where = lambda model: (model.intervals,)
+            filter_spec = eqx.tree_at(where, filter_spec, replace=(False,))
+        elif model_name == "wh_linear_ncde":
+            where = lambda model: (model.hadamard_matrix,)
             filter_spec = eqx.tree_at(where, filter_spec, replace=(False,))
     elif model_name == "ncde":
         dataloaders = dataset.coeff_dataloaders

@@ -73,6 +73,11 @@ def create_model(
     scale=1.0,
     lambd=0.0,
     w_init_std=0.25,
+    parallel_steps=1,
+    walsh_hadamard=False,
+    diagonal_dense=False,
+    sparsity=1.0,
+    rank=0,
     *,
     key,
 ):
@@ -102,7 +107,7 @@ def create_model(
             ),
             None,
         )
-    elif model_name in ["bd_linear_ncde", "diagonal_linear_ncde", "dense_linear_ncde"]:
+    elif model_name.endswith("_linear_ncde"):
         return (
             LogLinearCDE(
                 data_dim=data_dim,
@@ -113,6 +118,11 @@ def create_model(
                 lambd=lambd,
                 w_init_std=w_init_std,
                 classification=classification,
+                parallel_steps=parallel_steps,
+                walsh_hadamard=walsh_hadamard,
+                diagonal_dense=diagonal_dense,
+                sparsity=sparsity,
+                rank=rank,
                 key=key,
             ),
             None,
