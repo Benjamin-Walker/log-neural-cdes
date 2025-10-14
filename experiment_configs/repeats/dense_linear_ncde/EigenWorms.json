@@ -12,7 +12,7 @@
     "num_steps": 100000,
     "print_steps": 1000,
     "early_stopping_steps": 10,
-    "batch_size": 32,
+    "batch_size": 2,
     "model_name": "linear_ncde",
     "metric": "accuracy",
     "classification": true,
@@ -27,5 +27,5 @@
     "block_size": 128,
     "stepsize": 12,
     "depth": 2,
-    "parallel_steps": 1
+    "parallel_steps": 128
 }

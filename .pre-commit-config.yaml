@@ -3,23 +3,30 @@ repos:
     rev: 24.3.0
     hooks:
       - id: black
+        exclude: '\.ipynb$'   # Ignore notebooks
 
   - repo: https://github.com/nbQA-dev/nbQA
     rev: 1.7.0
     hooks:
       - id: nbqa-black
         additional_dependencies: [black, setuptools]
+        exclude: '\.ipynb$'
       - id: nbqa-isort
         additional_dependencies: [isort, setuptools]
+        exclude: '\.ipynb$'
       - id: nbqa-flake8
         additional_dependencies: [flake8, setuptools]
+        exclude: '\.ipynb$'
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
       - id: isort
+        exclude: '\.ipynb$'
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
       - id: flake8
+        exclude: '\.ipynb$'
+

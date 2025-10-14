@@ -19,23 +19,27 @@ accuracy = {
     "NCDE": 60.2,
     "NRDE": 60.6,
     "Log‑NCDE": 64.3,
-    "D‑LNCDE": 61.5,
-    "BD-LNCDE": 64.5,
+    "D‑SLiCE": 61.6,
+    "BD-SLiCE": 64.5,
     "DE‑LNCDE": 62.2,
+    "DPLR-SLiCE": 60.4,
+    "D-DE-SLiCE": 61.9,
+    "S-SLiCE": 61.5,
+    "WH-SLiCE": 62.1,
 }
 
 # Time per 1 000 training steps (s)
 time_1k = {
     "LRU": 30.971666666666664,
     "S5": 15.42,
-    "S6": 20.0,  # rounded from 19.848…
+    "S6": 19.85,
     "MAMBA": 80.82166666666669,
     "NCDE": 5665.208333333333,
     "NRDE": 4535.818333333334,
     "Log‑NCDE": 1131.1683333333335,
-    "D‑LNCDE": 7.0,
-    "BD-LNCDE": 55.0,
-    "DE‑LNCDE": 87.0,
+    "D‑LNCDE": 6.96,
+    "BD-LNCDE": 55.29,
+    "DE‑LNCDE": 114.23,
 }
 
 # GPU memory (MB)

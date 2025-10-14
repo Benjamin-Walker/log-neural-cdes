@@ -252,19 +252,19 @@ if __name__ == "__main__":
             # "log_ncde",
             # "nrde",
             # "diagonal_linear_ncde",
+            # "diagonal_dense_linear_ncde",
             "dense_linear_ncde",
             # "wh_linear_ncde",
             # "sparse_linear_ncde",
             # "dplr_linear_ncde",
-            # "diagonal_dense_linear_ncde",
         ]
     dataset_names = [
         "EigenWorms",
-        # "EthanolConcentration",
-        # "Heartbeat",
-        # "MotorImagery",
-        # "SelfRegulationSCP1",
-        # "SelfRegulationSCP2",
+        "EthanolConcentration",
+        "Heartbeat",
+        "MotorImagery",
+        "SelfRegulationSCP1",
+        "SelfRegulationSCP2",
     ]
     experiment_folder = "experiment_configs/repeats"
     irregularly_sampled = 1.0

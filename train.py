@@ -370,7 +370,7 @@ def create_dataset_model_and_train(
     irregularly_sampled=1.0,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_EW_irregular_7/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_Oct25/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"

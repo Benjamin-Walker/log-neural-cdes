@@ -26,5 +26,6 @@
     "block_size": 1,
     "depth": 1,
     "stepsize": 16,
-    "lambd": 0.001
+    "lambd": 0.001,
+    "parallel_steps": 128
 }
