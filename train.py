@@ -217,6 +217,7 @@ def train_model(
         )
         running_loss += value
         if (step + 1) % print_steps == 0:
+            end = time.time()
             predictions = []
             labels = []
             for data in dataloaders["train"].loop_epoch(batch_size):
@@ -277,7 +278,6 @@ def train_model(
             else:
                 prediction = prediction[:, :, 0]
                 val_metric = jnp.mean(jnp.mean((prediction - y) ** 2, axis=1), axis=0)
-            end = time.time()
             total_time = end - start
             print(
                 f"Step: {step + 1}, Loss: {running_loss / print_steps}, "
