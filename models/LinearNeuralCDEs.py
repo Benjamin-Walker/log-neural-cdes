@@ -124,17 +124,17 @@ class LogLinearCDE(eqx.Module):
         if diagonal_dense:
             k_A_diag, k_A_dense = jr.split(k_A, 2)
             self.vf_A_diag = (
-                jr.normal(k_A_diag, (data_dim + 1, self.hidden_dim - self.block_size))
+                jr.normal(k_A_diag, (data_dim, self.hidden_dim - self.block_size))
                 * self.w_init_std
             )
             self.vf_A_dense = (
-                jr.normal(k_A_dense, (data_dim + 1, block_size, block_size))
+                jr.normal(k_A_dense, (data_dim, block_size, block_size))
                 * self.w_init_std
                 / jnp.sqrt(block_size)
             )
             self.dense_size = block_size
         elif sparsity < 1.0:
-            total = (data_dim + 1) * hidden_dim * hidden_dim
+            total = data_dim * hidden_dim * hidden_dim
             nnz = int(jnp.round(total * sparsity))
             if nnz == 0:
                 raise ValueError("sparsity too low, no weights left!")
@@ -142,7 +142,7 @@ class LogLinearCDE(eqx.Module):
             self.vf_A_sparse = (
                 random_bcoo(
                     key=k_A,
-                    shape=(data_dim + 1, self.hidden_dim, self.hidden_dim),
+                    shape=(data_dim, self.hidden_dim, self.hidden_dim),
                     nse=nnz,
                     generator=jax.random.normal,
                     dtype=jnp.float32,
@@ -154,21 +154,19 @@ class LogLinearCDE(eqx.Module):
             self.num_blocks = 1
         else:
             self.vf_A = (
-                jr.normal(
-                    k_A, (data_dim + 1, self.num_blocks * block_size * block_size)
-                )
+                jr.normal(k_A, (data_dim, self.num_blocks * block_size * block_size))
                 * self.w_init_std
                 / jnp.sqrt(block_size)
             )
             if rank > 0:
                 k_A_u, k_A_v = jr.split(k_A, 2)
                 self.vf_A_u = (
-                    jr.normal(k_A_u, (data_dim + 1, self.hidden_dim, rank))
+                    jr.normal(k_A_u, (data_dim, self.hidden_dim, rank))
                     * self.w_init_std
                     / jnp.sqrt(rank)
                 )
                 self.vf_A_v = (
-                    jr.normal(k_A_v, (data_dim + 1, self.hidden_dim, rank))
+                    jr.normal(k_A_v, (data_dim, self.hidden_dim, rank))
                     * self.w_init_std
                     / jnp.sqrt(rank)
                 )
@@ -241,7 +239,7 @@ class LogLinearCDE(eqx.Module):
         # for the generic scanner loop at the end.
 
         if self.walsh_hadamard and self.parallel_steps == 1 and self.logsig_depth == 1:
-            flows = logsigs @ self.vf_A
+            flows = logsigs[:, 1:] @ self.vf_A
 
             def step(y, flow):
                 # flowed = fwht(flow * y)
@@ -251,28 +249,47 @@ class LogLinearCDE(eqx.Module):
 
             parallel_step = None
 
-        elif self.rank > 0 and self.parallel_steps == 1 and self.logsig_depth == 1:
-            diag_flow = logsigs @ self.vf_A
-            u_flow = jnp.einsum("li,ijk->ljk", logsigs, self.vf_A_u)
-            v_flow = jnp.einsum("li,ijk->ljk", logsigs, self.vf_A_v)
-            flows = (diag_flow, u_flow, v_flow)
+        elif self.rank > 0 and self.logsig_depth == 1 and self.parallel_steps == 1:
+            a_seq = logsigs[:, 1:]  # (T-1, C)
 
-            def step(y, flow):
-                diag_flow, u_flow, v_flow = flow
-                diag = diag_flow * y
-                lowrank = jnp.einsum("ji,j->i", v_flow, y)
-                lowrank = jnp.einsum("ki,i->k", u_flow, lowrank)
+            def step(y, a):  # a: (C,)
+                # Diagonal part: (sum_c a_c d_c) ⊙ y
+                # self.vf_A: (C, H)
+                diag = (a @ self.vf_A) * y  # (H,)
+
+                # Low-rank part: sum_c a_c * U_c (V_c^T y)
+                # self.vf_A_v: (C, H, R), self.vf_A_u: (C, H, R)
+                vTy = jnp.einsum("chr,h->cr", self.vf_A_v, y)  # (C, R), V_c^T y
+                lowrank = jnp.einsum("chr,cr->h", self.vf_A_u, a[:, None] * vTy)  # (H,)
+
                 y_next = y + diag + lowrank
                 return y_next, y_next
 
             parallel_step = None
+            flows = a_seq
+
+        # elif self.rank > 0 and self.parallel_steps == 1 and self.logsig_depth == 1:
+        #     diag_flow = logsigs[:, 1:] @ self.vf_A
+        #     u_flow = jnp.einsum("li,ijk->ljk", logsigs[:, 1:], self.vf_A_u)
+        #     v_flow = jnp.einsum("li,ijk->ljk", logsigs[:, 1:], self.vf_A_v)
+        #     flows = (diag_flow, u_flow, v_flow)
+
+        #     def step(y, flow):
+        #         diag_flow, u_flow, v_flow = flow
+        #         diag = diag_flow * y
+        #         lowrank = jnp.einsum("ji,j->i", v_flow, y)
+        #         lowrank = jnp.einsum("ki,i->k", u_flow, lowrank)
+        #         y_next = y + diag + lowrank
+        #         return y_next, y_next
+
+        #     parallel_step = None
 
         elif self.diagonal_dense:
             diag_size = self.hidden_dim - self.dense_size
 
             # Calculate flows for both parts
             num_log_sig_coeffs = self.vf_A_diag.shape[0]
-            update_diag = logsigs[:, :num_log_sig_coeffs] @ self.vf_A_diag
+            update_diag = logsigs[:, 1 : num_log_sig_coeffs + 1] @ self.vf_A_diag
             flows_diag = 1 + update_diag
 
             lie_brackets_dense = self.log_ode(self.vf_A_dense)
@@ -304,9 +321,9 @@ class LogLinearCDE(eqx.Module):
                 ys_new = jnp.concatenate([ys_diag_new, ys_dense_new], axis=-1)
                 return ys_new[-1], ys_new
 
-        elif self.block_size == 1:
+        elif self.block_size == 1 and self.rank == 0 and not self.walsh_hadamard:
             num_log_sig_coeffs = self.vf_A.shape[0]
-            updates = logsigs[:, :num_log_sig_coeffs] @ self.vf_A
+            updates = logsigs[:, 1 : num_log_sig_coeffs + 1] @ self.vf_A
             flows = 1 + updates
 
             def step(y, flow):
@@ -326,12 +343,21 @@ class LogLinearCDE(eqx.Module):
                     -1, 1, self.hidden_dim, self.hidden_dim
                 )
             elif self.rank > 0:
-                low_rank = jnp.einsum("cij,ckj->ik", self.vf_A_u, self.vf_A_v)
-                low_rank = jnp.reshape(
-                    low_rank, (-1, 1, self.hidden_dim, self.hidden_dim)
-                )
-                diags = jax.vmap(jnp.diag)(self.vf_A)
-                vfs = low_rank + diags[:, None, :, :]
+                # Per-channel low-rank matrices: (C, H, H), keep 'c'!
+                # U: (C,H,R), V: (C,H,R)
+                low_rank = jnp.einsum(
+                    "cir,cjr->cij", self.vf_A_u, self.vf_A_v
+                )  # (C,H,H)
+                diags = jax.vmap(jnp.diag)(self.vf_A)  # (C,H,H) if vf_A:(C,H)
+                vfs = (low_rank + diags)[:, None, :, :]  # (C,1,H,H)
+
+            # elif self.rank > 0:
+            #     low_rank = jnp.einsum("cij,ckj->ik", self.vf_A_u, self.vf_A_v)
+            #     low_rank = jnp.reshape(
+            #         low_rank, (-1, 1, self.hidden_dim, self.hidden_dim)
+            #     )
+            #     diags = jax.vmap(jnp.diag)(self.vf_A)
+            #     vfs = low_rank + diags[:, None, :, :]
             elif self.walsh_hadamard:
                 vfs = self.vf_A[:, None, :] * self.hadamard_matrix[None, :, :]
                 vfs = jnp.reshape(vfs, (-1, 1, self.hidden_dim, self.hidden_dim))
@@ -368,12 +394,12 @@ class LogLinearCDE(eqx.Module):
         else:
             scan_fn = parallel_step
             t = jax.tree_util.tree_leaves(flows)[0].shape[0]
-            remainder = (t - 1) % self.parallel_steps
+            remainder = t % self.parallel_steps
 
             if remainder == 0:
-                core_flows = jax.tree_util.tree_map(lambda x: x[1:], flows)
+                core_flows = flows
             else:
-                core_flows = jax.tree_util.tree_map(lambda x: x[1:-remainder], flows)
+                core_flows = jax.tree_util.tree_map(lambda x: x[:-remainder], flows)
 
             scan_inp = jax.tree_util.tree_map(
                 lambda x: x.reshape(-1, self.parallel_steps, *x.shape[1:]), core_flows
