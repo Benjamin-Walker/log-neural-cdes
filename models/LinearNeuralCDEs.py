@@ -253,36 +253,14 @@ class LogLinearCDE(eqx.Module):
             a_seq = logsigs[:, 1:]  # (T-1, C)
 
             def step(y, a):  # a: (C,)
-                # Diagonal part: (sum_c a_c d_c) ⊙ y
-                # self.vf_A: (C, H)
                 diag = (a @ self.vf_A) * y  # (H,)
-
-                # Low-rank part: sum_c a_c * U_c (V_c^T y)
-                # self.vf_A_v: (C, H, R), self.vf_A_u: (C, H, R)
                 vTy = jnp.einsum("chr,h->cr", self.vf_A_v, y)  # (C, R), V_c^T y
                 lowrank = jnp.einsum("chr,cr->h", self.vf_A_u, a[:, None] * vTy)  # (H,)
-
                 y_next = y + diag + lowrank
                 return y_next, y_next
 
             parallel_step = None
             flows = a_seq
-
-        # elif self.rank > 0 and self.parallel_steps == 1 and self.logsig_depth == 1:
-        #     diag_flow = logsigs[:, 1:] @ self.vf_A
-        #     u_flow = jnp.einsum("li,ijk->ljk", logsigs[:, 1:], self.vf_A_u)
-        #     v_flow = jnp.einsum("li,ijk->ljk", logsigs[:, 1:], self.vf_A_v)
-        #     flows = (diag_flow, u_flow, v_flow)
-
-        #     def step(y, flow):
-        #         diag_flow, u_flow, v_flow = flow
-        #         diag = diag_flow * y
-        #         lowrank = jnp.einsum("ji,j->i", v_flow, y)
-        #         lowrank = jnp.einsum("ki,i->k", u_flow, lowrank)
-        #         y_next = y + diag + lowrank
-        #         return y_next, y_next
-
-        #     parallel_step = None
 
         elif self.diagonal_dense:
             diag_size = self.hidden_dim - self.dense_size
@@ -343,21 +321,9 @@ class LogLinearCDE(eqx.Module):
                     -1, 1, self.hidden_dim, self.hidden_dim
                 )
             elif self.rank > 0:
-                # Per-channel low-rank matrices: (C, H, H), keep 'c'!
-                # U: (C,H,R), V: (C,H,R)
-                low_rank = jnp.einsum(
-                    "cir,cjr->cij", self.vf_A_u, self.vf_A_v
-                )  # (C,H,H)
-                diags = jax.vmap(jnp.diag)(self.vf_A)  # (C,H,H) if vf_A:(C,H)
-                vfs = (low_rank + diags)[:, None, :, :]  # (C,1,H,H)
-
-            # elif self.rank > 0:
-            #     low_rank = jnp.einsum("cij,ckj->ik", self.vf_A_u, self.vf_A_v)
-            #     low_rank = jnp.reshape(
-            #         low_rank, (-1, 1, self.hidden_dim, self.hidden_dim)
-            #     )
-            #     diags = jax.vmap(jnp.diag)(self.vf_A)
-            #     vfs = low_rank + diags[:, None, :, :]
+                low_rank = jnp.einsum("cir,cjr->cij", self.vf_A_u, self.vf_A_v)
+                diags = jax.vmap(jnp.diag)(self.vf_A)
+                vfs = (low_rank + diags)[:, None, :, :]
             elif self.walsh_hadamard:
                 vfs = self.vf_A[:, None, :] * self.hadamard_matrix[None, :, :]
                 vfs = jnp.reshape(vfs, (-1, 1, self.hidden_dim, self.hidden_dim))
