@@ -207,7 +207,10 @@ def train_model(
         stepkey, key = jr.split(key, 2)
         X, y = data
 
-        if model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
+        if model_name == "dplr_linear_ncde":
+            if dataset_name == "Heartbeat" or dataset_name == "MotorImagery":
+                X = (X[0], X[1] / 100, X[2])
+        elif model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
             X = (X[0], X[1] / 10, X[2])
         model, state, opt_state, value = make_step(
             model, filter_spec, X, y, loss_fn, state, opt, opt_state, stepkey
@@ -220,7 +223,10 @@ def train_model(
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
-                if model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
+                if model_name == "dplr_linear_ncde":
+                    if dataset_name == "Heartbeat" or dataset_name == "MotorImagery":
+                        X = (X[0], X[1] / 100, X[2])
+                elif model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
                     X = (X[0], X[1] / 10, X[2])
                 prediction, _ = calc_output(
                     inference_model,
@@ -247,7 +253,10 @@ def train_model(
                 stepkey, key = jr.split(key, 2)
                 inference_model = eqx.tree_inference(model, value=True)
                 X, y = data
-                if model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
+                if model_name == "dplr_linear_ncde":
+                    if dataset_name == "Heartbeat" or dataset_name == "MotorImagery":
+                        X = (X[0], X[1] / 100, X[2])
+                elif model_name.endswith("linear_ncde") and dataset_name == "Heartbeat":
                     X = (X[0], X[1] / 10, X[2])
                 prediction, _ = calc_output(
                     inference_model,
@@ -295,7 +304,7 @@ def train_model(
                             model_name.endswith("linear_ncde")
                             and dataset_name == "Heartbeat"
                         ):
-                            X = (X[0], X[1] / 10, X[2])
+                            X = (X[0], X[1] / 100, X[2])
                         prediction, _ = calc_output(
                             inference_model,
                             X,
