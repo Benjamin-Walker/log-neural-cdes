@@ -300,11 +300,17 @@ def train_model(
                         stepkey, key = jr.split(key, 2)
                         inference_model = eqx.tree_inference(model, value=True)
                         X, y = data
-                        if (
+                        if model_name == "dplr_linear_ncde":
+                            if (
+                                dataset_name == "Heartbeat"
+                                or dataset_name == "MotorImagery"
+                            ):
+                                X = (X[0], X[1] / 100, X[2])
+                        elif (
                             model_name.endswith("linear_ncde")
                             and dataset_name == "Heartbeat"
                         ):
-                            X = (X[0], X[1] / 100, X[2])
+                            X = (X[0], X[1] / 10, X[2])
                         prediction, _ = calc_output(
                             inference_model,
                             X,
@@ -379,7 +385,7 @@ def create_dataset_model_and_train(
     irregularly_sampled=1.0,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_Oct25/" + model_name + "/" + dataset_name
+    output_parent_dir += "outputs_UEA_Oct25_change/" + model_name + "/" + dataset_name
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"

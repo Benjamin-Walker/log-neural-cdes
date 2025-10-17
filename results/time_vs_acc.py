@@ -30,30 +30,38 @@ accuracy = {
 
 # Time per 1 000 training steps (s)
 time_1k = {
-    "LRU": 30.971666666666664,
-    "S5": 15.42,
-    "S6": 19.85,
-    "MAMBA": 80.82166666666669,
-    "NCDE": 5665.208333333333,
-    "NRDE": 4535.818333333334,
-    "Log‑NCDE": 1131.1683333333335,
-    "D‑LNCDE": 6.96,
-    "BD-LNCDE": 55.29,
-    "DE‑LNCDE": 114.23,
+    "LRU": 26.91,
+    "S5": 21.92,
+    "S6": 20.09,
+    "MAMBA": 59.97,
+    "NCDE": 6923.06,
+    "NRDE": 3431.09,
+    "Log‑NCDE": 1321.69,
+    "D‑SLiCE": 10.15,
+    "BD-SLiCE": 59.17,
+    "DE‑LNCDE": 79.37,
+    "D-DE-SLiCE": 60.39,
+    "S-SLiCE": 79.37,
+    "WH-SLiCE": 79.37,
+    "DPLR-SLiCE": 79.37,
 }
 
 # GPU memory (MB)
 gpu_mem = {
-    "LRU": 4121.666666666667,
-    "S5": 2815.0,
-    "S6": 2608.0,
-    "MAMBA": 4450.333333333333,
-    "NCDE": 1759.6666666666667,
-    "NRDE": 2676.3333333333335,
-    "Log‑NCDE": 1999.6666666666667,
-    "D‑LNCDE": 2159.0,  # diagonal_linear_ncde
-    "BD-LNCDE": 2938.0,  # bd_linear_ncde
-    "DE‑LNCDE": 8820.333333333334,  # dense_linear_ncde
+    "LRU": 4308.0,
+    "S5": 3327.33,
+    "S6": 2938.33,
+    "MAMBA": 4434.67,
+    "NCDE": 1961.67,
+    "NRDE": 2858.33,
+    "Log‑NCDE": 2177.33,
+    "D‑SLiCE": 2302.33,
+    "BD-SLiCE": 2344.00,
+    "DE‑LNCDE": 12457.67,
+    "D-DE-SLiCE": 2302.33,
+    "S-SLiCE": 12457.67,
+    "WH-SLiCE": 12457.67,
+    "DPLR-SLiCE": 12457.67,
 }
 
 text_pos = {
@@ -64,15 +72,27 @@ text_pos = {
     "NCDE": (-20, -23),
     "NRDE": (-20, 15),
     "Log‑NCDE": (-35, -25),
-    "D‑LNCDE": (-25, -25),
-    "BD-LNCDE": (-35, 15),
-    "DE‑LNCDE": (-32, -37),
+    "D‑SLiCE": (-25, -25),
+    "BD-SLiCE": (-35, 15),
+    "DE‑LNCDE": (-35, 32),
+    "D-DE-SLiCE": (-40, -24),
+    "S-SLiCE": (-35, 32),
+    "WH-SLiCE": (-35, 32),
+    "DPLR-SLiCE": (-35, 32),
 }
 
 # ─────────────────────── 2. GROUP / COLOUR MAPPING ─────────────────
 groups = {
     "Non‑linear CDE": ["NCDE", "NRDE", "Log‑NCDE"],
-    "Linear CDE": ["D‑LNCDE", "BD-LNCDE", "DE‑LNCDE"],
+    "Linear CDE": [
+        "D‑SLiCE",
+        "BD-SLiCE",
+        "D-DE-SLiCE",
+        "DE‑LNCDE",
+        "DPLR-SLiCE",
+        "S-SLiCE",
+        "WH-SLiCE",
+    ],
     "SSM": ["S5", "S6", "MAMBA"],
     "RNN": ["LRU"],
 }
@@ -137,7 +157,7 @@ legend_elements = [
     for family in groups
 ]
 
-plt.legend(handles=legend_elements, title="Model family")
+plt.legend(handles=legend_elements, title="Model family", loc=[0.5, 0.2])
 plt.tight_layout()
 plt.savefig("results/images/time_vs_acc.png", dpi=300)
 plt.show()
