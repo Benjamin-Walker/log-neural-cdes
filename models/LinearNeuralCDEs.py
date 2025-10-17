@@ -355,17 +355,17 @@ class LogLinearCDE(eqx.Module):
         # --- Generic scanner logic ---
         if self.parallel_steps == 1 or parallel_step is None:
             scan_fn = step
-            scan_inp = flows
+            scan_inp = jax.tree_util.tree_map(lambda x: x[1:], flows)
             remainder = 0
         else:
             scan_fn = parallel_step
             t = jax.tree_util.tree_leaves(flows)[0].shape[0]
-            remainder = t % self.parallel_steps
+            remainder = (t - 1) % self.parallel_steps
 
             if remainder == 0:
-                core_flows = flows
+                core_flows = jax.tree_util.tree_map(lambda x: x[1:], flows)
             else:
-                core_flows = jax.tree_util.tree_map(lambda x: x[:-remainder], flows)
+                core_flows = jax.tree_util.tree_map(lambda x: x[1:-remainder], flows)
 
             scan_inp = jax.tree_util.tree_map(
                 lambda x: x.reshape(-1, self.parallel_steps, *x.shape[1:]), core_flows

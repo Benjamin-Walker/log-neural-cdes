@@ -254,12 +254,12 @@ if __name__ == "__main__":
             # "diagonal_linear_ncde",
             # "diagonal_dense_linear_ncde",
             "dense_linear_ncde",
-            # "wh_linear_ncde",
-            # "sparse_linear_ncde",
-            # "dplr_linear_ncde",
+            "wh_linear_ncde",
+            "sparse_linear_ncde",
+            "dplr_linear_ncde",
         ]
     dataset_names = [
-        "EigenWorms",
+        # "EigenWorms",
         "EthanolConcentration",
         "Heartbeat",
         "MotorImagery",
