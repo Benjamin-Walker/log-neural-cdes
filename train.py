@@ -382,7 +382,6 @@ def create_dataset_model_and_train(
     lr,
     lr_scheduler,
     batch_size,
-    irregularly_sampled=1.0,
     output_parent_dir="",
 ):
     output_parent_dir += "outputs_UEA_Oct25_change/" + model_name + "/" + dataset_name
@@ -421,7 +420,6 @@ def create_dataset_model_and_train(
         T=T,
         use_idxs=False,
         use_presplit=use_presplit,
-        irregularly_sampled=irregularly_sampled,
         scale=scale,
         key=datasetkey,
     )
