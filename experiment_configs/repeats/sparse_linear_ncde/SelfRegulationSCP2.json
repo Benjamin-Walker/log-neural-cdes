@@ -27,7 +27,7 @@
     "stepsize": 4,
     "depth": 2,
     "lambd": 0.001,
-    "parallel_steps": 1,
+    "parallel_steps": 128,
     "walsh_hadamard": false,
     "diagonal_dense": false,
     "sparsity": 0.1,

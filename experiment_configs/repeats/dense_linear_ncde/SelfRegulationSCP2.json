@@ -27,5 +27,5 @@
     "stepsize": 4,
     "depth": 2,
     "lambd": 0.001,
-    "parallel_steps": 1
+    "parallel_steps": 128
 }
