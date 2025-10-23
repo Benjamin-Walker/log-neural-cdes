@@ -19,13 +19,9 @@ accuracy = {
     "NCDE": 60.2,
     "NRDE": 60.6,
     "Log‑NCDE": 64.3,
-    "D‑SLiCE": 61.6,
-    "BD-SLiCE": 64.5,
-    "DE‑LNCDE": 62.2,
-    "DPLR-SLiCE": 60.4,
-    "D-DE-SLiCE": 61.9,
-    "S-SLiCE": 61.5,
-    "WH-SLiCE": 62.1,
+    "D‑SLiCE": 61.7,
+    "BD-SLiCE": 64.0,
+    "DE‑LNCDE": 61.6,
 }
 
 # Time per 1 000 training steps (s)
@@ -37,13 +33,9 @@ time_1k = {
     "NCDE": 6923.06,
     "NRDE": 3431.09,
     "Log‑NCDE": 1321.69,
-    "D‑SLiCE": 10.15,
-    "BD-SLiCE": 59.17,
-    "DE‑LNCDE": 79.37,
-    "D-DE-SLiCE": 60.39,
-    "S-SLiCE": 79.37,
-    "WH-SLiCE": 79.37,
-    "DPLR-SLiCE": 79.37,
+    "D‑SLiCE": 11.0,
+    "BD-SLiCE": 68.1,
+    "DE‑LNCDE": 77.2,
 }
 
 # GPU memory (MB)
@@ -55,18 +47,14 @@ gpu_mem = {
     "NCDE": 1961.67,
     "NRDE": 2858.33,
     "Log‑NCDE": 2177.33,
-    "D‑SLiCE": 2302.33,
+    "D‑SLiCE": 1875.33,
     "BD-SLiCE": 2344.00,
-    "DE‑LNCDE": 12457.67,
-    "D-DE-SLiCE": 2302.33,
-    "S-SLiCE": 12457.67,
-    "WH-SLiCE": 12457.67,
-    "DPLR-SLiCE": 12457.67,
+    "DE‑LNCDE": 12756,
 }
 
 text_pos = {
     "LRU": (-12.5, -30),
-    "S5": (-10, -25),
+    "S5": (-13, -26),
     "S6": (-10, 15),
     "MAMBA": (-25, 18),
     "NCDE": (-20, -23),
@@ -75,10 +63,6 @@ text_pos = {
     "D‑SLiCE": (-25, -25),
     "BD-SLiCE": (-35, 15),
     "DE‑LNCDE": (-35, 32),
-    "D-DE-SLiCE": (-40, -24),
-    "S-SLiCE": (-35, 32),
-    "WH-SLiCE": (-35, 32),
-    "DPLR-SLiCE": (-35, 32),
 }
 
 # ─────────────────────── 2. GROUP / COLOUR MAPPING ─────────────────
@@ -87,11 +71,7 @@ groups = {
     "Linear CDE": [
         "D‑SLiCE",
         "BD-SLiCE",
-        "D-DE-SLiCE",
         "DE‑LNCDE",
-        "DPLR-SLiCE",
-        "S-SLiCE",
-        "WH-SLiCE",
     ],
     "SSM": ["S5", "S6", "MAMBA"],
     "RNN": ["LRU"],
@@ -140,7 +120,7 @@ plt.xlabel("Time per 1000 training steps (s)")
 plt.ylabel("Average test accuracy (%)")
 plt.title("Accuracy, Speed, and Memory Footprint on the UEA-MTSCA")
 # plt.grid(alpha=0.3, which='both', linestyle='--')
-plt.ylim(58, 66)
+plt.ylim(58, 65)
 legend_elements = [
     Line2D(
         [0],
@@ -159,5 +139,5 @@ legend_elements = [
 
 plt.legend(handles=legend_elements, title="Model family", loc=[0.5, 0.2])
 plt.tight_layout()
-plt.savefig("results/images/time_vs_acc.png", dpi=300)
+plt.savefig("results/images/time_vs_acc.pdf", dpi=300)
 plt.show()
