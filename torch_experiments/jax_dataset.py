@@ -28,22 +28,10 @@ class Dataset(torch.utils.data.Dataset):
         val,
         test,
         indexes,
-        irregularly_sampled,
         presplit,
         include_time,
     ):
         super().__init__()
-
-        def _irregular_subsample(arr: np.ndarray, p: float) -> np.ndarray:
-            if p >= 1.0:
-                return arr  # no change
-            B, L, C = arr.shape
-            k = max(1, int(round(p * L)))
-            out = np.empty((B, k, C), dtype=arr.dtype)
-            for i in range(B):
-                idx = np.sort(np.random.choice(L, size=k, replace=False))
-                out[i] = arr[i, idx]
-            return out
 
         uea_subfolders = [
             f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
@@ -97,8 +85,6 @@ class Dataset(torch.utils.data.Dataset):
                 )
                 data = np.concatenate([ts[:, :, None], data], axis=2)
 
-            data = _irregular_subsample(data, irregularly_sampled)
-
             self.data = torch.from_numpy(data).to(torch.float32)
             self.labels = torch.from_numpy(labels).to(torch.float32)
         else:
@@ -138,8 +124,6 @@ class Dataset(torch.utils.data.Dataset):
             assert len(indexes) == len(data)
             data = data[indexes]
             labels = labels[indexes]
-            data = _irregular_subsample(data, irregularly_sampled)
-
             data = torch.from_numpy(data).to(torch.float32)
             labels = torch.from_numpy(labels).to(torch.float32)
             num_classes = len(torch.unique(labels))

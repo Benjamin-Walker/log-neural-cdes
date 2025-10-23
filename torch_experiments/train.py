@@ -133,7 +133,6 @@ def create_dataset_model_and_train(
     early_stopping_steps,
     lr,
     model_args,
-    irregularly_sampled=1.0,
 ):
     torch.manual_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -151,9 +150,7 @@ def create_dataset_model_and_train(
     else:
         raise ValueError(f"Unknown metric: {metric}")
 
-    output_dir = (
-        output_parent_dir + f"outputs_EW_irregular/{model_name}" + f"/{dataset_name}/"
-    )
+    output_dir = output_parent_dir + f"outputs/{model_name}" + f"/{dataset_name}/"
     output_dir += f"lr_{lr}_time_{include_time}"
     for k, v in model_args.items():
         output_dir += f"_{k}_{v}"
@@ -183,7 +180,6 @@ def create_dataset_model_and_train(
         False,
         False,
         indexes,
-        irregularly_sampled=irregularly_sampled,
         presplit=use_presplit,
         include_time=include_time,
     )
@@ -197,7 +193,6 @@ def create_dataset_model_and_train(
         True,
         False,
         indexes,
-        irregularly_sampled=irregularly_sampled,
         presplit=use_presplit,
         include_time=include_time,
     )
@@ -211,7 +206,6 @@ def create_dataset_model_and_train(
         False,
         True,
         indexes,
-        irregularly_sampled=irregularly_sampled,
         presplit=use_presplit,
         include_time=include_time,
     )
