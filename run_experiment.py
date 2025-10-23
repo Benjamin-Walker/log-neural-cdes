@@ -28,7 +28,6 @@ def run_experiments(
     dataset_names,
     experiment_folder,
     pytorch_experiments,
-    irregularly_sampled,
 ):
 
     for model_name in model_names:
@@ -178,7 +177,6 @@ def run_experiments(
                     "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "model_args": model_args,
-                    "irregularly_sampled": irregularly_sampled,
                 }
                 run_fn = torch_create_dataset_model_and_train
             else:
@@ -224,7 +222,6 @@ def run_experiments(
                     "lr_scheduler": lr_scheduler,
                     "batch_size": batch_size,
                     "output_parent_dir": output_parent_dir,
-                    "irregularly_sampled": irregularly_sampled,
                 }
                 run_fn = create_dataset_model_and_train
 
@@ -267,12 +264,10 @@ if __name__ == "__main__":
         "SelfRegulationSCP2",
     ]
     experiment_folder = "experiment_configs/repeats"
-    irregularly_sampled = 1.0
 
     run_experiments(
         model_names,
         dataset_names,
         experiment_folder,
         pytorch_experiments,
-        irregularly_sampled=irregularly_sampled,
     )

@@ -10,7 +10,7 @@
     "output_parent_dir": "",
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
-    "print_steps": 10,
+    "print_steps": 100,
     "early_stopping_steps": 10,
     "batch_size": 32,
     "model_name": "ncde",

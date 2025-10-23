@@ -19,7 +19,6 @@ import pickle
 from dataclasses import dataclass
 from typing import Dict
 
-import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
@@ -250,7 +249,6 @@ def create_uea_dataset(
     include_time,
     T,
     scale=False,
-    irregularly_sampled=1.0,
     *,
     key,
 ):
@@ -296,41 +294,6 @@ def create_uea_dataset(
         if include_time:
             ts = jnp.repeat(t, data.shape[0], axis=0)
             data = jnp.concatenate([ts[:, :, None], data], axis=2)
-
-    if irregularly_sampled < 1.0:
-
-        def subsample(x: jnp.ndarray, key: jr.PRNGKey) -> jnp.ndarray:
-            """
-            x   : (B, N, C) batch of multivariate series
-            key : master PRNGKey
-            ----
-            returns (B, k, C) with k = int(p * N) (≥1)
-                    every row uses a different random subset of the N time-steps
-            """
-            B, N, C = x.shape
-            k = max(1, int(round(irregularly_sampled * N)))  # guarantee ≥1 point
-
-            # split the master key into B keys, one per series
-            keys = jr.split(key, B)
-
-            # vmapped helper → (k, C) for one row
-            def _one_series(rng, row):
-                idx = jnp.sort(jr.choice(rng, N, shape=(k,), replace=False))
-                return row[idx]  # (k, C)
-
-            return jax.vmap(_one_series)(keys, x)
-
-        if use_presplit:
-            permkey_train, key = jr.split(key)
-            train_data = subsample(train_data, permkey_train)
-            permkey_val, key = jr.split(key)
-            val_data = subsample(val_data, permkey_val)
-            permkey_test, key = jr.split(key)
-            test_data = subsample(test_data, permkey_test)
-            data = (train_data, val_data, test_data)
-        else:
-            permkey, key = jr.split(key)
-            data = subsample(data, permkey)
 
     if scale:
         if use_presplit:
@@ -450,7 +413,6 @@ def create_dataset(
     include_time,
     T,
     scale=False,
-    irregularly_sampled=1.0,
     *,
     key,
 ):
@@ -472,7 +434,6 @@ def create_dataset(
             include_time,
             T,
             scale=scale,
-            irregularly_sampled=irregularly_sampled,
             key=key,
         )
     elif name[:-1] in toy_subfolders:
