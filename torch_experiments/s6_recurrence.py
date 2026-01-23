@@ -1,4 +1,16 @@
-# Copyright (c) 2023, Tri Dao, Albert Gu.
+"""
+This module defines the `S6Layer` class, a PyTorch implementation of a sequence model layer using
+the S6 architecture.
+
+Classes:
+- `S6Layer`: Implements the S6 layer with options for model dimensions, state dimensions, and
+  initialisation strategies.
+
+Functions:
+- `forward`: Applies the S6 transformation to the input sequence, returning the processed sequence.
+
+Copyright (c) 2023, Tri Dao, Albert Gu.
+"""
 
 import math
 

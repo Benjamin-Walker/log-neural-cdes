@@ -5,15 +5,48 @@ Building on <a href="https://arxiv.org/abs/2009.08295">Neural Rough Differential
 repository introduces Log Neural Controlled Differential Equations (Log-NCDEs), a novel, effective, and efficient 
 method for training NCDEs. 
 
+---
+
+## Update – 22nd May 2025
+
+This repository now supports **Structured Linear Controlled Differential Equations** (SLiCEs), which replace the non-linear vector fields of NCDEs and Log-NCDEs with structured linear vector fields, retaining the same maximal expressivity whilst being significantly more efficient.
+
+SLiCEs are defined by
+
+$$
+h_t = h_0 + \int_0^t \sum_{i=1}^{d_X} A^i_{\theta} h_s \mathrm{d}X_s,
+$$
+
+where each $A^i_{\theta} \in \mathbb{R}^{d_h \times d_h}$ is a trainable matrix acting on the hidden state. When the $A^i_{\theta}$ are dense, this system is known as a **Linear Neural CDE (LNCDE)** and these models are *maximally expressive* (i.e., universal), see [here](https://github.com/Benjamin-Walker/selective-ssms-and-linear-cdes). However, the computational cost and number of parameters when using dense matrices scale as $\mathcal{O}(d_h^3)$, making them impractical for large models.
+
+SLiCEs offer a solution: they retain the maximal expressivity **while reducing computational and memory costs** by structuring the $A^i_{\theta}$ matrices. This repository includes three SLiCE variants:
+- **D-LNCDE**: Diagonal matrices: fastest, but limited expressivity.
+- **BD-LNCDE**: Block-diagonal matrices: maximally expressive and efficient.
+- **DE-LNCDE**: Fully dense matrices: maximally expressive, but computationally expensive.
+
+**In practice**: Replacing the non-linear vector field of a Log-NCDE with the block-diagonal vector field of a BD-LNCDE leads to **20× faster training** per step on the UEA multivariate time-series tasks whilst achieving the same average test accuracy. The figure below compares models on their average test accuracy, average time per 1000 training steps, and average GPU memory, which is represented by the area of each circle.
+
+<p align="center">
+    <img class="center" src="./assets/time_vs_acc.png" width="800"/>
+</p>
+
+For further details and an expansive comparison with other state-of-the-art sequence models, see the [official SLiCE repository](https://github.com/Benjamin-Walker/structured-linear-cdes).
+
+---
+
 ## Introduction
 
 Neural controlled differential equations (NCDEs) treat time series data as observations from a control path $X_t$, 
 parameterise a CDE's vector field using a neural network $f_{\theta}$, and take the solution path $h_t$ as a 
-continuously evolving hidden state, $$h_t = h_0 + \int_0^t f_{\theta}(h_s) \mathrm{d}X_s.$$
+continuously evolving hidden state, 
+
+$$h_t = h_0 + \int_0^t f_{\theta}(h_s) \mathrm{d}X_s.$$
 
 Log-NCDEs use the Log-ODE method to approximate the solution path $h_t$ during training. Given a set of intervals 
 $[r_i,r_{i+1}]$, the Log-ODE method replaces the CDE on each interval with the ODE, 
+
 $$h_{r_{i+1}} = h_{r_i} + \int_{r_i}^{r_{i+1}}\bar{f}\_{\theta}(h_s)\frac{\log(S^{N}(X)\_{[r_i,r_{i+1}]})}{r_{i+1}-r_i}\mathrm{d}s,$$
+
 where $\bar{f_{\theta}}$ is constructed using the iterated Lie brackets of $f_{\theta}$ and 
 $\mathrm{log}(S^{N}(X)\_{[r_i,r_{i+1}]})$ is the depth $N$ truncated log-signature of X over $[r_i,r_{i+1}]$. Informally, 
 $\bar{f}\_{\theta}$ is a high order description of the vector field $f_{\theta}$ and $\log(S^{N}(X)\_{[r_i,r_{i+1}]})$ 
@@ -24,6 +57,16 @@ want to predict.
 <p align="center">
     <img class="center" src="./assets/Log-NCDE.png" width="800"/>
 </p>
+
+---
+
+## Getting Started
+
+After setting up the JAX environment detailed in the next section, the best place to start is by exploring the `simple_example.ipynb` notebook. 
+This Jupyter notebook provides a comprehensive example of training a NCDE and a Log-NCDE on a simple synthetic dataset. 
+It serves as an example of how to apply the Log-ODE method during NCDE training. 
+
+---
 
 ## Requirements
 
@@ -41,6 +84,7 @@ The code for preprocessing the datasets, training S5, LRU, NCDE, NRDE, and Log-N
 - `optax` for neural network optimisers.
 - `diffrax` for differential equation solvers.
 - `signax` for calculating the signature.
+- `roughpy` for calculating the Hall basis.
 - `sktime` for handling time series data in ARFF format.
 - `tqdm` for progress bars.
 - `matplotlib` for plotting.
@@ -51,7 +95,7 @@ conda create -n Log-NCDE python=3.10
 conda activate Log-NCDE
 conda install pre-commit=3.7.1 sktime=0.30.1 tqdm=4.66.4 matplotlib=3.8.4 -c conda-forge
 # Substitue for correct Jax pip install: https://jax.readthedocs.io/en/latest/installation.html
-pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.11.4 optax==0.2.2 diffrax==0.5.1 signax==0.1.1
+pip install -U "jax[cuda12]" "jaxlib[cuda12]" equinox==0.12.2 optax==0.2.4 diffrax==0.7.0 signax==0.1.1 roughpy==0.2.0
 ```
 
 If running `data_dir/process_uea.py` throws this error: No module named 'packaging'
@@ -74,6 +118,8 @@ conda install pytorch=2.2.2 pytorch-cuda=12.1 numpy=1.26.4 -c pytorch -c nvidia
 conda install packaging=24.1 -c conda-forge
 pip install causal-conv1d>=1.2.0 mamba-ssm==1.2.2 einops==0.8.0 jax==0.4.30
 ```
+
+---
 
 ## Data
 
@@ -112,6 +158,8 @@ collected from a wrist-worn device. The dataset can be downloaded from the
 unzipped and saved in the `data_dir/raw` folder in the following format `PPG_FieldStudy/S{i}/S{i}.pkl`. The data can be
 preprocessed by running the `process_ppg.py` script.
 
+---
+
 ## Models
 
 The scripts in the `models` folder implement a number of deep learning time series models in Jax, including NCDEs, 
@@ -130,6 +178,8 @@ the available cells are `Linear`, `GRU`, `LSTM`, and `MLP`.
 
 The `torch_experiments` folder contains Pytorch implementations of S6 and Mamba. The [mamba-ssm](https://github.com/state-spaces/mamba/tree/main) package is 
 used for the mamba recurrence and the S6 recurrence is implemented in `torch_experiments/s6_recurrence.py`.
+
+---
 
 ## Experiments
 
@@ -154,6 +204,8 @@ following fields:
 
 See `experiment_configs/repeats` for some examples.
 
+---
+
 ## Reproducing the Results
 
 The configuration files for all the experiments with fixed hyperparameters can be found in the `experiment_configs` folder and
@@ -161,15 +213,36 @@ The configuration files for all the experiments with fixed hyperparameters can b
 The `results` folder contains a zip file of the output files from the UEA, PPG, and toy experiments. 
 Furthermore, it contains the code for analysing the results and generating the plots in the paper.
 
+
+---
+## Update 28th October 2024
+
+We discovered a minor error in the code that affected the optimiser used when training the models implemented in Jax. 
+This bug has been fixed, and all experiments have been re-run. While this led to slight adjustments in the numerical 
+results, the overall conclusions of the paper remain unchanged. The arXiv version of the paper has been updated to 
+reflect these changes and can be found [here](https://arxiv.org/abs/2402.18512v3).
+
+
+---
+
 ## Bibtex Citation
 
-When using this code, please cite the following paper:
+When using this code, please cite the following papers:
 
-```
-@inproceddings{Walker2024LogNCDE,
+```bibtex
+@article{Walker2024LogNCDE,
   title={Log Neural Controlled Differential Equations: The Lie Brackets Make a Difference},
   author={Walker, Benjamin and McLeod, Andrew D. and Qin, Tiexin and Cheng, Yichuan and Li, Haoliang and Lyons, Terry},
   journal={International Conference on Machine Learning},
   year={2024}
+}
+
+
+@misc{walker2025slices,
+  title        = {Structured Linear CDEs: Maximally Expressive and Parallel-in-Time Sequence Models},
+  author       = {Walker, Benjamin and Yang, Lingyi and Muca Cirone, Nicola and Salvi, Cristopher and Lyons, Terry},
+  year         = {2025},
+  month        = {May},
+  url          = {https://arxiv.org/abs/2505.17761},
 }
 ```

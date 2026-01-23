@@ -1,3 +1,17 @@
+"""
+This module defines a custom PyTorch `Dataset` class for loading and processing time series data 
+from different benchmarks (UEA, toy, PPG) which have been preprocessed and saved as Jax numpy arrays.
+The dataset can be pre-split into training, validation, and test sets, or dynamically split based on provided indexes.
+
+Classes:
+- `Dataset`: A PyTorch dataset class that handles loading data and labels from pickle files of jax numpy arrays,
+  optional inclusion of time as a feature, and splitting of data into train/val/test sets.
+
+Methods:
+- `__len__`: Returns the length of the dataset.
+- `__getitem__`: Retrieves a data-label pair at the specified index.
+"""
+
 import os
 import pickle
 
@@ -7,9 +21,18 @@ import torch
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(
-        self, data_dir, name, train, val, test, indexes, presplit, include_time
+        self,
+        data_dir,
+        name,
+        train,
+        val,
+        test,
+        indexes,
+        presplit,
+        include_time,
     ):
         super().__init__()
+
         uea_subfolders = [
             f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
         ]
@@ -61,6 +84,7 @@ class Dataset(torch.utils.data.Dataset):
                     np.arange(data.shape[1])[None, :], data.shape[0], axis=0
                 )
                 data = np.concatenate([ts[:, :, None], data], axis=2)
+
             self.data = torch.from_numpy(data).to(torch.float32)
             self.labels = torch.from_numpy(labels).to(torch.float32)
         else:
@@ -97,11 +121,12 @@ class Dataset(torch.utils.data.Dataset):
                     np.arange(data.shape[1])[None, :], data.shape[0], axis=0
                 )
                 data = np.concatenate([ts[:, :, None], data], axis=2)
-            data = torch.from_numpy(data).to(torch.float32)
-            labels = torch.from_numpy(labels).to(torch.float32)
             assert len(indexes) == len(data)
             data = data[indexes]
             labels = labels[indexes]
+            data = torch.from_numpy(data).to(torch.float32)
+            labels = torch.from_numpy(labels).to(torch.float32)
+            num_classes = len(torch.unique(labels))
             if train:
                 data = data[: int(0.7 * len(data))]
                 labels = labels[: int(0.7 * len(labels))]
@@ -112,7 +137,6 @@ class Dataset(torch.utils.data.Dataset):
                 data = data[int(0.85 * len(data)) :]
                 labels = labels[int(0.85 * len(labels)) :]
             self.data = data
-            num_classes = len(torch.unique(labels))
             self.labels = torch.nn.functional.one_hot(
                 labels.to(torch.int64), num_classes
             ).to(torch.float32)

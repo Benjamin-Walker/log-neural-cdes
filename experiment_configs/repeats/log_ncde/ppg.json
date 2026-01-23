@@ -11,6 +11,7 @@
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
     "print_steps": 100,
+    "early_stopping_steps": 10,
     "batch_size": 32,
     "model_name": "log_ncde",
     "metric": "mse",
@@ -23,10 +24,10 @@
     "scale": 1000,
     "lr": "0.001",
     "time": "True",
-    "hidden_dim": "64",
-    "vf_depth": "4",
-    "vf_width": "128",
+    "hidden_dim": "128",
+    "vf_depth": "3",
+    "vf_width": "64",
     "depth": "1",
     "stepsize": "10.00",
-    "lambd": "1e-06"
+    "lambd": "0.0"
 }

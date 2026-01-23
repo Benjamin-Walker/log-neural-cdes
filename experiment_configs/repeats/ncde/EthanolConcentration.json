@@ -11,6 +11,7 @@
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
     "print_steps": 100,
+    "early_stopping_steps": 10,
     "batch_size": 32,
     "model_name": "ncde",
     "metric": "accuracy",
@@ -20,9 +21,9 @@
     "T": 1,
     "dt0": "0.0005707762557077625",
     "scale": 1,
-    "lr": "1e-05",
+    "lr": "0.001",
     "time": "True",
-    "hidden_dim": "16",
-    "vf_depth": "3",
-    "vf_width": "64"
+    "hidden_dim": "128",
+    "vf_depth": "4",
+    "vf_width": "128"
 }

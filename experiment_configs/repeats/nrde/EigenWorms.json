@@ -11,6 +11,7 @@
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
     "print_steps": 100,
+    "early_stopping_steps": 10,
     "batch_size": 32,
     "model_name": "nrde",
     "metric": "accuracy",
@@ -18,13 +19,13 @@
     "dataset_name": "EigenWorms",
     "use_presplit": false,
     "T": 1,
-    "dt0": "0.0008888888888888889",
+    "dt0": "0.00022237046920169",
     "scale": 1,
     "lr": "0.001",
-    "time": "True",
-    "hidden_dim": "16",
-    "vf_depth": "4",
-    "vf_width": "128",
+    "time": "False",
+    "hidden_dim": "64",
+    "vf_depth": "3",
+    "vf_width": "64",
     "depth": "2",
-    "stepsize": "16.00"
+    "stepsize": "4.00"
 }

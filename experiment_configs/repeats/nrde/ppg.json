@@ -11,6 +11,7 @@
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
     "print_steps": 100,
+    "early_stopping_steps": 10,
     "batch_size": 32,
     "model_name": "nrde",
     "metric": "mse",
@@ -19,13 +20,13 @@
     "dataset_name": "ppg",
     "use_presplit": true,
     "T": 1,
-    "dt0": "0.002",
+    "dt0": "0.0002002803925495694",
     "scale": 1,
     "lr": "0.001",
     "time": "True",
-    "hidden_dim": "16",
+    "hidden_dim": "128",
     "vf_depth": "4",
     "vf_width": "128",
-    "depth": "2",
-    "stepsize": "1000.00"
+    "depth": "1",
+    "stepsize": "10.00"
 }

@@ -1,9 +1,30 @@
 """
-This module implements the RNN class and the RNN cell classes. The RNN class has the following attributes:
-- cell: The RNN cell used in the RNN.
-- output_layer: The linear layer used to obtain the output of the RNN.
-- hidden_dim: The dimension of the hidden state $h_t$.
-- classification: Whether the model is used for classification.
+This module implements the `RNN` class and various RNN cell classes using JAX and Equinox. The `RNN`
+class is designed to handle both classification and regression tasks, and can be configured with different
+types of RNN cells.
+
+Attributes of the `RNN` class:
+- `cell`: The RNN cell used within the RNN, which can be one of several types (e.g., `LinearCell`, `GRUCell`,
+          `LSTMCell`, `MLPCell`).
+- `output_layer`: The linear layer applied to the hidden state to produce the model's output.
+- `hidden_dim`: The dimension of the hidden state $h_t$.
+- `classification`: A boolean indicating whether the model is used for classification tasks.
+- `output_step`: For regression tasks, specifies how many steps to skip before outputting a prediction.
+
+RNN Cell Classes:
+- `_AbstractRNNCell`: An abstract base class for all RNN cells, defining the interface for custom RNN cells.
+- `LinearCell`: A simple RNN cell that applies a linear transformation to the concatenated input and hidden state.
+- `GRUCell`: An implementation of the Gated Recurrent Unit (GRU) cell.
+- `LSTMCell`: An implementation of the Long Short-Term Memory (LSTM) cell.
+- `MLPCell`: An RNN cell that applies a multi-layer perceptron (MLP) to the concatenated input and hidden state.
+
+Each RNN cell class implements the following methods:
+- `__init__`: Initialises the RNN cell with the specified input dimensions and hidden state size.
+- `__call__`: Applies the RNN cell to the input and hidden state, returning the updated hidden state.
+
+The `RNN` class also includes:
+- A `__call__` method that processes a sequence of inputs, returning either the final output for classification or a
+sequence of outputs for regression.
 """
 
 import abc

@@ -1,14 +1,34 @@
 """
-This script loads a JSON file containing the hyperparameters for each model and dataset, and uses
-create_dataset_model_and_train from train.py to train the models on the datasets using the hyperparameters. The results
-are saved in the output directory specified in the JSON file.
+This script loads hyperparameters from JSON files and trains models on specified datasets using
+the `create_dataset_model_and_train` function from `train.py` or its PyTorch equivalent. The results
+are saved in the output directories defined in the JSON files.
+
+The `run_experiments` function iterates over model names and dataset names, loading configuration
+files from a specified folder, and then calls the appropriate training function based on the
+framework (PyTorch or JAX).
+
+Arguments for `run_experiments`:
+- `model_names`: List of model architectures to use.
+- `dataset_names`: List of datasets to train on.
+- `experiment_folder`: Directory containing JSON configuration files.
+- `pytorch_experiments`: Boolean indicating whether to use PyTorch (True) or JAX (False).
+
+The script also provides a command-line interface (CLI) for specifying whether to run PyTorch experiments.
+
+Usage:
+- Use the `--pytorch_experiments` flag to run experiments with PyTorch; otherwise, JAX is used by default.
 """
 
 import argparse
 import json
 
 
-def run_experiments(model_names, dataset_names, experiment_folder, pytorch_experiments):
+def run_experiments(
+    model_names,
+    dataset_names,
+    experiment_folder,
+    pytorch_experiments,
+):
 
     for model_name in model_names:
         for dataset_name in dataset_names:
@@ -23,19 +43,39 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
             lr_scheduler = eval(data["lr_scheduler"])
             num_steps = data["num_steps"]
             print_steps = data["print_steps"]
+            early_stopping_steps = data["early_stopping_steps"]
             batch_size = data["batch_size"]
             metric = data["metric"]
             use_presplit = data["use_presplit"]
             T = data["T"]
-            if model_name in ["lru", "S5", "S6", "mamba"]:
+            rectilinear_interpolation = data.get("rectilinear_interpolation", False)
+            interval_gap_mode = data.get("interval_gap_mode", "none")
+            gap_n_intervals = data.get("gap_n_intervals", 0)
+            if model_name in [
+                "lru",
+                "S5",
+                "S6",
+                "mamba",
+                "rnn_linear",
+                "rnn_lstm",
+                "rnn_gru",
+                "bd_linear_ncde",
+                "diagonal_linear_ncde",
+                "dense_linear_ncde",
+                "wh_linear_ncde",
+                "sparse_linear_ncde",
+                "dplr_linear_ncde",
+                "diagonal_dense_linear_ncde",
+            ]:
                 dt0 = None
             else:
                 dt0 = float(data["dt0"])
-            scale = data["scale"]
+            scale = data.get("scale", 1.0)
             lr = float(data["lr"])
             include_time = data["time"].lower() == "true"
             hidden_dim = int(data["hidden_dim"])
             if model_name in ["log_ncde", "nrde", "ncde"]:
+                block_size = None
                 vf_depth = int(data["vf_depth"])
                 vf_width = int(data["vf_width"])
                 if model_name in ["log_ncde", "nrde"]:
@@ -50,14 +90,38 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     lambd = None
                 ssm_dim = None
                 num_blocks = None
+                parallel_steps = None
+                walsh_hadamard = None
+                diagonal_dense = None
+                sparsity = None
+                rank = None
             else:
+                if model_name.endswith("_linear_ncde"):
+                    block_size = int(data["block_size"])
+                    ssm_dim = None
+                    stepsize = int(float(data["stepsize"]))
+                    logsig_depth = int(data["depth"])
+                    lambd = float(data["lambd"])
+                    num_blocks = None
+                    parallel_steps = int(data.get("parallel_steps", 1))
+                    walsh_hadamard = data.get("walsh_hadamard", False)
+                    diagonal_dense = data.get("diagonal_dense", False)
+                    sparsity = data.get("sparsity", 1.0)
+                    rank = int(data.get("rank", 0))
+                else:
+                    block_size = None
+                    ssm_dim = int(data["ssm_dim"])
+                    stepsize = 1
+                    logsig_depth = 1
+                    lambd = None
+                    num_blocks = int(data["num_blocks"])
+                    parallel_steps = None
+                    walsh_hadamard = None
+                    diagonal_dense = None
+                    sparsity = None
+                    rank = None
                 vf_depth = None
                 vf_width = None
-                logsig_depth = 1
-                stepsize = 1
-                lambd = None
-                ssm_dim = int(data["ssm_dim"])
-                num_blocks = int(data["num_blocks"])
             if model_name == "S5":
                 ssm_blocks = int(data["ssm_blocks"])
             else:
@@ -113,6 +177,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "include_time": include_time,
                     "num_steps": num_steps,
                     "print_steps": print_steps,
+                    "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "model_args": model_args,
                 }
@@ -124,6 +189,7 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
 
                 model_args = {
                     "num_blocks": num_blocks,
+                    "block_size": block_size,
                     "hidden_dim": hidden_dim,
                     "vf_depth": vf_depth,
                     "vf_width": vf_width,
@@ -134,6 +200,11 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "stepsize_controller": diffrax.ConstantStepSize(),
                     "scale": scale,
                     "lambd": lambd,
+                    "parallel_steps": parallel_steps,
+                    "walsh_hadamard": walsh_hadamard,
+                    "diagonal_dense": diagonal_dense,
+                    "sparsity": sparsity,
+                    "rank": rank,
                 }
                 run_args = {
                     "data_dir": data_dir,
@@ -143,12 +214,16 @@ def run_experiments(model_names, dataset_names, experiment_folder, pytorch_exper
                     "metric": metric,
                     "include_time": include_time,
                     "T": T,
+                    "rectilinear_interpolation": rectilinear_interpolation,
+                    "interval_gap_mode": interval_gap_mode,
+                    "gap_n_intervals": gap_n_intervals,
                     "model_name": model_name,
                     "stepsize": stepsize,
                     "logsig_depth": logsig_depth,
                     "model_args": model_args,
                     "num_steps": num_steps,
                     "print_steps": print_steps,
+                    "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "lr_scheduler": lr_scheduler,
                     "batch_size": batch_size,
@@ -172,15 +247,34 @@ if __name__ == "__main__":
     if pytorch_experiments:
         model_names = ["mamba", "S6"]
     else:
-        model_names = ["ncde", "log_ncde", "nrde", "S5", "lru"]
+        model_names = [
+            # "S5",
+            # "lru",
+            "bd_linear_ncde",
+            # "ncde",
+            # "log_ncde",
+            # "nrde",
+            # "diagonal_linear_ncde",
+            # "diagonal_dense_linear_ncde",
+            # "dense_linear_ncde",
+            # "wh_linear_ncde",
+            # "sparse_linear_ncde",
+            # "dplr_linear_ncde",
+        ]
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "Heartbeat",
-        "MotorImagery",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
+        "pm10",
+        # "EigenWorms",
+        # "EthanolConcentration",
+        # "Heartbeat",
+        # "MotorImagery",
+        # "SelfRegulationSCP1",
+        # "SelfRegulationSCP2",
     ]
-    experiment_folder = "experiment_configs/repeats"
+    experiment_folder = "experiment_configs/PM"
 
-    run_experiments(model_names, dataset_names, experiment_folder, pytorch_experiments)
+    run_experiments(
+        model_names,
+        dataset_names,
+        experiment_folder,
+        pytorch_experiments,
+    )

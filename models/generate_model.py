@@ -1,11 +1,48 @@
 """
-This module contains a function to generate a model based on the model name and the hyperparameters.
+This module provides a function to generate a model based on a model name and hyperparameters.
+It supports various types of models, including Neural CDEs, RNNs, and the S5 model.
+
+Function:
+- `create_model`: Generates and returns a model instance along with its state (if applicable)
+  based on the provided model name and hyperparameters.
+
+Parameters for `create_model`:
+- `model_name`: A string specifying the model architecture to create. Supported values include
+  'log_ncde', 'ncde', 'nrde', 'lru', 'S5', 'rnn_linear', 'rnn_gru', 'rnn_lstm', and 'rnn_mlp'.
+- `data_dim`: The input data dimension.
+- `logsig_dim`: The dimension of the log-signature used in NRDE and Log-NCDE models.
+- `logsig_depth`: The depth of the log-signature used in NRDE and Log-NCDE models.
+- `intervals`: The intervals used in NRDE and Log-NCDE models.
+- `label_dim`: The output label dimension.
+- `hidden_dim`: The hidden state dimension for the model.
+- `num_blocks`: The number of blocks (layers) in models like LRU or S5.
+- `vf_depth`: The depth of the vector field network for CDE models.
+- `vf_width`: The width of the vector field network for CDE models.
+- `classification`: A boolean indicating whether the task is classification (True) or regression (False).
+- `output_step`: The step interval for outputting predictions in sequence models.
+- `ssm_dim`: The state-space model dimension for S5 models.
+- `ssm_blocks`: The number of SSM blocks in S5 models.
+- `solver`: The ODE solver used in CDE models, with a default of `diffrax.Heun()`.
+- `stepsize_controller`: The step size controller used in CDE models, with a default of `diffrax.ConstantStepSize()`.
+- `dt0`: The initial time step for the solver.
+- `max_steps`: The maximum number of steps for the solver.
+- `scale`: A scaling factor applied to the vf initialisation in CDE models.
+- `lambd`: A regularisation parameter used in Log-NCDE models.
+- `key`: A JAX PRNG key for random number generation.
+
+Returns:
+- A tuple containing the created model and its state (if applicable).
+
+Raises:
+- `ValueError`: If required hyperparameters for the specified model are not provided or if an
+  unknown model name is passed.
 """
 
 import diffrax
 import equinox as eqx
 import jax.random as jr
 
+from models.LinearNeuralCDEs import LogLinearCDE
 from models.LogNeuralCDEs import LogNeuralCDE
 from models.LRU import LRU
 from models.NeuralCDEs import NeuralCDE, NeuralRDE
@@ -22,6 +59,7 @@ def create_model(
     label_dim,
     hidden_dim,
     num_blocks=None,
+    block_size=None,
     vf_depth=None,
     vf_width=None,
     classification=True,
@@ -34,6 +72,12 @@ def create_model(
     max_steps=16**4,
     scale=1.0,
     lambd=0.0,
+    w_init_std=0.25,
+    parallel_steps=1,
+    walsh_hadamard=False,
+    diagonal_dense=False,
+    sparsity=1.0,
+    rank=0,
     *,
     key,
 ):
@@ -63,7 +107,27 @@ def create_model(
             ),
             None,
         )
-    if model_name == "ncde":
+    elif model_name.endswith("_linear_ncde"):
+        return (
+            LogLinearCDE(
+                data_dim=data_dim,
+                hidden_dim=hidden_dim,
+                label_dim=label_dim,
+                block_size=block_size,
+                logsig_depth=logsig_depth,
+                lambd=lambd,
+                w_init_std=w_init_std,
+                classification=classification,
+                parallel_steps=parallel_steps,
+                walsh_hadamard=walsh_hadamard,
+                diagonal_dense=diagonal_dense,
+                sparsity=sparsity,
+                rank=rank,
+                key=key,
+            ),
+            None,
+        )
+    elif model_name == "ncde":
         if vf_width is None or vf_depth is None:
             raise ValueError("Must specify vf_width and vf_depth for a NCDE.")
         return (

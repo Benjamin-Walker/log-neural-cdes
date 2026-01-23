@@ -11,6 +11,7 @@
     "lr_scheduler": "lambda lr: lr",
     "num_steps": 100000,
     "print_steps": 1000,
+    "early_stopping_steps": 10,
     "batch_size": 4,
     "model_name": "S5",
     "metric": "mse",
@@ -25,6 +26,6 @@
     "lr": "0.001",
     "num_blocks": "6",
     "hidden_dim": "16",
-    "ssm_dim": "256",
-    "ssm_blocks": "8"
+    "ssm_dim": "64",
+    "ssm_blocks": "2"
 }
