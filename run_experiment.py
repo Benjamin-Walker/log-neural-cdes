@@ -48,6 +48,9 @@ def run_experiments(
             metric = data["metric"]
             use_presplit = data["use_presplit"]
             T = data["T"]
+            rectilinear_interpolation = data.get("rectilinear_interpolation", False)
+            interval_gap_mode = data.get("interval_gap_mode", "none")
+            gap_n_intervals = data.get("gap_n_intervals", 0)
             if model_name in [
                 "lru",
                 "S5",
@@ -67,7 +70,7 @@ def run_experiments(
                 dt0 = None
             else:
                 dt0 = float(data["dt0"])
-            scale = data["scale"]
+            scale = data.get("scale", 1.0)
             lr = float(data["lr"])
             include_time = data["time"].lower() == "true"
             hidden_dim = int(data["hidden_dim"])
@@ -211,6 +214,9 @@ def run_experiments(
                     "metric": metric,
                     "include_time": include_time,
                     "T": T,
+                    "rectilinear_interpolation": rectilinear_interpolation,
+                    "interval_gap_mode": interval_gap_mode,
+                    "gap_n_intervals": gap_n_intervals,
                     "model_name": model_name,
                     "stepsize": stepsize,
                     "logsig_depth": logsig_depth,
@@ -242,28 +248,29 @@ if __name__ == "__main__":
         model_names = ["mamba", "S6"]
     else:
         model_names = [
-            "S5",
-            "lru",
+            # "S5",
+            # "lru",
             "bd_linear_ncde",
-            "ncde",
-            "log_ncde",
-            "nrde",
-            "diagonal_linear_ncde",
-            "diagonal_dense_linear_ncde",
-            "dense_linear_ncde",
-            "wh_linear_ncde",
-            "sparse_linear_ncde",
-            "dplr_linear_ncde",
+            # "ncde",
+            # "log_ncde",
+            # "nrde",
+            # "diagonal_linear_ncde",
+            # "diagonal_dense_linear_ncde",
+            # "dense_linear_ncde",
+            # "wh_linear_ncde",
+            # "sparse_linear_ncde",
+            # "dplr_linear_ncde",
         ]
     dataset_names = [
-        "EigenWorms",
-        "EthanolConcentration",
-        "Heartbeat",
-        "MotorImagery",
-        "SelfRegulationSCP1",
-        "SelfRegulationSCP2",
+        "pm10",
+        # "EigenWorms",
+        # "EthanolConcentration",
+        # "Heartbeat",
+        # "MotorImagery",
+        # "SelfRegulationSCP1",
+        # "SelfRegulationSCP2",
     ]
-    experiment_folder = "experiment_configs/repeats"
+    experiment_folder = "experiment_configs/PM"
 
     run_experiments(
         model_names,
