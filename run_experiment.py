@@ -38,7 +38,8 @@ def run_experiments(
                 data = json.load(file)
 
             seeds = data["seeds"]
-            data_dir = data["data_dir"]
+            # data_dir = data["data_dir"]
+            data_dir = "/data/math-datasig/shug6778/Log-Neural-CDEs/data"
             output_parent_dir = data["output_parent_dir"]
             lr_scheduler = eval(data["lr_scheduler"])
             num_steps = data["num_steps"]

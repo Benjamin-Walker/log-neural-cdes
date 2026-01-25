@@ -140,9 +140,9 @@ class LogNeuralCDE(eqx.Module):
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            step = self.output_step / len(ts)
-            times = jnp.arange(step, 1.0, step)
-            saveat = diffrax.SaveAt(ts=times, t1=True)
+            # step = self.output_step / len(ts)
+            # times = jnp.arange(step, 1.0, step)
+            saveat = diffrax.SaveAt(ts=ts)
 
         solution = diffrax.diffeqsolve(
             diffrax.ODETerm(func),

@@ -15,6 +15,7 @@ The script can handle two types of experiments:
    runs are aggregated.
 """
 
+import glob
 import os
 from collections import defaultdict
 from typing import Dict, List
@@ -61,143 +62,151 @@ def rank_scores(score_dict: Dict[str, float]) -> Dict[str, float]:
 
 benchmark = "PM"  # Either "UEA" or "PPG".
 experiment = "repeats"  # Either "hypopt" or "repeats".
-results_dir = "outputs_pm_repeats"
 # results_dir = f"results/paper_outputs/{benchmark}_outputs_{experiment}/"
-# results_dir = f"outputs_piecewise_abelian8"
-# results_dir = f"outputs_joint_flow8"
+for results_dir in sorted(d for d in glob.glob("outputs_pm_drop*") if os.path.isdir(d)):
+    print(f"\n===== {results_dir} =====")
 
-print(f"\nAnalyzing results in directory: {results_dir}\n")
-# Determine optimisation direction.
-if benchmark == "UEA":
-    best_idx = np.argmax
-    best_val = max
-    operator = lambda x, y: x >= y  # noqa: E731  (keep as simple lambda)
-elif benchmark == "PPG" or benchmark == "PM":
-    best_idx = np.argmin
-    best_val = min
-    operator = lambda x, y: x <= y  # noqa: E731
-else:
-    raise ValueError(f"Unknown benchmark: {benchmark}")
+    # Determine optimisation direction.
+    if benchmark == "UEA":
+        best_idx = np.argmax
+        best_val = max
+        operator = lambda x, y: x >= y  # noqa: E731  (keep as simple lambda)
+    elif benchmark == "PPG" or benchmark == "PM":
+        best_idx = np.argmin
+        best_val = min
+        operator = lambda x, y: x <= y  # noqa: E731
+    else:
+        raise ValueError(f"Unknown benchmark: {benchmark}")
 
-# -----------------------------------------------------------------------------
-# Containers for summary statistics (used for *average* accuracy and *rank*)
-# -----------------------------------------------------------------------------
+    # -----------------------------------------------------------------------------
+    # Containers for summary statistics (used for *average* accuracy and *rank*)
+    # -----------------------------------------------------------------------------
 
-model_to_dataset_scores: Dict[str, List[float]] = defaultdict(list)
-# e.g. {"ncde": [74.0, 53.1, ...]}
+    model_to_dataset_scores: Dict[str, List[float]] = defaultdict(list)
+    # e.g. {"ncde": [74.0, 53.1, ...]}
 
-dataset_to_model_scores: Dict[str, Dict[str, float]] = defaultdict(dict)
-# e.g. {"Heartbeat": {"ncde": 74.0, "mamba": 76.3, ...}}
+    dataset_to_model_scores: Dict[str, Dict[str, float]] = defaultdict(dict)
+    # e.g. {"Heartbeat": {"ncde": 74.0, "mamba": 76.3, ...}}
 
-# -----------------------------------------------------------------------------
-# Main loop over all saved experiment results
-# -----------------------------------------------------------------------------
+    # -----------------------------------------------------------------------------
+    # Main loop over all saved experiment results
+    # -----------------------------------------------------------------------------
 
-for model in sorted(os.listdir(results_dir)):
-    if not os.path.isdir(os.path.join(results_dir, model)):
-        continue
-
-    model_dir = os.path.join(results_dir, model)
-    for dataset in sorted(os.listdir(model_dir)):
-        dataset_dir = os.path.join(model_dir, dataset)
-        if not os.path.isdir(dataset_dir):
+    for model in sorted(os.listdir(results_dir)):
+        if not os.path.isdir(os.path.join(results_dir, model)):
             continue
 
-        train_metrics = []  # Only used for *hypopt*.
-        val_metrics = []
-        exp_names = []
-        test_metrics = []  # Only used for *repeats*.
-
-        for exp in os.listdir(dataset_dir):
-            exp_dir = os.path.join(dataset_dir, exp)
-            if not os.path.isdir(exp_dir):
+        model_dir = os.path.join(results_dir, model)
+        for dataset in sorted(os.listdir(model_dir)):
+            dataset_dir = os.path.join(model_dir, dataset)
+            if not os.path.isdir(dataset_dir):
                 continue
-            if not os.listdir(exp_dir):
-                continue  # Empty directory – skip.
 
-            all_val_metric = np.load(os.path.join(exp_dir, "all_val_metric.npy"))
-            all_train_metric = np.load(os.path.join(exp_dir, "all_train_metric.npy"))
+            exp_names = []
+            train_metrics = []  # Only used for *hypopt*.
+            val_metrics = []
+            test_metrics = []  # Only used for *repeats*.
 
-            if benchmark == "PPG":  # First element is burn‑in.
-                all_val_metric = all_val_metric[1:]
-                all_train_metric = all_train_metric[1:]
+            for exp in os.listdir(dataset_dir):
+                exp_dir = os.path.join(dataset_dir, exp)
+                if not os.path.isdir(exp_dir):
+                    continue
+                if not os.listdir(exp_dir):
+                    continue  # Empty directory – skip.
 
-            if experiment == "hypopt":
-                if operator(
-                    all_train_metric[best_idx(all_val_metric)], best_val(all_val_metric)
-                ):
-                    val_metrics.append(best_val(all_val_metric))
-                    train_metrics.append(all_train_metric[best_idx(all_val_metric)])
-                    exp_names.append(exp)
-
-            elif experiment == "repeats":
-                val_metrics.append(all_val_metric)
-                test_metrics.append(np.load(os.path.join(exp_dir, "test_metric.npy")))
-            else:
-                raise ValueError(f"Unknown experiment: {experiment}")
-
-        # ---------------------------------------------------------------------
-        # Per‑dataset output
-        # ---------------------------------------------------------------------
-        if experiment == "hypopt":
-            if not val_metrics:  # No valid experiments found.
-                continue
-            val_metrics = np.array(val_metrics)
-            train_metrics = np.array(train_metrics)
-            idxs = np.where(val_metrics == best_val(val_metrics))[0]
-            train_idxs = np.where(train_metrics[idxs] == best_val(train_metrics[idxs]))[
-                0
-            ]
-            for tr_idx in train_idxs:
-                idx = idxs[tr_idx]
-                print(
-                    f"{model} {dataset} {exp_names[idx]} {100 * val_metrics[idx]:.4f}"
+                all_val_metric = np.load(os.path.join(exp_dir, "all_val_metric.npy"))
+                all_train_metric = np.load(
+                    os.path.join(exp_dir, "all_train_metric.npy")
                 )
 
-        elif experiment == "repeats":
-            if not test_metrics:  # No runs – skip.
-                continue
-            test_metrics = np.array(test_metrics)
-            if benchmark == "UEA":
-                mean_test = 100 * np.mean(test_metrics)
-                std_test = 100 * np.std(test_metrics)
-                num_seeds = np.mean([len(x) for x in val_metrics])
-            else:  # PPG/PM
-                mean_test = np.mean(test_metrics)
-                std_test = np.std(test_metrics)
-                num_seeds = np.mean([len(x) for x in val_metrics])
+                if benchmark == "PPG":  # First element is burn‑in.
+                    all_val_metric = all_val_metric[1:]
+                    all_train_metric = all_train_metric[1:]
 
-            print(f"{model} {dataset} {num_seeds:.1f} {mean_test:.8f} {std_test:.8f}")
+                if experiment == "hypopt":
+                    if operator(
+                        all_train_metric[best_idx(all_val_metric)],
+                        best_val(all_val_metric),
+                    ):
+                        val_metrics.append(best_val(all_val_metric))
+                        train_metrics.append(all_train_metric[best_idx(all_val_metric)])
+                        exp_names.append(exp)
 
-            # Store for summary.
-            model_to_dataset_scores[model].append(mean_test)
-            dataset_to_model_scores[dataset][model] = mean_test
+                elif experiment == "repeats":
+                    val_metrics.append(all_val_metric)
+                    test_metrics.append(
+                        np.load(os.path.join(exp_dir, "test_metric.npy"))
+                    )
+                else:
+                    raise ValueError(f"Unknown experiment: {experiment}")
 
-# -----------------------------------------------------------------------------
-# Summary across datasets (only relevant for *repeats*)
-# -----------------------------------------------------------------------------
+            # ---------------------------------------------------------------------
+            # Per‑dataset output
+            # ---------------------------------------------------------------------
+            if experiment == "hypopt":
+                if not val_metrics:  # No valid experiments found.
+                    continue
+                val_metrics = np.array(val_metrics)
+                train_metrics = np.array(train_metrics)
+                idxs = np.where(val_metrics == best_val(val_metrics))[0]
+                train_idxs = np.where(
+                    train_metrics[idxs] == best_val(train_metrics[idxs])
+                )[0]
+                for tr_idx in train_idxs:
+                    idx = idxs[tr_idx]
+                    if benchmark == "UEA":
+                        val = 100 * val_metrics[idx]
+                    elif benchmark == "PPG" or benchmark == "PM":
+                        val = val_metrics[idx]
+                    print(f"{model} {dataset} {exp_names[idx]} {val}")
 
-if experiment == "repeats" and model_to_dataset_scores:
-    print("\n=== Summary across all datasets ===")
+            elif experiment == "repeats":
+                if not test_metrics:  # No runs – skip.
+                    continue
+                test_metrics = np.array(test_metrics)
+                if benchmark == "UEA":
+                    mean_test = 100 * np.mean(test_metrics)
+                    std_test = 100 * np.std(test_metrics)
+                elif benchmark == "PPG" or benchmark == "PM":
+                    mean_test = np.mean(test_metrics)
+                    std_test = np.std(test_metrics)
+                num_seeds = np.mean([len(x) for x in val_metrics])  # For completeness.
 
-    # 1) Average test accuracy per model.
-    avg_test_accuracy = {
-        model: float(np.mean(scores))
-        for model, scores in model_to_dataset_scores.items()
-    }
+                print(
+                    f"{model} {dataset} {num_seeds:.1f} {mean_test:.8f} {std_test:.8f}"
+                )
 
-    # 2) Average rank per model.
-    model_ranks: Dict[str, List[int]] = defaultdict(list)
-    for dataset, scores in dataset_to_model_scores.items():
-        ranks = rank_scores(scores)  # dict {model: rank}
-        for mdl, rk in ranks.items():
-            model_ranks[mdl].append(rk)
+                # Store for summary.
+                model_to_dataset_scores[model].append(mean_test)
+                dataset_to_model_scores[dataset][model] = mean_test
 
-    avg_rank = {model: float(np.mean(ranks)) for model, ranks in model_ranks.items()}
+    # -----------------------------------------------------------------------------
+    # Summary across datasets (only relevant for *repeats*)
+    # -----------------------------------------------------------------------------
 
-    # Pretty print – sorted by average rank (ascending = better).
-    header = f"{'Model':<30s} {'Avg Test Acc (%)':>17s} {'Avg Rank':>10s}"
-    print(header)
-    print("-" * len(header))
-    for mdl in sorted(avg_rank, key=lambda m: avg_rank[m]):
-        print(f"{mdl:<30s} {avg_test_accuracy[mdl]:>17.4f} {avg_rank[mdl]:>10.2f}")
+    if experiment == "repeats" and model_to_dataset_scores:
+        print("\n=== Summary across all datasets ===")
+
+        # 1) Average test accuracy per model.
+        avg_test_accuracy = {
+            model: float(np.mean(scores))
+            for model, scores in model_to_dataset_scores.items()
+        }
+
+        # 2) Average rank per model.
+        model_ranks: Dict[str, List[int]] = defaultdict(list)
+        for dataset, scores in dataset_to_model_scores.items():
+            ranks = rank_scores(scores)  # dict {model: rank}
+            for mdl, rk in ranks.items():
+                model_ranks[mdl].append(rk)
+
+        avg_rank = {
+            model: float(np.mean(ranks)) for model, ranks in model_ranks.items()
+        }
+
+        # Pretty print – sorted by average rank (ascending = better).
+        header = f"{'Model':<30s} {'Avg Test Acc (%)':>17s} {'Avg Rank':>10s}"
+        print(header)
+        print("-" * len(header))
+        for mdl in sorted(avg_rank, key=lambda m: avg_rank[m]):
+            print(f"{mdl:<30s} {avg_test_accuracy[mdl]:>17.4f} {avg_rank[mdl]:>10.2f}")
