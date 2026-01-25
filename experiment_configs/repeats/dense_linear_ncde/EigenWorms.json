@@ -19,6 +19,9 @@
     "dataset_name": "EigenWorms",
     "use_presplit": false,
     "T": 1,
+    "rectilinear_interpolation": false,
+    "interval_gap_mode": "time_only",
+    "gap_n_intervals": 2,
     "scale": 1,
     "time": "True",
     "lr": "0.001",
@@ -27,5 +30,5 @@
     "block_size": 128,
     "stepsize": 12,
     "depth": 2,
-    "parallel_steps": 128
+    "parallel_steps": 1
 }

@@ -251,6 +251,8 @@ if __name__ == "__main__":
             # "S5",
             # "lru",
             "bd_linear_ncde",
+            "log_ncde",
+            "ncde",
             # "ncde",
             # "log_ncde",
             # "nrde",
@@ -262,6 +264,7 @@ if __name__ == "__main__":
             # "dplr_linear_ncde",
         ]
     dataset_names = [
+        "pm25",
         "pm10",
         # "EigenWorms",
         # "EthanolConcentration",
@@ -270,7 +273,7 @@ if __name__ == "__main__":
         # "SelfRegulationSCP1",
         # "SelfRegulationSCP2",
     ]
-    experiment_folder = "experiment_configs/PM"
+    experiment_folder = "experiment_configs/repeats"
 
     run_experiments(
         model_names,

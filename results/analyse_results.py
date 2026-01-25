@@ -59,16 +59,20 @@ def rank_scores(score_dict: Dict[str, float]) -> Dict[str, float]:
 # User‑configurable settings
 # -----------------------------------------------------------------------------
 
-benchmark = "UEA"  # Either "UEA" or "PPG".
+benchmark = "PM"  # Either "UEA" or "PPG".
 experiment = "repeats"  # Either "hypopt" or "repeats".
-results_dir = f"results/paper_outputs/{benchmark}_outputs_{experiment}/"
+results_dir = "outputs_pm_repeats"
+# results_dir = f"results/paper_outputs/{benchmark}_outputs_{experiment}/"
+# results_dir = f"outputs_piecewise_abelian8"
+# results_dir = f"outputs_joint_flow8"
 
+print(f"\nAnalyzing results in directory: {results_dir}\n")
 # Determine optimisation direction.
 if benchmark == "UEA":
     best_idx = np.argmax
     best_val = max
     operator = lambda x, y: x >= y  # noqa: E731  (keep as simple lambda)
-elif benchmark == "PPG":
+elif benchmark == "PPG" or benchmark == "PM":
     best_idx = np.argmin
     best_val = min
     operator = lambda x, y: x <= y  # noqa: E731
@@ -101,6 +105,7 @@ for model in sorted(os.listdir(results_dir)):
 
         train_metrics = []  # Only used for *hypopt*.
         val_metrics = []
+        exp_names = []
         test_metrics = []  # Only used for *repeats*.
 
         for exp in os.listdir(dataset_dir):
@@ -123,6 +128,7 @@ for model in sorted(os.listdir(results_dir)):
                 ):
                     val_metrics.append(best_val(all_val_metric))
                     train_metrics.append(all_train_metric[best_idx(all_val_metric)])
+                    exp_names.append(exp)
 
             elif experiment == "repeats":
                 val_metrics.append(all_val_metric)
@@ -144,15 +150,22 @@ for model in sorted(os.listdir(results_dir)):
             ]
             for tr_idx in train_idxs:
                 idx = idxs[tr_idx]
-                print(f"{model} {dataset} {exp} {100 * val_metrics[idx]:.4f}")
+                print(
+                    f"{model} {dataset} {exp_names[idx]} {100 * val_metrics[idx]:.4f}"
+                )
 
         elif experiment == "repeats":
             if not test_metrics:  # No runs – skip.
                 continue
             test_metrics = np.array(test_metrics)
-            mean_test = 100 * np.mean(test_metrics)
-            std_test = 100 * np.std(test_metrics)
-            num_seeds = np.mean([len(x) for x in val_metrics])  # For completeness.
+            if benchmark == "UEA":
+                mean_test = 100 * np.mean(test_metrics)
+                std_test = 100 * np.std(test_metrics)
+                num_seeds = np.mean([len(x) for x in val_metrics])
+            else:  # PPG/PM
+                mean_test = np.mean(test_metrics)
+                std_test = np.std(test_metrics)
+                num_seeds = np.mean([len(x) for x in val_metrics])
 
             print(f"{model} {dataset} {num_seeds:.1f} {mean_test:.8f} {std_test:.8f}")
 

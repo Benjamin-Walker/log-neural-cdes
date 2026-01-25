@@ -5,7 +5,7 @@ from matplotlib.lines import Line2D
 
 matplotlib.rcParams.update(
     {
-        "font.size": 14,
+        "font.size": 20,
     }
 )  # Update default font size
 
@@ -54,13 +54,13 @@ gpu_mem = {
 
 text_pos = {
     "LRU": (-12.5, -30),
-    "S5": (-13, -26),
+    "S5": (-14, -27),
     "S6": (-10, 15),
-    "MAMBA": (-25, 18),
+    "MAMBA": (-27, 18),
     "NCDE": (-20, -23),
     "NRDE": (-20, 15),
     "Log‑NCDE": (-35, -25),
-    "D‑SLiCE": (-25, -25),
+    "D‑SLiCE": (-27, -25),
     "BD-SLiCE": (-35, 15),
     "DE‑LNCDE": (-35, 32),
 }
@@ -112,13 +112,13 @@ for family, models in groups.items():
             textcoords="offset points",
             xytext=pos,
             ha="left",
-            fontsize=14,
+            fontsize=16,
         )
 
 plt.xscale("log")
 plt.xlabel("Time per 1000 training steps (s)")
 plt.ylabel("Average test accuracy (%)")
-plt.title("Accuracy, Speed, and Memory Footprint on the UEA-MTSCA")
+# plt.title("Accuracy, Speed, and Memory Footprint on the UEA-MTSCA")
 # plt.grid(alpha=0.3, which='both', linestyle='--')
 plt.ylim(58, 65)
 legend_elements = [
@@ -137,7 +137,7 @@ legend_elements = [
     for family in groups
 ]
 
-plt.legend(handles=legend_elements, title="Model family", loc=[0.5, 0.2])
+plt.legend(handles=legend_elements, title="Model family", loc=[0.43, 0.3])
 plt.tight_layout()
 plt.savefig("results/images/time_vs_acc.pdf", dpi=300)
 plt.show()
