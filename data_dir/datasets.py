@@ -47,15 +47,14 @@ def batch_calc_paths(
     depth,
     inmemory=True,
     include_time=False,
-    rectilinear_interpolation=False,
-    interval_gap_mode="none",
-    gap_n_intervals=0,
+    interval_times=None,
 ):
     N = len(data)
     batchsize = 128
     num_batches = N // batchsize
     remainder = N % batchsize
     path_data = []
+    obs_masks = []
     if inmemory:
         out_func = lambda x: x
         in_func = lambda x: x
@@ -63,40 +62,42 @@ def batch_calc_paths(
         out_func = lambda x: np.array(x)
         in_func = lambda x: jnp.array(x)
     for i in range(num_batches):
-        path_data.append(
-            out_func(
-                calc_paths(
-                    in_func(data[i * batchsize : (i + 1) * batchsize]),
-                    stepsize,
-                    depth,
-                    include_time,
-                    rectilinear_interpolation,
-                    0,
-                    interval_gap_mode,
-                    gap_n_intervals,
-                )
+        logsigs, obs_mask = out_func(
+            calc_paths(
+                in_func(data[i * batchsize : (i + 1) * batchsize]),
+                stepsize,
+                depth,
+                include_time,
+                0,
+                (
+                    interval_times[i * batchsize : (i + 1) * batchsize]
+                    if interval_times is not None
+                    else None
+                ),
             )
         )
+        path_data.append(logsigs)
+        obs_masks.append(obs_mask)
     if remainder > 0:
-        path_data.append(
-            out_func(
-                calc_paths(
-                    in_func(data[-remainder:]),
-                    stepsize,
-                    depth,
-                    include_time,
-                    rectilinear_interpolation,
-                    0,
-                    interval_gap_mode,
-                    gap_n_intervals,
-                )
+        logsig, obs_mask = out_func(
+            calc_paths(
+                in_func(data[-remainder:]),
+                stepsize,
+                depth,
+                include_time,
+                0,
+                interval_times[-remainder:] if interval_times is not None else None,
             )
         )
+        path_data.append(logsig)
+        obs_masks.append(obs_mask)
     if inmemory:
         path_data = jnp.concatenate(path_data)
+        obs_masks = jnp.concatenate(obs_masks)
     else:
         path_data = np.concatenate(path_data)
-    return path_data
+        obs_masks = np.concatenate(obs_masks)
+    return path_data, obs_masks
 
 
 def batch_calc_coeffs(data, include_time, T, inmemory=True):
@@ -138,12 +139,10 @@ def dataset_generator(
     depth,
     include_time,
     T,
-    rectilinear_interpolation=False,
-    interval_gap_mode="none",
-    gap_n_intervals=0,
     inmemory=True,
     idxs=None,
     use_presplit=False,
+    interval_times=None,
     *,
     key,
 ):
@@ -186,35 +185,36 @@ def dataset_generator(
             jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
         )
 
-    train_paths = batch_calc_paths(
+    if not stepsize:
+        interval_times_train, interval_times_val, interval_times_test = interval_times
+    else:
+        interval_times_train = None
+        interval_times_val = None
+        interval_times_test = None
+
+    train_paths, train_obs_masks = batch_calc_paths(
         train_data,
         stepsize,
         depth,
         inmemory,
         include_time,
-        rectilinear_interpolation,
-        interval_gap_mode,
-        gap_n_intervals,
+        interval_times_train,
     )
-    val_paths = batch_calc_paths(
+    val_paths, val_obs_masks = batch_calc_paths(
         val_data,
         stepsize,
         depth,
         inmemory,
         include_time,
-        rectilinear_interpolation,
-        interval_gap_mode,
-        gap_n_intervals,
+        interval_times_val,
     )
-    test_paths = batch_calc_paths(
+    test_paths, test_obs_masks = batch_calc_paths(
         test_data,
         stepsize,
         depth,
         inmemory,
         include_time,
-        rectilinear_interpolation,
-        interval_gap_mode,
-        gap_n_intervals,
+        interval_times_test,
     )
     indexes = np.unique(np.r_[0 : train_data.shape[1] : stepsize])
     intervals = ts_train[0, indexes]
@@ -242,18 +242,18 @@ def dataset_generator(
 
     train_path_data = (
         ts_train,
-        train_paths,
+        (train_paths, train_obs_masks),
         train_data[:, 0, :],
     )
     val_path_data = (
         ts_val,
-        val_paths,
+        (val_paths, val_obs_masks),
         val_data[:, 0, :],
     )
     if idxs is None:
         test_path_data = (
             ts_test,
-            test_paths,
+            (test_paths, test_obs_masks),
             test_data[:, 0, :],
         )
 
@@ -306,9 +306,6 @@ def create_uea_dataset(
     depth,
     include_time,
     T,
-    rectilinear_interpolation=False,
-    interval_gap_mode="none",
-    gap_n_intervals=0,
     scale=False,
     *,
     key,
@@ -379,9 +376,6 @@ def create_uea_dataset(
         depth,
         include_time,
         T,
-        rectilinear_interpolation=rectilinear_interpolation,
-        interval_gap_mode=interval_gap_mode,
-        gap_n_intervals=gap_n_intervals,
         idxs=idxs,
         use_presplit=use_presplit,
         key=key,
@@ -476,6 +470,7 @@ def create_PM_dataset(
     include_time,
     T,
     drop_percentage,
+    drop_mode,
     *,
     key,
 ):
@@ -617,38 +612,101 @@ def create_PM_dataset(
     y_val = _scale_to_minus_one_one(y_val, y_min, y_max, eps)
     y_test = _scale_to_minus_one_one(y_test, y_min, y_max, eps)
 
-    def _drop_percent(X, y, p, *, key):
+    def _drop_percent(X, y, drop_percentage, *, key, mode="same"):
+        if drop_percentage is None:
+            # y_times: full time grid
+            if include_time:
+                y_times = X[:, :, 0]
+            else:
+                N, L, _ = X.shape
+                y_times = (T / (L - 1)) * jnp.arange(L, dtype=X.dtype)[None, :]
+                y_times = jnp.broadcast_to(y_times, (N, L))
+            return X, y, y_times
+
         N, L, _ = X.shape
-        keep = max(2, int(round((1.0 - p) * L)))
+        keep = max(2, int(round((1.0 - drop_percentage) * L)))
+        keep = min(keep, L)
 
-        keys = jr.split(key, N)
+        # full y time-grid (before any dropping)
+        if include_time:
+            t_full = X[:, :, 0]  # (N, L)
+        else:
+            t_full = (T / (L - 1)) * jnp.arange(L, dtype=X.dtype)[None, :]
+            t_full = jnp.broadcast_to(t_full, (N, L))
 
-        # idx: (N, keep), sorted kept indices per sample
-        idx = jax.vmap(lambda k: jnp.sort(jr.permutation(k, L)[:keep]))(keys)
+        def _sample_idx(k, *, keep_first):
+            if keep == L:
+                return jnp.arange(L, dtype=jnp.int32)
+            if keep_first:
+                rest = jax.random.choice(k, L - 1, shape=(keep - 1,), replace=False) + 1
+                idx = jnp.concatenate(
+                    [jnp.array([0], dtype=jnp.int32), rest.astype(jnp.int32)]
+                )
+                return jnp.sort(idx)
+            idx = jax.random.choice(k, L, shape=(keep,), replace=False)
+            return jnp.sort(idx.astype(jnp.int32))
 
-        X = jax.vmap(lambda x, ii: x[ii, :], in_axes=(0, 0))(X, idx)
-        y = jax.vmap(lambda yy, ii: yy[ii, :], in_axes=(0, 0))(y, idx)
-        return X, y
+        def _gather_time(t, idx):
+            return jax.vmap(lambda tt, ii: tt[ii], in_axes=(0, 0))(t, idx)
 
-    if drop_percentage is not None and float(drop_percentage) != 0.0:
-        key, k_tr, k_va, k_te = jr.split(key, 4)
-        breakpoint()
-        X_train, y_train = _drop_percent(X_train, y_train, drop_percentage, key=k_tr)
-        X_val, y_val = _drop_percent(X_val, y_val, drop_percentage, key=k_va)
-        X_test, y_test = _drop_percent(X_test, y_test, drop_percentage, key=k_te)
+        if mode == "same":
+            keys = jax.random.split(key, N)
+            idx = jax.vmap(lambda k: _sample_idx(k, keep_first=True))(keys)
+
+            X2 = jax.vmap(lambda x, ii: x[ii, :], in_axes=(0, 0))(X, idx)
+            y2 = jax.vmap(lambda yy, ii: yy[ii, :], in_axes=(0, 0))(y, idx)
+            y_times = _gather_time(t_full, idx)
+            return X2, y2, y_times
+
+        if mode == "input_only":
+            keys = jax.random.split(key, N)
+            idx_x = jax.vmap(lambda k: _sample_idx(k, keep_first=True))(keys)
+
+            X2 = jax.vmap(lambda x, ii: x[ii, :], in_axes=(0, 0))(X, idx_x)
+            y_times = t_full
+            return X2, y, y_times
+
+        if mode == "independent":
+            kx, ky = jax.random.split(key, 2)
+            keys_x = jax.random.split(kx, N)
+            keys_y = jax.random.split(ky, N)
+
+            idx_x = jax.vmap(lambda k: _sample_idx(k, keep_first=True))(keys_x)
+            idx_y = jax.vmap(lambda k: _sample_idx(k, keep_first=True))(keys_y)
+
+            X2 = jax.vmap(lambda x, ii: x[ii, :], in_axes=(0, 0))(X, idx_x)
+            y2 = jax.vmap(lambda yy, ii: yy[ii, :], in_axes=(0, 0))(y, idx_y)
+            y_times = _gather_time(t_full, idx_y)
+            return X2, y2, y_times
+
+        raise ValueError(f"Unknown drop mode: {mode}")
+
+    key, k_tr, k_va, k_te = jax.random.split(key, 4)
+
+    X_train, y_train, ytime_train = _drop_percent(
+        X_train, y_train, drop_percentage, key=k_tr, mode=drop_mode
+    )
+    X_val, y_val, ytime_val = _drop_percent(
+        X_val, y_val, drop_percentage, key=k_va, mode=drop_mode
+    )
+    X_test, y_test, ytime_test = _drop_percent(
+        X_test, y_test, drop_percentage, key=k_te, mode=drop_mode
+    )
 
     data = (X_train, X_val, X_test)
     labels = (y_train[:, :, 0], y_val[:, :, 0], y_test[:, :, 0])
+    times = (ytime_train, ytime_val, ytime_test)
 
     return dataset_generator(
         name,
         data,
         labels,
-        stepsize,
+        None,
         depth,
         include_time,
         T,
         use_presplit=True,
+        interval_times=times,
         key=key,
     )
 
@@ -662,11 +720,9 @@ def create_dataset(
     depth,
     include_time,
     T,
-    rectilinear_interpolation=False,
-    interval_gap_mode="none",
-    gap_n_intervals=0,
     scale=False,
     drop_percentage=None,
+    drop_mode="same",
     *,
     key,
 ):
@@ -687,9 +743,6 @@ def create_dataset(
             depth,
             include_time,
             T,
-            rectilinear_interpolation=rectilinear_interpolation,
-            interval_gap_mode=interval_gap_mode,
-            gap_n_intervals=gap_n_intervals,
             scale=scale,
             key=key,
         )
@@ -711,6 +764,7 @@ def create_dataset(
             include_time,
             T,
             drop_percentage,
+            drop_mode,
             key=key,
         )
     else:

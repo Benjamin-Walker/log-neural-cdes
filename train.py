@@ -299,10 +299,7 @@ def train_model(
                     ):
 
                         eps = 1e-8
-                        stats_path = (
-                            "/data/math-datasig/shug6778/Log-Neural-CDEs/data/processed/PM/25/"
-                            "norm_stats_time1.npz"
-                        )
+                        stats_path = "data_dir/processed/PM/25/norm_stats_time1.npz"
 
                         try:
                             stats = np.load(stats_path)
@@ -358,10 +355,8 @@ def create_dataset_model_and_train(
     metric,
     include_time,
     T,
-    rectilinear_interpolation,
-    interval_gap_mode,
-    gap_n_intervals,
     drop_percentage,
+    drop_mode,
     model_name,
     stepsize,
     logsig_depth,
@@ -375,7 +370,10 @@ def create_dataset_model_and_train(
     output_parent_dir="",
 ):
     output_parent_dir += (
-        f"outputs_pm_drop_{drop_percentage}/" + model_name + "/" + dataset_name
+        f"outputs_pm_drop_{drop_percentage}_{drop_mode}/"
+        + model_name
+        + "/"
+        + dataset_name
     )
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
@@ -410,10 +408,8 @@ def create_dataset_model_and_train(
         depth=logsig_depth,
         include_time=include_time,
         T=T,
-        rectilinear_interpolation=rectilinear_interpolation,
-        interval_gap_mode=interval_gap_mode,
-        gap_n_intervals=gap_n_intervals,
         drop_percentage=drop_percentage,
+        drop_mode=drop_mode,
         use_idxs=False,
         use_presplit=use_presplit,
         scale=scale,

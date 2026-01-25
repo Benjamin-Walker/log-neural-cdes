@@ -69,6 +69,7 @@ class LogLinearCDE(eqx.Module):
     walsh_hadamard: bool
     diagonal_dense: bool
     sparsity: float
+    piecewise_abelian: bool
     rank: int
 
     vf_A: Optional[jnp.ndarray] = None
@@ -99,6 +100,7 @@ class LogLinearCDE(eqx.Module):
         diagonal_dense: bool = False,
         rank: int = 0,
         sparsity: float = 1.0,
+        piecewise_abelian: bool = True,
         key,
     ):
         if hidden_dim % block_size != 0:
@@ -116,6 +118,7 @@ class LogLinearCDE(eqx.Module):
         self.basis_list = basis_list
         self.lambd = lambd
         self.w_init_std = w_init_std
+        self.piecewise_abelian = piecewise_abelian
 
         k_init, k_A, k_B = jr.split(key, 3)
         self.init_layer = eqx.nn.Linear(data_dim, hidden_dim, key=k_init)
@@ -231,8 +234,149 @@ class LogLinearCDE(eqx.Module):
 
         return jnp.stack(A_arrays, axis=2)
 
+    def _scan_with_rewind_joint_flow(
+        self,
+        *,
+        ts,
+        logsigs,
+        obs_mask,
+        y0,
+        step_from_logsig,
+        lie_brackets,
+        max_run_len: int | None = None,  # if None, use n
+    ):
+        n = logsigs.shape[0]
+        H = y0.shape[0]
+        L = logsigs.shape[1]
+
+        dt = ts[1:] - ts[:-1]
+        obs_mask = jnp.asarray(obs_mask).reshape((n,))
+        ys = jnp.zeros((n, H), dtype=y0.dtype)
+
+        buf_len = n if max_run_len is None else max_run_len
+        buf_dt = jnp.zeros((buf_len,), dtype=dt.dtype)
+
+        in_run0 = jnp.array(False)
+        y_saved0 = y0
+        buf_count0 = jnp.array(0, dtype=jnp.int32)
+        logsig_sum0 = jnp.zeros((L,), dtype=logsigs.dtype)
+        dt_sum0 = jnp.array(0.0, dtype=dt.dtype)
+
+        def outer(i, carry):
+            y, ys, in_run, y_saved, buf_count, buf_dt, logsig_sum, dt_sum = carry
+            li = logsigs[i]
+            dti = dt[i]
+            mi = obs_mask[i]
+
+            def do_false(_):
+                start_new = jnp.logical_not(in_run)
+
+                y_saved_new = jnp.where(start_new, y, y_saved)
+                buf_count_new = jnp.where(start_new, jnp.array(0, jnp.int32), buf_count)
+                logsig_sum_new = jnp.where(
+                    start_new, jnp.zeros_like(logsig_sum), logsig_sum
+                )
+                dt_sum_new = jnp.where(
+                    start_new, jnp.array(0.0, dtype=dt.dtype), dt_sum
+                )
+
+                # push dt on stack
+                buf_dt_new = buf_dt.at[buf_count_new].set(dti)
+                buf_count_new = buf_count_new + 1
+
+                # accumulate totals
+                logsig_sum_new = logsig_sum_new + li
+                dt_sum_new = dt_sum_new + dti
+
+                # online step + commit
+                y_next = step_from_logsig(y, li)
+                ys_new = ys.at[i].set(y_next)
+
+                return (
+                    y_next,
+                    ys_new,
+                    True,
+                    y_saved_new,
+                    buf_count_new,
+                    buf_dt_new,
+                    logsig_sum_new,
+                    dt_sum_new,
+                )
+
+            def do_true(_):
+                def no_rewind(_):
+                    y_next = step_from_logsig(y, li)
+                    ys_new = ys.at[i].set(y_next)
+                    return (
+                        y_next,
+                        ys_new,
+                        False,
+                        y_saved,
+                        buf_count,
+                        buf_dt,
+                        logsig_sum,
+                        dt_sum,
+                    )
+
+                def do_rewind(_):
+                    # totals over the whole block (buffered False-run + current True)
+                    total_logsig = logsig_sum + li
+                    total_dt = dt_sum + dti
+                    total_dt = jnp.where(
+                        total_dt > 0, total_dt, jnp.array(1.0, dtype=total_dt.dtype)
+                    )
+
+                    # append current dt
+                    buf_dt2 = buf_dt.at[buf_count].set(dti)
+                    k = buf_count + 1
+
+                    a_total = total_logsig[1:]  # (L-1,)
+                    G = jnp.einsum("ijkl,l->ijk", lie_brackets, a_total)  # (nb, bs, bs)
+                    nb = G.shape[0]
+                    bs = G.shape[1]
+
+                    # Replay only uses y <- (I + w_j G) y
+                    def inner(jj, ytmp):
+                        def do_step(y_):
+                            w = buf_dt2[jj] / total_dt
+                            yb = y_.reshape(nb, bs, 1)
+                            yb_next = yb + w * jnp.matmul(G, yb)
+                            return yb_next.reshape(
+                                H,
+                            )
+
+                        return jax.lax.cond(jj < k, do_step, lambda y_: y_, ytmp)
+
+                    y_replayed = jax.lax.fori_loop(0, n, inner, y_saved)
+                    ys_new = ys.at[i].set(y_replayed)
+
+                    # clear run
+                    return (
+                        y_replayed,
+                        ys_new,
+                        False,
+                        y_saved,  # irrelevant now
+                        jnp.array(0, jnp.int32),
+                        buf_dt,
+                        jnp.zeros_like(logsig_sum),  # reset sums
+                        jnp.array(0.0, dtype=dt.dtype),
+                    )
+
+                return jax.lax.cond(in_run, do_rewind, no_rewind, operand=None)
+
+            return jax.lax.cond(mi, do_true, do_false, operand=None)
+
+        _, ys, *_ = jax.lax.fori_loop(
+            0,
+            n,
+            outer,
+            (y0, ys, in_run0, y_saved0, buf_count0, buf_dt, logsig_sum0, dt_sum0),
+        )
+        return ys
+
     def __call__(self, X):
-        ts, logsigs, x0 = X
+        ts, logsig_obs, x0 = X
+        logsigs, obs = logsig_obs
         y0 = self.init_layer(x0)
 
         # Each branch prepares `flows` and `step`/`parallel_step` functions
@@ -315,6 +459,10 @@ class LogLinearCDE(eqx.Module):
                 ys_new = y * total_flows
                 return ys_new[-1], ys_new
 
+            def step_from_logsig(y, logsig):
+                flow = 1 + logsig[1 : num_log_sig_coeffs + 1] @ self.vf_A
+                return y * flow
+
         else:  # Generic case for block_size > 1
             if self.sparsity < 1.0:
                 vfs = self.vf_A_sparse.todense().reshape(
@@ -352,10 +500,51 @@ class LogLinearCDE(eqx.Module):
                 y_new = jnp.matmul(flow_total, y_block).reshape(-1, self.hidden_dim)
                 return y_new[-1], y_new
 
+            def step_from_logsig(y, logsig):
+                a = logsig[1:]
+                log_flow = jnp.einsum("ijkl,l->ijk", lie_brackets, a)
+                flow = log_flow + jnp.eye(self.block_size)[None, :, :]
+                y_block = y.reshape(self.num_blocks, self.block_size, 1)
+                y_next = jnp.matmul(flow, y_block).reshape(
+                    self.hidden_dim,
+                )
+                return y_next
+
+        if (not self.piecewise_abelian) and (self.parallel_steps == 1):
+
+            def scan_simple(_):
+                _, ys = jax.lax.scan(step, y0, flows)
+                return ys
+
+            ys = jax.lax.cond(
+                jnp.any(~obs),
+                lambda _: self._scan_with_rewind_joint_flow(
+                    ts=ts,
+                    logsigs=logsigs,
+                    obs_mask=obs,
+                    y0=y0,
+                    step_from_logsig=step_from_logsig,
+                    lie_brackets=lie_brackets,
+                ),
+                scan_simple,
+                operand=None,
+            )
+            ys = jnp.vstack([y0, ys])
+
+            # --- Final output layer (same as yours, but using ys computed above) ---
+            if self.classification:
+                ys_mean = jnp.mean(ys, axis=0)
+                preds = jax.nn.softmax(self.out_layer(ys_mean))
+            else:
+                ys_out = jax.vmap(self.out_layer)(ys)
+                preds = jnp.tanh(ys_out)
+
+            return preds
+
         # --- Generic scanner logic ---
         if self.parallel_steps == 1 or parallel_step is None:
             scan_fn = step
-            scan_inp = jax.tree_util.tree_map(lambda x: x[1:], flows)
+            scan_inp = flows
             remainder = 0
         else:
             scan_fn = parallel_step
@@ -363,12 +552,12 @@ class LogLinearCDE(eqx.Module):
             remainder = (t - 1) % self.parallel_steps
 
             if remainder == 0:
-                core_flows = jax.tree_util.tree_map(lambda x: x[1:], flows)
+                core_flows = flows
             else:
-                core_flows = jax.tree_util.tree_map(lambda x: x[1:-remainder], flows)
+                core_flows = jax.tree_util.tree_map(lambda x: x[:-remainder], flows)
 
             scan_inp = jax.tree_util.tree_map(
-                lambda x: x.reshape(-1, self.parallel_steps, *x.shape[1:]), core_flows
+                lambda x: x.reshape(-1, self.parallel_steps, *x.shape), core_flows
             )
 
         _, ys = jax.lax.scan(scan_fn, y0, scan_inp)

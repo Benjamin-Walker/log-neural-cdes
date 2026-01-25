@@ -48,9 +48,9 @@ def run_experiments(
             metric = data["metric"]
             use_presplit = data["use_presplit"]
             T = data["T"]
-            rectilinear_interpolation = data.get("rectilinear_interpolation", False)
-            interval_gap_mode = data.get("interval_gap_mode", "none")
-            gap_n_intervals = data.get("gap_n_intervals", 0)
+            drop_percentage = data.get("drop_percentage", 0.0)
+            drop_mode = data.get("drop_mode", "same")
+            piecewise_abelian = data.get("piecewise_abelian", True)
             if model_name in [
                 "lru",
                 "S5",
@@ -204,6 +204,7 @@ def run_experiments(
                     "walsh_hadamard": walsh_hadamard,
                     "diagonal_dense": diagonal_dense,
                     "sparsity": sparsity,
+                    "piecewise_abelian": piecewise_abelian,
                     "rank": rank,
                 }
                 run_args = {
@@ -214,9 +215,8 @@ def run_experiments(
                     "metric": metric,
                     "include_time": include_time,
                     "T": T,
-                    "rectilinear_interpolation": rectilinear_interpolation,
-                    "interval_gap_mode": interval_gap_mode,
-                    "gap_n_intervals": gap_n_intervals,
+                    "drop_percentage": drop_percentage,
+                    "drop_mode": drop_mode,
                     "model_name": model_name,
                     "stepsize": stepsize,
                     "logsig_depth": logsig_depth,
@@ -251,8 +251,8 @@ if __name__ == "__main__":
             # "S5",
             # "lru",
             "bd_linear_ncde",
-            "log_ncde",
-            "ncde",
+            # "log_ncde",
+            # "ncde",
             # "ncde",
             # "log_ncde",
             # "nrde",
@@ -265,7 +265,7 @@ if __name__ == "__main__":
         ]
     dataset_names = [
         "pm25",
-        "pm10",
+        # "pm10",
         # "EigenWorms",
         # "EthanolConcentration",
         # "Heartbeat",

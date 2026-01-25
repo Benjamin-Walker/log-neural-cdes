@@ -145,9 +145,9 @@ class NeuralCDE(eqx.Module):
         if self.classification:
             saveat = diffrax.SaveAt(t1=True)
         else:
-            step = self.output_step / len(ts)
-            times = jnp.arange(step, 1.0, step)
-            saveat = diffrax.SaveAt(ts=times, t1=True)
+            # step = self.output_step / len(ts)
+            # times = jnp.arange(step, 1.0, step)
+            saveat = diffrax.SaveAt(ts=ts)
         solution = diffrax.diffeqsolve(
             terms=diffrax.ControlTerm(func, control).to_ode(),
             solver=self.solver,
@@ -230,7 +230,8 @@ class NeuralRDE(eqx.Module):
         self.max_steps = max_steps
 
     def __call__(self, X):
-        ts, logsig, x0 = X
+        ts, logsig_obs, x0 = X
+        logsig = logsig_obs[0]
 
         def func(t, y, args):
             idx = jnp.searchsorted(self.intervals, t)
