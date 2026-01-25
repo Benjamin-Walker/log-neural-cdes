@@ -19,6 +19,7 @@ import pickle
 from dataclasses import dataclass
 from typing import Dict
 
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
@@ -474,6 +475,7 @@ def create_PM_dataset(
     depth,
     include_time,
     T,
+    drop_percentage,
     *,
     key,
 ):
@@ -614,6 +616,27 @@ def create_PM_dataset(
     y_train = _scale_to_minus_one_one(y_train, y_min, y_max, eps)
     y_val = _scale_to_minus_one_one(y_val, y_min, y_max, eps)
     y_test = _scale_to_minus_one_one(y_test, y_min, y_max, eps)
+
+    def _drop_percent(X, y, p, *, key):
+        N, L, _ = X.shape
+        keep = max(2, int(round((1.0 - p) * L)))
+
+        keys = jr.split(key, N)
+
+        # idx: (N, keep), sorted kept indices per sample
+        idx = jax.vmap(lambda k: jnp.sort(jr.permutation(k, L)[:keep]))(keys)
+
+        X = jax.vmap(lambda x, ii: x[ii, :], in_axes=(0, 0))(X, idx)
+        y = jax.vmap(lambda yy, ii: yy[ii, :], in_axes=(0, 0))(y, idx)
+        return X, y
+
+    if drop_percentage is not None and float(drop_percentage) != 0.0:
+        key, k_tr, k_va, k_te = jr.split(key, 4)
+        breakpoint()
+        X_train, y_train = _drop_percent(X_train, y_train, drop_percentage, key=k_tr)
+        X_val, y_val = _drop_percent(X_val, y_val, drop_percentage, key=k_va)
+        X_test, y_test = _drop_percent(X_test, y_test, drop_percentage, key=k_te)
+
     data = (X_train, X_val, X_test)
     labels = (y_train[:, :, 0], y_val[:, :, 0], y_test[:, :, 0])
 
@@ -643,6 +666,7 @@ def create_dataset(
     interval_gap_mode="none",
     gap_n_intervals=0,
     scale=False,
+    drop_percentage=None,
     *,
     key,
 ):
@@ -686,6 +710,7 @@ def create_dataset(
             depth,
             include_time,
             T,
+            drop_percentage,
             key=key,
         )
     else:

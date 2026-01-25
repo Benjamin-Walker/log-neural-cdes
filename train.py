@@ -299,9 +299,9 @@ def train_model(
                     ):
 
                         eps = 1e-8
-                        task_dir = "25" if dataset_name.lower() == "pm25" else "10"
                         stats_path = (
-                            f"data_dir/processed/PM/{task_dir}/norm_stats_time1.npz"
+                            "/data/math-datasig/shug6778/Log-Neural-CDEs/data/processed/PM/25/"
+                            "norm_stats_time1.npz"
                         )
 
                         try:
@@ -361,6 +361,7 @@ def create_dataset_model_and_train(
     rectilinear_interpolation,
     interval_gap_mode,
     gap_n_intervals,
+    drop_percentage,
     model_name,
     stepsize,
     logsig_depth,
@@ -373,7 +374,9 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += "outputs_pm_hypopt/" + model_name + "/" + dataset_name
+    output_parent_dir += (
+        f"outputs_pm_drop_{drop_percentage}/" + model_name + "/" + dataset_name
+    )
     output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
     if model_name == "log_ncde" or model_name == "nrde":
         output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
@@ -410,6 +413,7 @@ def create_dataset_model_and_train(
         rectilinear_interpolation=rectilinear_interpolation,
         interval_gap_mode=interval_gap_mode,
         gap_n_intervals=gap_n_intervals,
+        drop_percentage=drop_percentage,
         use_idxs=False,
         use_presplit=use_presplit,
         scale=scale,
