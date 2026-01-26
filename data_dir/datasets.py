@@ -293,18 +293,18 @@ def dataset_generator(
         )
 
     train_path_data = (
-        ts_train,
+        interval_times_train if interval_times_train is not None else ts_train,
         (train_paths, train_obs_masks),
         train_data[:, 0, :],
     )
     val_path_data = (
-        ts_val,
+        interval_times_val if interval_times_val is not None else ts_val,
         (val_paths, val_obs_masks),
         val_data[:, 0, :],
     )
     if idxs is None:
         test_path_data = (
-            ts_test,
+            interval_times_test if interval_times_test is not None else ts_test,
             (test_paths, test_obs_masks),
             test_data[:, 0, :],
         )
