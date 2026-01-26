@@ -132,29 +132,51 @@ def batch_calc_coeffs(data, include_time, T, inmemory=True):
     return coeffs
 
 
-def max_false_run_length(obs_mask) -> int:
+def max_false_run_length_1d(obs_mask) -> int:
     """
-    Return the maximum length of a consecutive run of False values in obs_mask.
-
-    obs_mask: array-like of shape (n,), where True = observation interval.
+    Max length of consecutive False values in a 1D obs_mask.
+    obs_mask: shape (T,) array-like, True = observation interval.
     """
-    m = np.asarray(obs_mask, dtype=bool)
-    if m.size == 0:
-        return 0
-
-    # We want runs of False, so flip
+    m = np.asarray(obs_mask, dtype=bool).reshape(-1)  # force 1D
     f = ~m
-    if not f.any():
+    if f.size == 0 or not f.any():
         return 0
 
-    # Run-length encoding via diff of padded array
-    padded = np.concatenate([[False], f, [False]])
+    padded = np.concatenate(([False], f, [False]))
     changes = np.diff(padded.astype(np.int8))
 
-    starts = np.where(changes == 1)[0]  # False-run starts
-    ends = np.where(changes == -1)[0]  # False-run ends (exclusive)
+    starts = np.where(changes == 1)[0]
+    ends = np.where(changes == -1)[0]
 
     return int((ends - starts).max())
+
+
+def max_false_run_length(obs_masks) -> int:
+    """
+    Max length of consecutive False values across:
+      - a single 1D mask (T,)
+      - a batch of masks (N, T)
+      - a list/tuple of 1D masks
+    """
+    arr = np.asarray(obs_masks, dtype=bool)
+
+    if arr.ndim == 1:
+        return max_false_run_length_1d(arr)
+
+    if arr.ndim == 2:
+        # max over samples
+        return max(max_false_run_length_1d(arr[i]) for i in range(arr.shape[0]))
+
+    # If you accidentally pass something like (N, T, 1), squeeze it.
+    arr = np.squeeze(arr)
+    if arr.ndim == 1:
+        return max_false_run_length_1d(arr)
+    if arr.ndim == 2:
+        return max(max_false_run_length_1d(arr[i]) for i in range(arr.shape[0]))
+
+    raise ValueError(
+        f"obs_masks must be 1D or 2D, got shape {np.asarray(obs_masks).shape}"
+    )
 
 
 def dataset_generator(
