@@ -156,7 +156,6 @@ def calc_paths(
             return logsigs_b, obs_b
 
         logsigs, observation_mask = jax.vmap(process_one_batch)(data, interval_times)
-        print(observation_mask.all())
         return logsigs, observation_mask
 
     if stepsize > data.shape[1]:
