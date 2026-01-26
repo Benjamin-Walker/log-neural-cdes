@@ -39,6 +39,7 @@ class Dataset:
     logsig_dim: int
     intervals: jnp.ndarray
     label_dim: int
+    buf_len: int = None
 
 
 def batch_calc_paths(
@@ -131,6 +132,31 @@ def batch_calc_coeffs(data, include_time, T, inmemory=True):
     return coeffs
 
 
+def max_false_run_length(obs_mask) -> int:
+    """
+    Return the maximum length of a consecutive run of False values in obs_mask.
+
+    obs_mask: array-like of shape (n,), where True = observation interval.
+    """
+    m = np.asarray(obs_mask, dtype=bool)
+    if m.size == 0:
+        return 0
+
+    # We want runs of False, so flip
+    f = ~m
+    if not f.any():
+        return 0
+
+    # Run-length encoding via diff of padded array
+    padded = np.concatenate([[False], f, [False]])
+    changes = np.diff(padded.astype(np.int8))
+
+    starts = np.where(changes == 1)[0]  # False-run starts
+    ends = np.where(changes == -1)[0]  # False-run ends (exclusive)
+
+    return int((ends - starts).max())
+
+
 def dataset_generator(
     name,
     data,
@@ -216,6 +242,10 @@ def dataset_generator(
         include_time,
         interval_times_test,
     )
+    train_buf_len = max_false_run_length(train_obs_masks)
+    val_buf_len = max_false_run_length(val_obs_masks)
+    test_buf_len = max_false_run_length(test_obs_masks)
+    buf_len = max(train_buf_len, val_buf_len, test_buf_len) + 1
     indexes = np.unique(np.r_[0 : train_data.shape[1] : stepsize])
     intervals = ts_train[0, indexes]
     intervals = jnp.concatenate((intervals, jnp.array([T])))
@@ -289,6 +319,7 @@ def dataset_generator(
         logsig_dim,
         intervals,
         label_dim,
+        buf_len,
     )
 
 
