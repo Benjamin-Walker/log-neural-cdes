@@ -79,6 +79,7 @@ class LogLinearCDE(eqx.Module):
     vf_A_dense: Optional[jnp.ndarray] = None
     vf_A_u: Optional[jnp.ndarray] = None
     vf_A_v: Optional[jnp.ndarray] = None
+    buf_len: Optional[int] = None
     dense_size: int = 0
     lip2: bool = True
     nondeterministic: bool = False
@@ -101,6 +102,7 @@ class LogLinearCDE(eqx.Module):
         rank: int = 0,
         sparsity: float = 1.0,
         piecewise_abelian: bool = True,
+        buf_len: Optional[int] = None,
         key,
     ):
         if hidden_dim % block_size != 0:
@@ -119,6 +121,7 @@ class LogLinearCDE(eqx.Module):
         self.lambd = lambd
         self.w_init_std = w_init_std
         self.piecewise_abelian = piecewise_abelian
+        self.buf_len = buf_len
 
         k_init, k_A, k_B = jr.split(key, 3)
         self.init_layer = eqx.nn.Linear(data_dim, hidden_dim, key=k_init)
@@ -242,136 +245,134 @@ class LogLinearCDE(eqx.Module):
         obs_mask,
         y0,
         step_from_logsig,
-        lie_brackets,
-        max_run_len: int | None = None,  # if None, use n
+        lie_brackets=None,
     ):
         n = logsigs.shape[0]
         H = y0.shape[0]
         L = logsigs.shape[1]
 
+        # ts assumed length n+1 boundary times
         dt = ts[1:] - ts[:-1]
-        obs_mask = jnp.asarray(obs_mask).reshape((n,))
-        ys = jnp.zeros((n, H), dtype=y0.dtype)
 
-        buf_len = n if max_run_len is None else max_run_len
-        buf_dt = jnp.zeros((buf_len,), dtype=dt.dtype)
+        obs_mask = jnp.asarray(obs_mask, dtype=bool).reshape((n,))
 
-        in_run0 = jnp.array(False)
-        y_saved0 = y0
-        buf_count0 = jnp.array(0, dtype=jnp.int32)
-        logsig_sum0 = jnp.zeros((L,), dtype=logsigs.dtype)
-        dt_sum0 = jnp.array(0.0, dtype=dt.dtype)
+        buf_len = self.buf_len + 1
+        buf_dt0 = jnp.zeros((buf_len,), dtype=dt.dtype)
 
-        def outer(i, carry):
-            y, ys, in_run, y_saved, buf_count, buf_dt, logsig_sum, dt_sum = carry
-            li = logsigs[i]
-            dti = dt[i]
-            mi = obs_mask[i]
+        carry0 = (
+            y0,  # y
+            jnp.array(False),  # in_run
+            y0,  # y_saved
+            jnp.array(0, jnp.int32),  # buf_count
+            buf_dt0,  # buf_dt
+            jnp.zeros((L,), logsigs.dtype),  # logsig_sum
+            jnp.array(0.0, dt.dtype),  # dt_sum
+        )
 
-            def do_false(_):
-                start_new = jnp.logical_not(in_run)
+        def step_outer(carry, inp):
+            y, in_run, y_saved, buf_count, buf_dt, logsig_sum, dt_sum = carry
+            li, dti, mi = inp
 
+            def do_false():
+                start_new = ~in_run
                 y_saved_new = jnp.where(start_new, y, y_saved)
                 buf_count_new = jnp.where(start_new, jnp.array(0, jnp.int32), buf_count)
                 logsig_sum_new = jnp.where(
                     start_new, jnp.zeros_like(logsig_sum), logsig_sum
                 )
                 dt_sum_new = jnp.where(
-                    start_new, jnp.array(0.0, dtype=dt.dtype), dt_sum
+                    start_new, jnp.array(0.0, dtype=dti.dtype), dt_sum
                 )
 
-                # push dt on stack
                 buf_dt_new = buf_dt.at[buf_count_new].set(dti)
                 buf_count_new = buf_count_new + 1
 
-                # accumulate totals
                 logsig_sum_new = logsig_sum_new + li
                 dt_sum_new = dt_sum_new + dti
 
-                # online step + commit
                 y_next = step_from_logsig(y, li)
-                ys_new = ys.at[i].set(y_next)
-
+                # output is committed now
                 return (
                     y_next,
-                    ys_new,
                     True,
                     y_saved_new,
                     buf_count_new,
                     buf_dt_new,
                     logsig_sum_new,
                     dt_sum_new,
-                )
+                ), y_next
 
-            def do_true(_):
-                def no_rewind(_):
+            def do_true():
+                def no_rewind():
                     y_next = step_from_logsig(y, li)
-                    ys_new = ys.at[i].set(y_next)
                     return (
                         y_next,
-                        ys_new,
                         False,
-                        y_saved,
+                        y_next,
                         buf_count,
                         buf_dt,
                         logsig_sum,
                         dt_sum,
-                    )
+                    ), y_next
 
-                def do_rewind(_):
-                    # totals over the whole block (buffered False-run + current True)
+                def do_rewind():
                     total_logsig = logsig_sum + li
                     total_dt = dt_sum + dti
                     total_dt = jnp.where(
                         total_dt > 0, total_dt, jnp.array(1.0, dtype=total_dt.dtype)
                     )
 
-                    # append current dt
                     buf_dt2 = buf_dt.at[buf_count].set(dti)
-                    k = buf_count + 1
+                    k = buf_count + 1  # dynamic, but we will use static loop bound
 
-                    a_total = total_logsig[1:]  # (L-1,)
-                    G = jnp.einsum("ijkl,l->ijk", lie_brackets, a_total)  # (nb, bs, bs)
-                    nb = G.shape[0]
-                    bs = G.shape[1]
+                    # compute generator once if available
+                    if lie_brackets is not None:
+                        a_total = total_logsig[1:]
+                        G = jnp.einsum(
+                            "ijkl,l->ijk", lie_brackets, a_total
+                        )  # (nb, bs, bs)
+                        nb, bs, _ = G.shape
 
-                    # Replay only uses y <- (I + w_j G) y
-                    def inner(jj, ytmp):
-                        def do_step(y_):
-                            w = buf_dt2[jj] / total_dt
-                            yb = y_.reshape(nb, bs, 1)
-                            yb_next = yb + w * jnp.matmul(G, yb)
-                            return yb_next.reshape(
-                                H,
-                            )
+                        def inner(jj, ytmp):
+                            def do_step(y_):
+                                w = buf_dt2[jj] / total_dt
+                                yb = y_.reshape(nb, bs, 1)
+                                return (yb + w * (G @ yb)).reshape(
+                                    H,
+                                )
 
-                        return jax.lax.cond(jj < k, do_step, lambda y_: y_, ytmp)
+                            return jax.lax.cond(jj < k, do_step, lambda y_: y_, ytmp)
 
-                    y_replayed = jax.lax.fori_loop(0, n, inner, y_saved)
-                    ys_new = ys.at[i].set(y_replayed)
+                    else:
 
-                    # clear run
-                    return (
+                        def inner(jj, ytmp):
+                            def do_step(y_):
+                                w = buf_dt2[jj] / total_dt
+                                return step_from_logsig(y_, total_logsig * w)
+
+                            return jax.lax.cond(jj < k, do_step, lambda y_: y_, ytmp)
+
+                    # STATIC bound => reverse-mode works
+                    y_replayed = jax.lax.fori_loop(0, buf_len, inner, y_saved)
+
+                    # output only computed once for this True interval
+                    new_carry = (
                         y_replayed,
-                        ys_new,
                         False,
-                        y_saved,  # irrelevant now
+                        y_replayed,
                         jnp.array(0, jnp.int32),
                         buf_dt,
-                        jnp.zeros_like(logsig_sum),  # reset sums
+                        jnp.zeros_like(logsig_sum),
                         jnp.array(0.0, dtype=dt.dtype),
                     )
+                    return new_carry, y_replayed
 
-                return jax.lax.cond(in_run, do_rewind, no_rewind, operand=None)
+                return jax.lax.cond(in_run, lambda: do_rewind(), lambda: no_rewind())
 
-            return jax.lax.cond(mi, do_true, do_false, operand=None)
+            return jax.lax.cond(mi, lambda: do_true(), lambda: do_false())
 
-        _, ys, *_ = jax.lax.fori_loop(
-            0,
-            n,
-            outer,
-            (y0, ys, in_run0, y_saved0, buf_count0, buf_dt, logsig_sum0, dt_sum0),
-        )
+        # IMPORTANT: no ys scatter updates, scan collects outputs
+        carryT, ys = jax.lax.scan(step_outer, carry0, (logsigs, dt, obs_mask))
         return ys
 
     def __call__(self, X):

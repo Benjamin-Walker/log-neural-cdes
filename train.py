@@ -415,6 +415,8 @@ def create_dataset_model_and_train(
         scale=scale,
         key=datasetkey,
     )
+    buf_len = dataset.buf_len
+    model_args["buf_len"] = buf_len
 
     print(f"Creating model {model_name}")
     classification = metric == "accuracy"

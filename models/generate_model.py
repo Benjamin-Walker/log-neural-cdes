@@ -79,6 +79,7 @@ def create_model(
     sparsity=1.0,
     piecewise_abelian=True,
     rank=0,
+    buf_len=None,
     *,
     key,
 ):
@@ -125,6 +126,7 @@ def create_model(
                 sparsity=sparsity,
                 piecewise_abelian=piecewise_abelian,
                 rank=rank,
+                buf_len=buf_len,
                 key=key,
             ),
             None,
