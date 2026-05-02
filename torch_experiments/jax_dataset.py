@@ -19,6 +19,47 @@ import numpy as np
 import torch
 
 
+def _uniform_times(length):
+    return (1.0 / length) * np.arange(length, dtype=np.float32)
+
+
+def _drop_observations(data, observation_times, drop_percentage, *, seed):
+    if drop_percentage is None:
+        return data, observation_times
+
+    if not 0.0 <= drop_percentage < 1.0:
+        raise ValueError("drop_percentage must satisfy 0.0 <= drop_percentage < 1.0")
+
+    length = data.shape[1]
+    keep = int(round(length * (1.0 - drop_percentage)))
+    keep = min(length, max(2, keep))
+
+    if keep == length:
+        return data, observation_times
+
+    rng = np.random.default_rng(seed)
+    indices = np.empty((data.shape[0], keep), dtype=np.int64)
+    for i in range(data.shape[0]):
+        if keep == 2:
+            indices[i] = np.array([0, length - 1], dtype=np.int64)
+            continue
+        middle = rng.choice(length - 2, size=keep - 2, replace=False) + 1
+        indices[i] = np.concatenate(
+            (
+                np.array([0], dtype=np.int64),
+                np.sort(middle.astype(np.int64)),
+                np.array([length - 1], dtype=np.int64),
+            )
+        )
+
+    batch_indices = np.arange(data.shape[0])[:, None]
+    dropped_data = data[batch_indices, indices]
+    if observation_times is None:
+        return dropped_data, None
+    dropped_times = observation_times[batch_indices, indices]
+    return dropped_data, dropped_times
+
+
 class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -30,8 +71,11 @@ class Dataset(torch.utils.data.Dataset):
         indexes,
         presplit,
         include_time,
+        drop_percentage=None,
+        drop_seed=0,
     ):
         super().__init__()
+        indexes = np.asarray(indexes)
 
         uea_subfolders = [
             f.name for f in os.scandir(data_dir + "/processed/UEA") if f.is_dir()
@@ -79,10 +123,14 @@ class Dataset(torch.utils.data.Dataset):
                     data_dir + f"/processed/{benchmark}/{name}/y_test.pkl", "rb"
                 ) as f:
                     labels = np.array(pickle.load(f))
-            if include_time:
-                ts = (1 / data.shape[1]) * np.repeat(
-                    np.arange(data.shape[1])[None, :], data.shape[0], axis=0
+            ts = None
+            if include_time or drop_percentage is not None:
+                ts = np.repeat(
+                    _uniform_times(data.shape[1])[None, :], data.shape[0], axis=0
                 )
+            if drop_percentage is not None:
+                data, ts = _drop_observations(data, ts, drop_percentage, seed=drop_seed)
+            if include_time:
                 data = np.concatenate([ts[:, :, None], data], axis=2)
 
             self.data = torch.from_numpy(data).to(torch.float32)
@@ -116,27 +164,38 @@ class Dataset(torch.utils.data.Dataset):
                     labels = np.array(labels)
                 else:
                     labels = np.array(pickle.load(f))
-            if include_time:
-                ts = (1 / data.shape[1]) * np.repeat(
-                    np.arange(data.shape[1])[None, :], data.shape[0], axis=0
+            ts = None
+            if include_time or drop_percentage is not None:
+                ts = np.repeat(
+                    _uniform_times(data.shape[1])[None, :], data.shape[0], axis=0
                 )
-                data = np.concatenate([ts[:, :, None], data], axis=2)
             assert len(indexes) == len(data)
             data = data[indexes]
             labels = labels[indexes]
-            data = torch.from_numpy(data).to(torch.float32)
-            labels = torch.from_numpy(labels).to(torch.float32)
-            num_classes = len(torch.unique(labels))
+            if ts is not None:
+                ts = ts[indexes]
+            num_classes = len(np.unique(labels))
             if train:
                 data = data[: int(0.7 * len(data))]
                 labels = labels[: int(0.7 * len(labels))]
+                if ts is not None:
+                    ts = ts[: int(0.7 * len(ts))]
             elif val:
                 data = data[int(0.7 * len(data)) : int(0.85 * len(data))]
                 labels = labels[int(0.7 * len(labels)) : int(0.85 * len(labels))]
+                if ts is not None:
+                    ts = ts[int(0.7 * len(ts)) : int(0.85 * len(ts))]
             elif test:
                 data = data[int(0.85 * len(data)) :]
                 labels = labels[int(0.85 * len(labels)) :]
-            self.data = data
+                if ts is not None:
+                    ts = ts[int(0.85 * len(ts)) :]
+            if drop_percentage is not None:
+                data, ts = _drop_observations(data, ts, drop_percentage, seed=drop_seed)
+            if include_time:
+                data = np.concatenate([ts[:, :, None], data], axis=2)
+            self.data = torch.from_numpy(data).to(torch.float32)
+            labels = torch.from_numpy(labels).to(torch.float32)
             self.labels = torch.nn.functional.one_hot(
                 labels.to(torch.int64), num_classes
             ).to(torch.float32)

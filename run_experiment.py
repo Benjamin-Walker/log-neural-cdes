@@ -49,8 +49,9 @@ def run_experiments(
             metric = data["metric"]
             use_presplit = data["use_presplit"]
             T = data["T"]
-            drop_percentage = data.get("drop_percentage", 0.0)
+            drop_percentage = data.get("drop_percentage", None)
             drop_mode = data.get("drop_mode", "same")
+            path_drop_window_mode = data.get("path_drop_window_mode", "fixed")
             piecewise_abelian = data.get("piecewise_abelian", True)
             if model_name in [
                 "lru",
@@ -181,6 +182,7 @@ def run_experiments(
                     "early_stopping_steps": early_stopping_steps,
                     "lr": lr,
                     "model_args": model_args,
+                    "drop_percentage": drop_percentage,
                 }
                 run_fn = torch_create_dataset_model_and_train
             else:
@@ -218,6 +220,7 @@ def run_experiments(
                     "T": T,
                     "drop_percentage": drop_percentage,
                     "drop_mode": drop_mode,
+                    "path_drop_window_mode": path_drop_window_mode,
                     "model_name": model_name,
                     "stepsize": stepsize,
                     "logsig_depth": logsig_depth,

@@ -80,14 +80,19 @@ def make_DPLR_HiPPO(N):
 
     """
     A, P, B = make_NPLR_HiPPO(N)
+    target_device = A.device
 
     S = A + P[:, jnp.newaxis] * P[jnp.newaxis, :]
 
     S_diag = jnp.diagonal(S)
     Lambda_real = jnp.mean(S_diag) * jnp.ones_like(S_diag)
 
-    # Diagonalize S to V \Lambda V^*
-    Lambda_imag, V = jnp.linalg.eigh(S * -1j)
+    # cuSolver can fail here on some GPU setups; do this one-off initialisation on CPU.
+    cpu_device = jax.devices("cpu")[0]
+    with jax.default_device(cpu_device):
+        Lambda_imag, V = jnp.linalg.eigh(jax.device_put(S * -1j, cpu_device))
+    Lambda_imag = jax.device_put(Lambda_imag, target_device)
+    V = jax.device_put(V, target_device)
 
     P = V.conj().T @ P
     B_orig = B

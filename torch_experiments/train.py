@@ -43,6 +43,53 @@ from torch_experiments.jax_dataset import Dataset
 from torch_experiments.s6_recurrence import S6Layer
 
 
+def build_output_dir(
+    *,
+    output_parent_dir,
+    model_name,
+    dataset_name,
+    lr,
+    include_time,
+    model_args,
+    seed,
+    drop_percentage=None,
+):
+    output_dir = os.path.join(output_parent_dir, "outputs", model_name, dataset_name)
+    run_name = f"lr_{lr}_time_{include_time}"
+    if drop_percentage is not None:
+        run_name += f"_drop_{drop_percentage:.2f}"
+    for key, value in model_args.items():
+        run_name += f"_{key}_{value}"
+    run_name += f"_seed_{seed}"
+    return os.path.join(output_dir, run_name)
+
+
+def _completion_marker(output_dir):
+    return os.path.join(output_dir, "completed.txt")
+
+
+def run_output_is_complete(output_dir):
+    return os.path.exists(_completion_marker(output_dir))
+
+
+def _save_outputs(output_dir, steps, all_train_metrics, all_val_metrics, test_metric):
+    np.save(os.path.join(output_dir, "steps.npy"), np.array(steps))
+    np.save(
+        os.path.join(output_dir, "all_train_metric.npy"),
+        np.array(all_train_metrics),
+    )
+    np.save(
+        os.path.join(output_dir, "all_val_metric.npy"),
+        np.array(all_val_metrics),
+    )
+    np.save(os.path.join(output_dir, "test_metric.npy"), np.array(test_metric))
+
+
+def _mark_output_complete(output_dir):
+    with open(_completion_marker(output_dir), "w", encoding="ascii") as f:
+        f.write("complete\n")
+
+
 class GLU(torch.nn.Module):
     def __init__(self, input_dim):
         super().__init__()
@@ -133,6 +180,7 @@ def create_dataset_model_and_train(
     early_stopping_steps,
     lr,
     model_args,
+    drop_percentage=None,
 ):
     torch.manual_seed(seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -150,23 +198,24 @@ def create_dataset_model_and_train(
     else:
         raise ValueError(f"Unknown metric: {metric}")
 
-    output_dir = output_parent_dir + f"outputs/{model_name}" + f"/{dataset_name}/"
-    output_dir += f"lr_{lr}_time_{include_time}"
-    for k, v in model_args.items():
-        output_dir += f"_{k}_{v}"
-    output_dir += f"_seed_{seed}"
+    output_dir = build_output_dir(
+        output_parent_dir=output_parent_dir,
+        model_name=model_name,
+        dataset_name=dataset_name,
+        lr=lr,
+        include_time=include_time,
+        model_args=model_args,
+        seed=seed,
+        drop_percentage=drop_percentage,
+    )
 
     if os.path.isdir(output_dir):
-        user_input = input(
-            f"Warning: Output directory {output_dir} already exists. Do you want to "
-            f" delete it? (yes/no): "
-        )
-        if user_input.lower() == "yes":
-            shutil.rmtree(output_dir)
-            os.makedirs(output_dir)
-            print(f"Directory {output_dir} has been deleted and recreated.")
-        else:
-            raise ValueError(f"Directory {output_dir} already exists. Exiting.")
+        if run_output_is_complete(output_dir):
+            print(f"Skipping completed run in existing directory {output_dir}.")
+            return
+        shutil.rmtree(output_dir)
+        os.makedirs(output_dir)
+        print(f"Removed incomplete directory and recreated {output_dir}.")
     else:
         os.makedirs(output_dir)
         print(f"Directory {output_dir} has been created.")
@@ -182,6 +231,8 @@ def create_dataset_model_and_train(
         indexes,
         presplit=use_presplit,
         include_time=include_time,
+        drop_percentage=drop_percentage,
+        drop_seed=seed,
     )
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True
@@ -195,6 +246,8 @@ def create_dataset_model_and_train(
         indexes,
         presplit=use_presplit,
         include_time=include_time,
+        drop_percentage=drop_percentage,
+        drop_seed=seed + 1,
     )
     val_dataloader = torch.utils.data.DataLoader(
         val_dataset, batch_size=batch_size, shuffle=True
@@ -208,6 +261,8 @@ def create_dataset_model_and_train(
         indexes,
         presplit=use_presplit,
         include_time=include_time,
+        drop_percentage=drop_percentage,
+        drop_seed=seed + 2,
     )
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset, batch_size=batch_size, shuffle=True
@@ -238,6 +293,7 @@ def create_dataset_model_and_train(
     no_val_improvement = 0.0
     steps = []
     step = 0
+    test_metric = np.nan
     start = time.time()
     while step <= num_steps:
         for X, y in train_dataloader:
@@ -323,27 +379,25 @@ def create_dataset_model_and_train(
                 ):
                     no_val_improvement += 1
                     if no_val_improvement > early_stopping_steps:
-                        steps_save = np.array(steps)
-                        all_train_metrics_save = np.array(all_train_metrics)
-                        all_val_metrics_save = np.array(all_val_metrics)
-                        test_metric = np.array(test_metric)
-                        np.save(output_dir + "/steps.npy", steps_save)
-                        np.save(
-                            output_dir + "/all_train_metric.npy", all_train_metrics_save
+                        _save_outputs(
+                            output_dir,
+                            steps,
+                            all_train_metrics,
+                            all_val_metrics,
+                            test_metric,
                         )
-                        np.save(
-                            output_dir + "/all_val_metric.npy", all_val_metrics_save
-                        )
-                        np.save(output_dir + "/test_metric.npy", test_metric)
+                        _mark_output_complete(output_dir)
                         return
 
-                steps_save = np.array(steps)
-                all_train_metrics_save = np.array(all_train_metrics)
-                all_val_metrics_save = np.array(all_val_metrics)
-                test_metric = np.array(test_metric)
-                np.save(output_dir + "/steps.npy", steps_save)
-                np.save(output_dir + "/all_train_metric.npy", all_train_metrics_save)
-                np.save(output_dir + "/all_val_metric.npy", all_val_metrics_save)
-                np.save(output_dir + "/test_metric.npy", test_metric)
+                _save_outputs(
+                    output_dir,
+                    steps,
+                    all_train_metrics,
+                    all_val_metrics,
+                    test_metric,
+                )
             model.train()
             step += 1
+
+    _save_outputs(output_dir, steps, all_train_metrics, all_val_metrics, test_metric)
+    _mark_output_complete(output_dir)

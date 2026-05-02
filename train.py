@@ -50,6 +50,118 @@ from data_dir.datasets import create_dataset
 from models.generate_model import create_model
 
 
+def _compact_output_value(value):
+    if isinstance(value, bool):
+        return str(int(value))
+    name = str(value)
+    if "(" in name:
+        name = name.split("(", 1)[0]
+    return name
+
+
+def _append_output_component(output_dir, key, value):
+    if value is None:
+        return output_dir
+    key_aliases = {
+        "block_size": "bs",
+        "hidden_dim": "hd",
+        "vf_depth": "vfd",
+        "vf_width": "vfw",
+        "ssm_dim": "sd",
+        "ssm_blocks": "sb",
+        "dt0": "dt0",
+        "solver": "sol",
+        "stepsize_controller": "sc",
+        "scale": "scale",
+        "lambd": "lam",
+        "parallel_steps": "ps",
+        "walsh_hadamard": "wh",
+        "diagonal_dense": "dd",
+        "sparsity": "sp",
+        "piecewise_abelian": "pa",
+        "rank": "r",
+        "num_blocks": "nb",
+        "buf_len": "buf",
+    }
+    key_name = key_aliases.get(key, key)
+    value_name = _compact_output_value(value)
+    return f"{output_dir}_{key_name}{value_name}"
+
+
+def build_output_dir(
+    output_parent_dir,
+    model_name,
+    dataset_name,
+    T,
+    include_time,
+    num_steps,
+    lr,
+    drop_percentage,
+    path_drop_window_mode,
+    stepsize,
+    logsig_depth,
+    model_args,
+    seed,
+    drop_mode="same",
+):
+    if dataset_name.lower() in {"pm25", "pm10"}:
+        output_parent_dir += (
+            f"outputs_pm_drop_{drop_percentage}_{drop_mode}/"
+            + model_name
+            + "/"
+            + dataset_name
+        )
+        output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
+        if model_name == "log_ncde" or model_name == "nrde":
+            output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
+        for k, v in model_args.items():
+            if v is not None:
+                if k == "dt0":
+                    output_dir += f"_{k}_{v:.2f}"
+                else:
+                    output_dir += f"_{k}_{_compact_output_value(v)}"
+                if _compact_output_value(v) == "PIDController":
+                    output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
+        output_dir += f"_seed_{seed}"
+        return output_parent_dir + "/" + output_dir
+
+    output_parent_dir += "outputs/" + model_name + "/" + dataset_name
+    output_dir = f"T{T:.2f}_time{int(include_time)}_n{num_steps}_lr{lr}"
+    if drop_percentage is not None:
+        output_dir += f"_drop{drop_percentage:.2f}"
+        if (
+            model_name == "log_ncde"
+            or model_name == "nrde"
+            or model_name.endswith("linear_ncde")
+        ):
+            output_dir += f"_pwm{path_drop_window_mode}"
+    if model_name == "log_ncde" or model_name == "nrde":
+        output_dir += f"_step{stepsize:.2f}_depth{logsig_depth}"
+    for k, v in model_args.items():
+        if k == "dt0" and v is not None:
+            output_dir = _append_output_component(output_dir, k, f"{v:.2f}")
+        else:
+            output_dir = _append_output_component(output_dir, k, v)
+        if v is not None and _compact_output_value(v) == "PIDController":
+            output_dir += f"_rtol{v.rtol}_atol{v.atol}"
+    output_dir += f"_seed{seed}"
+    return output_parent_dir + "/" + output_dir
+
+
+def run_output_files_exist(output_dir):
+    required_files = (
+        "steps.npy",
+        "all_train_metric.npy",
+        "all_val_metric.npy",
+        "all_time.npy",
+        "test_metric.npy",
+    )
+    return all(
+        os.path.isfile(os.path.join(output_dir, filename))
+        for filename in required_files
+    )
+
+
 @eqx.filter_jit
 def calc_output(model, X, state, key, stateful, nondeterministic):
     if stateful:
@@ -167,15 +279,12 @@ def train_model(
         raise ValueError(f"Unknown metric: {metric}")
 
     if os.path.isdir(output_dir):
-        user_input = input(
-            f"Warning: Output directory {output_dir} already exists. Do you want to delete it? (yes/no): "
-        )
-        if user_input.lower() == "yes":
-            shutil.rmtree(output_dir)
-            os.makedirs(output_dir)
-            print(f"Directory {output_dir} has been deleted and recreated.")
-        else:
-            raise ValueError(f"Directory {output_dir} already exists. Exiting.")
+        if run_output_files_exist(output_dir):
+            print(f"Skipping completed run in existing directory {output_dir}.")
+            return None
+        shutil.rmtree(output_dir)
+        os.makedirs(output_dir)
+        print(f"Directory {output_dir} existed but was incomplete; recreated it.")
     else:
         os.makedirs(output_dir)
         print(f"Directory {output_dir} has been created.")
@@ -357,6 +466,7 @@ def create_dataset_model_and_train(
     T,
     drop_percentage,
     drop_mode,
+    path_drop_window_mode,
     model_name,
     stepsize,
     logsig_depth,
@@ -369,27 +479,22 @@ def create_dataset_model_and_train(
     batch_size,
     output_parent_dir="",
 ):
-    output_parent_dir += (
-        f"outputs_pm_drop_{drop_percentage}_{drop_mode}/"
-        + model_name
-        + "/"
-        + dataset_name
+    output_dir = build_output_dir(
+        output_parent_dir=output_parent_dir,
+        model_name=model_name,
+        dataset_name=dataset_name,
+        T=T,
+        include_time=include_time,
+        num_steps=num_steps,
+        lr=lr,
+        drop_percentage=drop_percentage,
+        path_drop_window_mode=path_drop_window_mode,
+        stepsize=stepsize,
+        logsig_depth=logsig_depth,
+        model_args=model_args,
+        seed=seed,
+        drop_mode=drop_mode,
     )
-    output_dir = f"T_{T:.2f}_time_{include_time}_nsteps_{num_steps}_lr_{lr}"
-    if model_name == "log_ncde" or model_name == "nrde":
-        output_dir += f"_stepsize_{stepsize:.2f}_depth_{logsig_depth}"
-    for k, v in model_args.items():
-        name = str(v)
-        if v is not None:
-            if "(" in name:
-                name = name.split("(", 1)[0]
-            if name == "dt0":
-                output_dir += f"_{k}_" + f"{v:.2f}"
-            else:
-                output_dir += f"_{k}_" + name
-            if name == "PIDController":
-                output_dir += f"_rtol_{v.rtol}_atol_{v.atol}"
-    output_dir += f"_seed_{seed}"
 
     key = jr.PRNGKey(seed)
 
@@ -410,6 +515,7 @@ def create_dataset_model_and_train(
         T=T,
         drop_percentage=drop_percentage,
         drop_mode=drop_mode,
+        path_drop_window_mode=path_drop_window_mode,
         use_idxs=False,
         use_presplit=use_presplit,
         scale=scale,

@@ -179,6 +179,67 @@ def max_false_run_length(obs_masks) -> int:
     )
 
 
+def _uniform_times(length, T, dtype=jnp.float32):
+    return (T / length) * jnp.arange(length, dtype=dtype)
+
+
+def _drop_observations(data, observation_times, drop_percentage, *, key):
+    if drop_percentage is None:
+        return data, observation_times
+
+    if not 0.0 <= drop_percentage < 1.0:
+        raise ValueError("drop_percentage must satisfy 0.0 <= drop_percentage < 1.0")
+
+    length = data.shape[1]
+    keep = int(round(length * (1.0 - drop_percentage)))
+    keep = min(length, max(2, keep))
+
+    if keep == length:
+        return data, observation_times
+
+    keys = jr.split(key, data.shape[0])
+
+    def sample_indices(sample_key):
+        if keep == 2:
+            return jnp.array([0, length - 1], dtype=jnp.int32)
+        middle = (
+            jr.choice(
+                sample_key,
+                length - 2,
+                shape=(keep - 2,),
+                replace=False,
+            )
+            + 1
+        )
+        return jnp.concatenate(
+            (
+                jnp.array([0], dtype=jnp.int32),
+                jnp.sort(middle.astype(jnp.int32)),
+                jnp.array([length - 1], dtype=jnp.int32),
+            )
+        )
+
+    indices = jax.vmap(sample_indices)(keys)
+    dropped_data = jax.vmap(lambda sample, idx: sample[idx])(data, indices)
+    dropped_times = jax.vmap(lambda sample_times, idx: sample_times[idx])(
+        observation_times, indices
+    )
+    return dropped_data, dropped_times
+
+
+def _build_interval_times(length, stepsize, T, dtype=jnp.float32):
+    observation_times = _uniform_times(length, T, dtype)
+    interval_indices = np.unique(np.r_[0:length:stepsize])
+    interval_times = observation_times[interval_indices]
+    return jnp.concatenate((interval_times, jnp.array([T], dtype=dtype)))
+
+
+def _resolve_path_stepsize(stepsize, drop_percentage, path_drop_window_mode):
+    if drop_percentage is None or path_drop_window_mode != "scaled":
+        return stepsize
+    return max(1, int(round(stepsize * (1.0 - drop_percentage))))
+
+
 def dataset_generator(
     name,
     data,
@@ -199,6 +260,21 @@ def dataset_generator(
         if use_presplit:
             train_data, val_data, test_data = data
             train_labels, val_labels, test_labels = labels
+            if interval_times is not None:
+                if isinstance(interval_times, tuple):
+                    (
+                        interval_times_train,
+                        interval_times_val,
+                        interval_times_test,
+                    ) = interval_times
+                else:
+                    interval_times_train = interval_times
+                    interval_times_val = interval_times
+                    interval_times_test = interval_times
+            else:
+                interval_times_train = None
+                interval_times_val = None
+                interval_times_test = None
         else:
             permkey, key = jr.split(key)
             bound1 = int(N * 0.7)
@@ -213,10 +289,25 @@ def dataset_generator(
                 labels[idxs_new[bound1:bound2]],
             )
             test_data, test_labels = data[idxs_new[bound2:]], labels[idxs_new[bound2:]]
+            if interval_times is not None:
+                interval_times_train = interval_times[idxs_new[:bound1]]
+                interval_times_val = interval_times[idxs_new[bound1:bound2]]
+                interval_times_test = interval_times[idxs_new[bound2:]]
+            else:
+                interval_times_train = None
+                interval_times_val = None
+                interval_times_test = None
     else:
         train_data, train_labels = data[idxs[0]], labels[idxs[0]]
         val_data, val_labels = data[idxs[1]], labels[idxs[1]]
         test_data, test_labels = None, None
+        if interval_times is not None:
+            interval_times_train = interval_times[idxs[0]]
+            interval_times_val = interval_times[idxs[1]]
+        else:
+            interval_times_train = None
+            interval_times_val = None
+        interval_times_test = None
 
     if include_time:
         ts_train = train_data[:, :, 0]
@@ -232,13 +323,6 @@ def dataset_generator(
         ts_test = (T / test_data.shape[1]) * jnp.repeat(
             jnp.arange(test_data.shape[1])[None, :], test_data.shape[0], axis=0
         )
-
-    if not stepsize:
-        interval_times_train, interval_times_val, interval_times_test = interval_times
-    else:
-        interval_times_train = None
-        interval_times_val = None
-        interval_times_test = None
 
     train_paths, train_obs_masks = batch_calc_paths(
         train_data,
@@ -268,9 +352,16 @@ def dataset_generator(
     val_buf_len = max_false_run_length(val_obs_masks)
     test_buf_len = max_false_run_length(test_obs_masks)
     buf_len = max(train_buf_len, val_buf_len, test_buf_len) + 1
-    indexes = np.unique(np.r_[0 : train_data.shape[1] : stepsize])
-    intervals = ts_train[0, indexes]
-    intervals = jnp.concatenate((intervals, jnp.array([T])))
+    if interval_times_train is not None:
+        intervals = (
+            interval_times_train[0]
+            if getattr(interval_times_train, "ndim", 1) > 1
+            else interval_times_train
+        )
+    else:
+        indexes = np.unique(np.r_[0 : train_data.shape[1] : stepsize])
+        intervals = ts_train[0, indexes]
+        intervals = jnp.concatenate((intervals, jnp.array([T])))
 
     train_coeffs = calc_coeffs(train_data, include_time, T)
     val_coeffs = calc_coeffs(val_data, include_time, T)
@@ -360,40 +451,63 @@ def create_uea_dataset(
     include_time,
     T,
     scale=False,
+    drop_percentage=None,
+    path_drop_window_mode="fixed",
     *,
     key,
 ):
+    if path_drop_window_mode not in {"fixed", "scaled", "original"}:
+        raise ValueError(
+            "path_drop_window_mode must be one of 'fixed', 'scaled', or 'original'."
+        )
 
     if use_presplit:
         idxs = None
         with open(data_dir + f"/processed/UEA/{name}/X_train.pkl", "rb") as f:
-            train_data = pickle.load(f)
+            train_data = jnp.asarray(pickle.load(f))
         with open(data_dir + f"/processed/UEA/{name}/y_train.pkl", "rb") as f:
-            train_labels = pickle.load(f)
+            train_labels = jnp.asarray(pickle.load(f))
         with open(data_dir + f"/processed/UEA/{name}/X_val.pkl", "rb") as f:
-            val_data = pickle.load(f)
+            val_data = jnp.asarray(pickle.load(f))
         with open(data_dir + f"/processed/UEA/{name}/y_val.pkl", "rb") as f:
-            val_labels = pickle.load(f)
+            val_labels = jnp.asarray(pickle.load(f))
         with open(data_dir + f"/processed/UEA/{name}/X_test.pkl", "rb") as f:
-            test_data = pickle.load(f)
+            test_data = jnp.asarray(pickle.load(f))
         with open(data_dir + f"/processed/UEA/{name}/y_test.pkl", "rb") as f:
-            test_labels = pickle.load(f)
-        t = (T / train_data.shape[1]) * jnp.arange(train_data.shape[1])[None, :]
+            test_labels = jnp.asarray(pickle.load(f))
+
+        original_length = train_data.shape[1]
+        base_times = _uniform_times(original_length, T, dtype=train_data.dtype)
+        train_times = jnp.repeat(base_times[None, :], train_data.shape[0], axis=0)
+        val_times = jnp.repeat(base_times[None, :], val_data.shape[0], axis=0)
+        test_times = jnp.repeat(base_times[None, :], test_data.shape[0], axis=0)
+
+        if drop_percentage is not None:
+            train_key, val_key, test_key = jr.split(key, 3)
+            train_data, train_times = _drop_observations(
+                train_data, train_times, drop_percentage, key=train_key
+            )
+            val_data, val_times = _drop_observations(
+                val_data, val_times, drop_percentage, key=val_key
+            )
+            test_data, test_times = _drop_observations(
+                test_data, test_times, drop_percentage, key=test_key
+            )
+
         if include_time:
-            ts = jnp.repeat(t, train_data.shape[0], axis=0)
-            train_data = jnp.concatenate([ts[:, :, None], train_data], axis=2)
-            ts = jnp.repeat(t, val_data.shape[0], axis=0)
-            val_data = jnp.concatenate([ts[:, :, None], val_data], axis=2)
-            ts = jnp.repeat(t, test_data.shape[0], axis=0)
-            test_data = jnp.concatenate([ts[:, :, None], test_data], axis=2)
+            train_data = jnp.concatenate([train_times[:, :, None], train_data], axis=2)
+            val_data = jnp.concatenate([val_times[:, :, None], val_data], axis=2)
+            test_data = jnp.concatenate([test_times[:, :, None], test_data], axis=2)
         data = (train_data, val_data, test_data)
         onehot_labels = (train_labels, val_labels, test_labels)
     else:
         with open(data_dir + f"/processed/UEA/{name}/data.pkl", "rb") as f:
-            data = pickle.load(f)
+            data = jnp.asarray(pickle.load(f))
         with open(data_dir + f"/processed/UEA/{name}/labels.pkl", "rb") as f:
-            labels = pickle.load(f)
-        t = (T / data.shape[1]) * jnp.arange(data.shape[1])[None, :]
+            labels = jnp.asarray(pickle.load(f))
+        original_length = data.shape[1]
+        base_times = _uniform_times(original_length, T, dtype=data.dtype)
+        observation_times = jnp.repeat(base_times[None, :], data.shape[0], axis=0)
         onehot_labels = jnp.zeros((len(labels), len(jnp.unique(labels))))
         onehot_labels = onehot_labels.at[jnp.arange(len(labels)), labels].set(1)
         if use_idxs:
@@ -402,9 +516,41 @@ def create_uea_dataset(
         else:
             idxs = None
 
+        if drop_percentage is not None:
+            data, observation_times = _drop_observations(
+                data, observation_times, drop_percentage, key=key
+            )
+
         if include_time:
-            ts = jnp.repeat(t, data.shape[0], axis=0)
-            data = jnp.concatenate([ts[:, :, None], data], axis=2)
+            data = jnp.concatenate([observation_times[:, :, None], data], axis=2)
+
+    if drop_percentage is not None and path_drop_window_mode == "scaled":
+        path_stepsize = _resolve_path_stepsize(
+            stepsize, drop_percentage, path_drop_window_mode
+        )
+    else:
+        path_stepsize = stepsize
+
+    if drop_percentage is not None and path_drop_window_mode == "original":
+        shared_interval_times = _build_interval_times(
+            original_length,
+            stepsize,
+            T,
+            dtype=jnp.asarray(base_times).dtype,
+        )
+        if use_presplit:
+            interval_times = (
+                jnp.repeat(shared_interval_times[None, :], train_data.shape[0], axis=0),
+                jnp.repeat(shared_interval_times[None, :], val_data.shape[0], axis=0),
+                jnp.repeat(shared_interval_times[None, :], test_data.shape[0], axis=0),
+            )
+        else:
+            interval_times = jnp.repeat(
+                shared_interval_times[None, :], data.shape[0], axis=0
+            )
+        path_stepsize = None
+    else:
+        interval_times = None
 
     if scale:
         if use_presplit:
@@ -425,12 +571,13 @@ def create_uea_dataset(
         name,
         data,
         onehot_labels,
-        stepsize,
+        path_stepsize,
         depth,
         include_time,
         T,
         idxs=idxs,
         use_presplit=use_presplit,
+        interval_times=interval_times,
         key=key,
     )
 
@@ -776,6 +923,7 @@ def create_dataset(
     scale=False,
     drop_percentage=None,
     drop_mode="same",
+    path_drop_window_mode="fixed",
     *,
     key,
 ):
@@ -797,6 +945,8 @@ def create_dataset(
             include_time,
             T,
             scale=scale,
+            drop_percentage=drop_percentage,
+            path_drop_window_mode=path_drop_window_mode,
             key=key,
         )
     elif name[:-1] in toy_subfolders:
