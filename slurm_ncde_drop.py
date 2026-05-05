@@ -109,6 +109,11 @@ def build_run_configs():
             model_args = build_model_args(data)
 
             for seed in data["seeds"]:
+                # Repeat configs often leave output_parent_dir empty, but the
+                # current train entrypoint prepends it twice. Keep it explicitly
+                # relative here so Slurm jobs write inside the copied worktree
+                # rather than trying to create /outputs on the cluster root.
+                output_parent_dir = data["output_parent_dir"] or "."
                 cfg_list.append(
                     [
                         seed,
@@ -132,7 +137,7 @@ def build_run_configs():
                         float(data["lr"]),
                         lr_scheduler,
                         data["batch_size"],
-                        data["output_parent_dir"],
+                        output_parent_dir,
                     ]
                 )
     return cfg_list
